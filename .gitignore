@@ -1,0 +1,24 @@
+# Build output
+**/bin/
+**/obj/
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Test and publish output
+TestResults/
+**/TestResults/
+publish/
+**/publish/
+
+# Logs
+*.log
+
+# Local environment files
+.env
+.env.*
+!.env.example
