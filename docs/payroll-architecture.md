@@ -1,298 +1,599 @@
 # THIẾT KẾ KIẾN TRÚC & QUY TRÌNH TRIỂN KHAI SERVICE PAYROLL
 **Hệ thống:** HRM (Human Resource Management) - Đồ án môn học C# (Năm 3 SGU)  
-**Định hướng kiến trúc:** Clean Architecture tinh giản (Pragmatic / Light Clean Architecture)  
+**Mô hình dữ liệu:** Chuẩn hóa theo sơ đồ ERD chính thức của dự án  
+**Định hướng kiến trúc:** Clean Architecture tinh giản (Pragmatic Clean Architecture)  
 **Cơ sở dữ liệu:** PostgreSQL (Npgsql + Entity Framework Core)  
 **Nền tảng:** .NET 10 / ASP.NET Core Web API  
 
-> [!NOTE]
-> **Phạm vi tài liệu:** Đây là thiết kế **chính thức được áp dụng trực tiếp** vào mã nguồn dự án. Các tài liệu có tiền tố `ly-thuyet_` trong thư mục `docs/` là tài liệu lý thuyết mở rộng chuẩn Enterprise dùng để tham khảo đưa vào báo cáo đồ án.
-
 ---
 
-## 1. TẠI SAO LỰA CHỌN PHIÊN BẢN TINH GIẢN?
+## 1. SƠ ĐỒ THỰC THỂ LIÊN KẾT (ERD CHÍNH THỨC CỦA HỆ THỐNG)
 
-Trong hệ thống HRM, nhóm phải phát triển cùng lúc **4 service** (`Attendance`, `HR`, `Payroll`, `Project`). Nếu service nào cũng chia làm 4 project độc lập kèm `MediatR`, `CQRS`, `FluentValidation Pipeline` thì nhóm sẽ phải quản lý tới **16 projects** và hàng trăm file trung gian.
+Dưới đây là sơ đồ quan hệ thực thể (Entity Relationship Diagram) được thiết kế theo đúng chuẩn ERD được phê duyệt của service `Payroll`:
 
-Mô hình **Clean Architecture tinh giản** này được thiết kế để:
-1. **Đúng bản chất Clean Architecture:** Tách bạch 3 vùng trách nhiệm:
-   - **Tầng Giao tiếp (`Controllers/`):** Tiếp nhận request, trả về mã HTTP.
-   - **Tầng Nghiệp vụ (`Core/`):** Tính toán lương Gross-Net, bảo hiểm, thuế TNCN, không phụ thuộc vào công nghệ DB.
-   - **Tầng Dữ liệu (`Infrastructure/`):** Lưu trữ PostgreSQL và gọi API sang service khác.
-2. **Gọn gàng (1 Project duy nhất):** Toàn bộ nằm trọn trong `src/Payroll/`, không cần tạo thêm project phụ, không sợ lỗi tham chiếu chéo.
-3. **Dễ code - Dễ debug:** Dùng **Service Pattern** (`IPayrollService`), sinh viên đọc là hiểu ngay luồng chạy từ Controller $\rightarrow$ Service $\rightarrow$ Repository $\rightarrow$ PostgreSQL.
-4. **Có chế độ Mock dự phòng:** Service Payroll có thể tự chạy thử nghiệm tính lương ngay cả khi service `HR` hoặc `Attendance` của bạn bè trong nhóm chưa code xong!
+```mermaid
+erDiagram
+    PAYROLL_PERIOD ||--o{ PAYROLL : "contains"
+    PAYROLL ||--o{ PAYCUT : "has"
+    PAYROLL ||--o{ ALLOWANCE : "has"
+    PAYCUT ||--o{ PAYCUT_DETAIL : "contains"
+    PAYCUT_REASON ||--o{ PAYCUT_DETAIL : "classifies"
+    ALLOWANCE ||--o{ ALLOWANCE_DETAIL : "contains"
+    ALLOWANCE_TYPE ||--o{ ALLOWANCE_DETAIL : "classifies"
 
----
+    PAYROLL_PERIOD {
+        int payroll_period_id PK
+        int year
+        int month
+        string status
+        datetime created_at
+    }
 
-## 2. CẤU TRÚC THƯ MỤC THỰC TẾ TRONG `src/Payroll/`
+    PAYROLL {
+        int payroll_id PK
+        int payroll_period_id FK
+        int employee_id
+        decimal base_salary
+        decimal working_day
+        decimal standard_working_days
+        decimal total_allowance
+        decimal total_paycut
+        decimal gross_salary
+        decimal net_salary
+        string status
+        datetime calculated_at
+        datetime approved_at
+        datetime paid_at
+    }
 
-Cấu trúc thư mục được tổ chức theo 3 tầng rõ ràng ngay bên trong project `Payroll`:
+    PAYCUT {
+        int paycut_id PK
+        int payroll_id FK
+        string status
+    }
 
-```text
-src/Payroll/
-├── Controllers/                            # [TẦNG 1: PRESENTATION]
-│   ├── PayrollCyclesController.cs          # API tạo kỳ lương, bấm tính lương, duyệt bảng lương
-│   └── PayslipsController.cs               # API tra cứu phiếu lương nhân viên
-│
-├── Core/                                   # [TẦNG 2: BUSINESS LOGIC & DOMAIN]
-│   ├── Entities/                           # Thực thể nghiệp vụ
-│   │   ├── BaseEntity.cs                   # Id (Guid), CreatedAt, UpdatedAt
-│   │   ├── PayrollCycle.cs                 # Kỳ tính lương (Tháng, Năm, Trạng thái)
-│   │   ├── Payslip.cs                      # Phiếu lương nhân viên
-│   │   └── EmployeeSalaryProfile.cs        # Lương cơ bản, phụ cấp thỏa thuận
-│   ├── Enums/
-│   │   └── PayrollStatus.cs                # Draft (0), Calculated (1), Approved (2), Paid (3)
-│   ├── DTOs/                               # Đối tượng truyền nhận dữ liệu qua API
-│   │   ├── CreatePayrollCycleRequest.cs    # Dữ liệu gửi lên khi tạo kỳ lương
-│   │   ├── PayrollCycleDto.cs              # Dữ liệu kỳ lương trả về
-│   │   ├── PayslipDto.cs                   # Chi tiết phiếu lương trả về cho nhân viên
-│   │   └── WorkSummaryDto.cs               # Số ngày công & giờ OT nhận từ Attendance
-│   ├── Interfaces/                         # Hợp đồng trừu tượng
-│   │   ├── IPayrollService.cs              # Interface nghiệp vụ chính
-│   │   ├── IPayrollRepository.cs           # Interface truy vấn Database
-│   │   ├── IAttendanceClient.cs            # Interface gọi Attendance Service
-│   │   └── IHrClient.cs                    # Interface gọi HR Service
-│   └── Services/                           # NƠI CHỨA CODE NGHIỆP VỤ LÕI
-│       └── PayrollService.cs               # Triển khai tính toán Gross-Net, Thuế, Bảo hiểm
-│
-├── Infrastructure/                         # [TẦNG 3: DATABASE POSTGRESQL & TÍCH HỢP]
-│   ├── Data/
-│   │   ├── PayrollDbContext.cs             # DbContext của Entity Framework Core
-│   │   └── Configurations/                 # Fluent API ánh xạ cột vào PostgreSQL
-│   │       ├── PayrollCycleConfiguration.cs
-│   │       └── PayslipConfiguration.cs
-│   ├── Repositories/
-│   │   └── PayrollRepository.cs            # Code LINQ truy vấn PostgreSQL
-│   └── External/                           # Triển khai gọi API sang service khác
-│       ├── AttendanceClient.cs             # HttpClient gọi Attendance Service
-│       └── HrClient.cs                     # HttpClient gọi HR Service
-│
-├── appsettings.json                        # Chuỗi kết nối PostgreSQL & URL các service
-├── appsettings.Development.json
-├── Program.cs                              # Đăng ký DI & cấu hình HTTP Pipeline
-└── Payroll.csproj                          # Chứa các gói NuGet EF Core & Npgsql
+    PAYCUT_REASON {
+        int paycut_reason_id PK
+        string name
+        string calculation_type
+        decimal default_rate
+        string status
+    }
+
+    PAYCUT_DETAIL {
+        int paycut_detail_id PK
+        int paycut_id FK
+        int paycut_reason_id FK
+        string description
+        decimal rate_applied
+        decimal amount
+        datetime created_at
+    }
+
+    ALLOWANCE {
+        int allowance_id PK
+        int payroll_id FK
+        string status
+    }
+
+    ALLOWANCE_TYPE {
+        int allowance_type_id PK
+        string name
+        string description
+        string status
+    }
+
+    ALLOWANCE_DETAIL {
+        int allowance_detail_id PK
+        int allowance_id FK
+        int allowance_type_id FK
+        string description
+        decimal amount
+    }
 ```
 
 ---
 
-## 3. THIẾT KẾ CHI TIẾT CÁC THÀNH PHẦN
+## 2. GIẢI THÍCH CHI TIẾT CÁC BẢNG TRONG CƠ SỞ DỮ LIỆU
 
-### 3.1. Tầng Nghiệp vụ (`Core/`)
+Cơ sở dữ liệu gồm **7 bảng** chính, phân cấp quản lý lương, phụ cấp và các khoản khấu trừ cực kỳ chuyên nghiệp:
 
-#### A. Các Thực thể (`Core/Entities/`)
-* **`BaseEntity.cs`**:
-  ```csharp
-  namespace Payroll.Core.Entities;
-  
-  public abstract class BaseEntity
-  {
-      public Guid Id { get; set; } = Guid.NewGuid();
-      public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
-      public DateTimeOffset? UpdatedAt { get; set; }
-  }
-  ```
+| Bảng | Khóa chính | Khóa ngoại | Ý nghĩa nghiệp vụ |
+| :--- | :--- | :--- | :--- |
+| **`payroll_period`** | `payroll_period_id` (`int`) | - | Quản lý kỳ tính lương (Tháng, Năm, trạng thái `draft`, `calculated`, `approved`, `paid`). |
+| **`payroll`** | `payroll_id` (`int`) | `payroll_period_id` | Bảng lương tổng hợp của từng nhân viên (`employee_id`): ngày công, lương cơ bản, tổng phụ cấp, tổng khấu trừ, lương Gross, lương Net và mốc thời gian duyệt/chi trả. |
+| **`allowance`** | `allowance_id` (`int`) | `payroll_id` | Đại diện cho gói phụ cấp được cấp trong phiếu lương của nhân viên. |
+| **`allowance_type`** | `allowance_type_id` (`int`) | - | Danh mục loại phụ cấp: Ăn trưa, Xăng xe, Trách nhiệm, Làm thêm giờ (OT), Thâm niên. |
+| **`allowance_detail`** | `allowance_detail_id` (`int`) | `allowance_id`, `allowance_type_id` | Chi tiết số tiền của từng khoản phụ cấp thuộc phiếu lương. |
+| **`paycut`** | `paycut_id` (`int`) | `payroll_id` | Đại diện cho gói các khoản trừ lương của nhân viên trong kỳ. |
+| **`paycut_reason`** | `paycut_reason_id` (`int`) | - | Danh mục lý do trừ lương: BHXH (8%), BHYT (1.5%), BHTN (1%), Thuế TNCN, Đi trễ/về sớm, Nghỉ không phép. |
+| **`paycut_detail`** | `paycut_detail_id` (`int`) | `paycut_id`, `paycut_reason_id` | Chi tiết số tiền bị trừ, tỷ lệ áp dụng (`rate_applied`) và diễn giải. |
 
-* **`PayrollCycle.cs` (Kỳ lương):**
-  ```csharp
-  namespace Payroll.Core.Entities;
-  using Payroll.Core.Enums;
+### Công thức tính toán tổng thể:
+1. **Lương cơ bản theo công:**  
+   $$\text{Lương ngày công} = \text{base\_salary} \times \left(\frac{\text{working\_day}}{\text{standard\_working\_days}}\right)$$
+2. **Tổng phụ cấp (`total_allowance`):**  
+   $$\text{total\_allowance} = \sum (\text{allowance\_detail.amount})$$
+3. **Tổng thu nhập Gross (`gross_salary`):**  
+   $$\text{gross\_salary} = \text{Lương ngày công} + \text{total\_allowance}$$
+4. **Tổng khoản trừ (`total_paycut`):**  
+   $$\text{total\_paycut} = \sum (\text{paycut\_detail.amount})$$  
+   *(Bao gồm: Bảo hiểm 10.5% + Thuế TNCN lũy tiến + Phạt đi muộn/nghỉ không phép)*
+5. **Lương thực nhận Net (`net_salary`):**  
+   $$\text{net\_salary} = \text{gross\_salary} - \text{total\_paycut}$$
 
-  public class PayrollCycle : BaseEntity
-  {
-      public int Month { get; set; }
-      public int Year { get; set; }
-      public string Name { get; set; } = string.Empty;
-      public int StandardWorkingDays { get; set; } = 22; // Mặc định 22 ngày công chuẩn
-      public PayrollStatus Status { get; set; } = PayrollStatus.Draft;
-      public DateTime FromDate { get; set; }
-      public DateTime ToDate { get; set; }
+---
 
-      // Quan hệ 1 - N với danh sách phiếu lương
-      public List<Payslip> Payslips { get; set; } = new();
-  }
-  ```
+## 3. CẤU TRÚC THƯ MỤC DỰ ÁN TRONG `src/Payroll/`
 
-* **`Payslip.cs` (Phiếu lương):**
-  ```csharp
-  namespace Payroll.Core.Entities;
+Cấu trúc dự án áp dụng Clean Architecture tinh giản (1 Project duy nhất, phân chia theo 3 vùng trách nhiệm):
 
-  public class Payslip : BaseEntity
-  {
-      public Guid PayrollCycleId { get; set; }
-      public Guid EmployeeId { get; set; }
-      
-      public decimal ActualBaseSalary { get; set; }       // Lương theo ngày công thực tế
-      public decimal OvertimePay { get; set; }             // Lương làm thêm giờ (OT)
-      public decimal TotalAllowances { get; set; }         // Tổng phụ cấp (ăn trưa, xăng xe)
-      public decimal TotalGrossSalary { get; set; }        // Tổng thu nhập trước thuế/bảo hiểm
-      
-      public decimal SocialInsurance { get; set; }         // BHXH (8%)
-      public decimal HealthInsurance { get; set; }         // BHYT (1.5%)
-      public decimal UnemploymentInsurance { get; set; }   // BHTN (1%)
-      public decimal TotalInsurance { get; set; }          // Tổng đóng BH (10.5%)
-      
-      public decimal TaxableIncome { get; set; }           // Thu nhập tính thuế
-      public decimal PersonalIncomeTax { get; set; }       // Thuế TNCN lũy tiến 7 bậc
-      
-      public decimal NetSalary { get; set; }               // Lương thực nhận
-  }
-  ```
+```text
+src/Payroll/
+├── Controllers/                            # [TẦNG 1: PRESENTATION]
+│   ├── PayrollPeriodsController.cs         # API tạo kỳ lương, chốt kỳ, tính lương
+│   ├── PayrollsController.cs               # API tra cứu bảng lương nhân viên
+│   ├── AllowanceTypesController.cs         # API quản lý danh mục loại phụ cấp
+│   └── PaycutReasonsController.cs          # API quản lý danh mục lý do trừ lương
+│
+├── Core/                                   # [TẦNG 2: BUSINESS LOGIC & DOMAIN]
+│   ├── Entities/                           # Thực thể C# bám sát 7 bảng ERD
+│   │   ├── PayrollPeriod.cs
+│   │   ├── Payroll.cs
+│   │   ├── Allowance.cs
+│   │   ├── AllowanceType.cs
+│   │   ├── AllowanceDetail.cs
+│   │   ├── Paycut.cs
+│   │   ├── PaycutReason.cs
+│   │   └── PaycutDetail.cs
+│   ├── DTOs/                               # Đối tượng truyền nhận qua API
+│   │   ├── CreatePeriodRequest.cs
+│   │   ├── PayrollPeriodDto.cs
+│   │   ├── PayrollSummaryDto.cs
+│   │   ├── AllowanceDetailDto.cs
+│   │   └── PaycutDetailDto.cs
+│   ├── Interfaces/                         # Hợp đồng trừu tượng
+│   │   ├── IPayrollService.cs              # Interface xử lý tính toán lương
+│   │   ├── IPayrollRepository.cs           # Interface truy vấn Database
+│   │   ├── IAttendanceClient.cs            # Gọi Attendance Service
+│   │   └── IHrClient.cs                    # Gọi HR Service
+│   └── Services/                           # LOGIC TÍNH TOÁN NGHIỆP VỤ
+│       └── PayrollService.cs               # Thuật toán tính Gross-Net, thuế, bảo hiểm
+│
+├── Infrastructure/                         # [TẦNG 3: DATABASE POSTGRESQL & TÍCH HỢP]
+│   ├── Data/
+│   │   ├── PayrollDbContext.cs             # DbContext của EF Core
+│   │   └── Configurations/                 # Fluent API cấu hình bảng theo ERD
+│   │       ├── PayrollPeriodConfiguration.cs
+│   │       ├── PayrollConfiguration.cs
+│   │       ├── AllowanceConfiguration.cs
+│   │       └── PaycutConfiguration.cs
+│   ├── Repositories/
+│   │   └── PayrollRepository.cs            # LINQ truy vấn PostgreSQL
+│   └── External/                           # Client gọi API liên service
+│       ├── AttendanceClient.cs             # Lấy số công (working_day) từ Attendance
+│       └── HrClient.cs                     # Lấy lương cơ bản và người phụ thuộc từ HR
+│
+├── appsettings.json                        # Chuỗi kết nối PostgreSQL & URL các service
+├── appsettings.Development.json
+├── Program.cs                              # Đăng ký DI & HTTP Pipeline
+└── Payroll.csproj                          # Thư viện EF Core, Npgsql
+```
 
-* **`EmployeeSalaryProfile.cs` (Hồ sơ lương cố định của nhân viên):**
-  ```csharp
-  namespace Payroll.Core.Entities;
+---
 
-  public class EmployeeSalaryProfile : BaseEntity
-  {
-      public Guid EmployeeId { get; set; }
-      public decimal BaseSalary { get; set; }              // Lương cơ bản theo hợp đồng
-      public decimal TaxableAllowances { get; set; }        // Phụ cấp chịu thuế (trách nhiệm...)
-      public decimal NonTaxableAllowances { get; set; }     // Phụ cấp miễn thuế (ăn trưa...)
-      public string? BankAccountNumber { get; set; }
-      public string? BankName { get; set; }
-      public bool IsActive { get; set; } = true;
-  }
-  ```
+## 4. CHI TIẾT MÃ NGUỒN CÁC THỰC THỂ (ENTITIES)
 
-#### B. Trái tim nghiệp vụ: `PayrollService.cs` (`Core/Services/`)
-Chứa toàn bộ quy tắc tính toán chuẩn Luật Lao động và Thuế TNCN Việt Nam:
+Tất cả các thực thể đều sử dụng kiểu khóa chính `int` tự tăng (Identity) và `decimal` cho tiền tệ/ngày công theo đúng hình ảnh ERD:
+
+### 4.1. `PayrollPeriod.cs`
+```csharp
+namespace Payroll.Core.Entities;
+
+public class PayrollPeriod
+{
+    public int PayrollPeriodId { get; set; }
+    public int Year { get; set; }
+    public int Month { get; set; }
+    public string Status { get; set; } = "draft"; // draft, calculated, approved, paid
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    // Quan hệ 1 - N với Payroll
+    public List<Payroll> Payrolls { get; set; } = new();
+}
+```
+
+### 4.2. `Payroll.cs`
+```csharp
+namespace Payroll.Core.Entities;
+
+public class Payroll
+{
+    public int PayrollId { get; set; }
+    public int PayrollPeriodId { get; set; }
+    public int EmployeeId { get; set; }
+    
+    public decimal BaseSalary { get; set; }
+    public decimal WorkingDay { get; set; }
+    public decimal StandardWorkingDays { get; set; } = 22m;
+    
+    public decimal TotalAllowance { get; set; }
+    public decimal TotalPaycut { get; set; }
+    public decimal GrossSalary { get; set; }
+    public decimal NetSalary { get; set; }
+    
+    public string Status { get; set; } = "draft"; // draft, calculated, approved, paid
+    public DateTime? CalculatedAt { get; set; }
+    public DateTime? ApprovedAt { get; set; }
+    public DateTime? PaidAt { get; set; }
+
+    // Navigation Properties
+    public PayrollPeriod? PayrollPeriod { get; set; }
+    public List<Allowance> Allowances { get; set; } = new();
+    public List<Paycut> Paycuts { get; set; } = new();
+}
+```
+
+### 4.3. Các thực thể Phụ cấp: `Allowance.cs`, `AllowanceType.cs`, `AllowanceDetail.cs`
+```csharp
+namespace Payroll.Core.Entities;
+
+public class Allowance
+{
+    public int AllowanceId { get; set; }
+    public int PayrollId { get; set; }
+    public string Status { get; set; } = "active";
+
+    public Payroll? Payroll { get; set; }
+    public List<AllowanceDetail> Details { get; set; } = new();
+}
+
+public class AllowanceType
+{
+    public int AllowanceTypeId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Status { get; set; } = "active";
+
+    public List<AllowanceDetail> AllowanceDetails { get; set; } = new();
+}
+
+public class AllowanceDetail
+{
+    public int AllowanceDetailId { get; set; }
+    public int AllowanceId { get; set; }
+    public int AllowanceTypeId { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+
+    public Allowance? Allowance { get; set; }
+    public AllowanceType? AllowanceType { get; set; }
+}
+```
+
+### 4.4. Các thực thể Khấu trừ lương: `Paycut.cs`, `PaycutReason.cs`, `PaycutDetail.cs`
+```csharp
+namespace Payroll.Core.Entities;
+
+public class Paycut
+{
+    public int PaycutId { get; set; }
+    public int PayrollId { get; set; }
+    public string Status { get; set; } = "active";
+
+    public Payroll? Payroll { get; set; }
+    public List<PaycutDetail> Details { get; set; } = new();
+}
+
+public class PaycutReason
+{
+    public int PaycutReasonId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string CalculationType { get; set; } = "percentage"; // percentage, fixed, formula
+    public decimal DefaultRate { get; set; }
+    public string Status { get; set; } = "active";
+
+    public List<PaycutDetail> PaycutDetails { get; set; } = new();
+}
+
+public class PaycutDetail
+{
+    public int PaycutDetailId { get; set; }
+    public int PaycutId { get; set; }
+    public int PaycutReasonId { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public decimal RateApplied { get; set; }
+    public decimal Amount { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public Paycut? Paycut { get; set; }
+    public PaycutReason? PaycutReason { get; set; }
+}
+```
+
+---
+
+## 5. THIẾT KẾ CƠ SỞ DỮ LIỆU POSTGRESQL VỚI EF CORE
+
+### 5.1. `PayrollDbContext.cs` (`Infrastructure/Data/`)
+Khai báo đầy đủ 7 `DbSet` và áp dụng ánh xạ Fluent API:
+
+```csharp
+namespace Payroll.Infrastructure.Data;
+
+using Microsoft.EntityFrameworkCore;
+using Payroll.Core.Entities;
+
+public class PayrollDbContext : DbContext
+{
+    public PayrollDbContext(DbContextOptions<PayrollDbContext> options) : base(options) { }
+
+    public DbSet<PayrollPeriod> PayrollPeriods => Set<PayrollPeriod>();
+    public DbSet<Payroll> Payrolls => Set<Payroll>();
+    public DbSet<Allowance> Allowances => Set<Allowance>();
+    public DbSet<AllowanceType> AllowanceTypes => Set<AllowanceType>();
+    public DbSet<AllowanceDetail> AllowanceDetails => Set<AllowanceDetail>();
+    public DbSet<Paycut> Paycuts => Set<Paycut>();
+    public DbSet<PaycutReason> PaycutReasons => Set<PaycutReason>();
+    public DbSet<PaycutDetail> PaycutDetails => Set<PaycutDetail>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        // 1. payroll_period
+        modelBuilder.Entity<PayrollPeriod>(b =>
+        {
+            b.ToTable("payroll_period");
+            b.HasKey(p => p.PayrollPeriodId);
+            b.Property(p => p.PayrollPeriodId).HasColumnName("payroll_period_id").ValueGeneratedOnAdd();
+            b.Property(p => p.Status).HasMaxLength(50);
+            b.HasIndex(p => new { p.Year, p.Month }).IsUnique();
+        });
+
+        // 2. payroll
+        modelBuilder.Entity<Payroll>(b =>
+        {
+            b.ToTable("payroll");
+            b.HasKey(p => p.PayrollId);
+            b.Property(p => p.PayrollId).HasColumnName("payroll_id").ValueGeneratedOnAdd();
+            b.Property(p => p.BaseSalary).HasColumnType("numeric(18,2)");
+            b.Property(p => p.WorkingDay).HasColumnType("numeric(5,2)");
+            b.Property(p => p.StandardWorkingDays).HasColumnType("numeric(5,2)");
+            b.Property(p => p.TotalAllowance).HasColumnType("numeric(18,2)");
+            b.Property(p => p.TotalPaycut).HasColumnType("numeric(18,2)");
+            b.Property(p => p.GrossSalary).HasColumnType("numeric(18,2)");
+            b.Property(p => p.NetSalary).HasColumnType("numeric(18,2)");
+            
+            b.HasOne(p => p.PayrollPeriod)
+             .WithMany(period => period.Payrolls)
+             .HasForeignKey(p => p.PayrollPeriodId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // 3. allowance & allowance_detail
+        modelBuilder.Entity<Allowance>(b =>
+        {
+            b.ToTable("allowance");
+            b.HasKey(a => a.AllowanceId);
+            b.Property(a => a.AllowanceId).HasColumnName("allowance_id").ValueGeneratedOnAdd();
+            b.HasOne(a => a.Payroll)
+             .WithMany(p => p.Allowances)
+             .HasForeignKey(a => a.PayrollId);
+        });
+
+        modelBuilder.Entity<AllowanceType>(b =>
+        {
+            b.ToTable("allowance_type");
+            b.HasKey(t => t.AllowanceTypeId);
+            b.Property(t => t.AllowanceTypeId).HasColumnName("allowance_type_id").ValueGeneratedOnAdd();
+        });
+
+        modelBuilder.Entity<AllowanceDetail>(b =>
+        {
+            b.ToTable("allowance_detail");
+            b.HasKey(d => d.AllowanceDetailId);
+            b.Property(d => d.AllowanceDetailId).HasColumnName("allowance_detail_id").ValueGeneratedOnAdd();
+            b.Property(d => d.Amount).HasColumnType("numeric(18,2)");
+
+            b.HasOne(d => d.Allowance)
+             .WithMany(a => a.Details)
+             .HasForeignKey(d => d.AllowanceId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasOne(d => d.AllowanceType)
+             .WithMany(t => t.AllowanceDetails)
+             .HasForeignKey(d => d.AllowanceTypeId);
+        });
+
+        // 4. paycut & paycut_detail
+        modelBuilder.Entity<Paycut>(b =>
+        {
+            b.ToTable("paycut");
+            b.HasKey(p => p.PaycutId);
+            b.Property(p => p.PaycutId).HasColumnName("paycut_id").ValueGeneratedOnAdd();
+            b.HasOne(p => p.Payroll)
+             .WithMany(pr => pr.Paycuts)
+             .HasForeignKey(p => p.PayrollId);
+        });
+
+        modelBuilder.Entity<PaycutReason>(b =>
+        {
+            b.ToTable("paycut_reason");
+            b.HasKey(r => r.PaycutReasonId);
+            b.Property(r => r.PaycutReasonId).HasColumnName("paycut_reason_id").ValueGeneratedOnAdd();
+            b.Property(r => r.DefaultRate).HasColumnType("numeric(5,4)"); // vd 0.0800 cho 8%
+        });
+
+        modelBuilder.Entity<PaycutDetail>(b =>
+        {
+            b.ToTable("paycut_detail");
+            b.HasKey(d => d.PaycutDetailId);
+            b.Property(d => d.PaycutDetailId).HasColumnName("paycut_detail_id").ValueGeneratedOnAdd();
+            b.Property(d => d.RateApplied).HasColumnType("numeric(5,4)");
+            b.Property(d => d.Amount).HasColumnType("numeric(18,2)");
+
+            b.HasOne(d => d.Paycut)
+             .WithMany(p => p.Details)
+             .HasForeignKey(d => d.PaycutId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasOne(d => d.PaycutReason)
+             .WithMany(r => r.PaycutDetails)
+             .HasForeignKey(d => d.PaycutReasonId);
+        });
+    }
+}
+```
+
+---
+
+## 6. LOGIC NGHIỆP VỤ TÍNH LƯƠNG (`Core/Services/PayrollService.cs`)
+
+Service này điều phối việc tính toán:
+1. Đọc số ngày công từ `Attendance Service`.
+2. Tạo bản ghi `Allowance` và chèn các `AllowanceDetail` (Ăn trưa, Phụ cấp trách nhiệm, OT).
+3. Tạo bản ghi `Paycut` và chèn các `PaycutDetail` (BHXH 8%, BHYT 1.5%, BHTN 1%, Thuế TNCN).
+4. Tính tổng và chốt lương Net.
 
 ```csharp
 namespace Payroll.Core.Services;
 
+using Microsoft.EntityFrameworkCore;
 using Payroll.Core.Entities;
-using Payroll.Core.Enums;
 using Payroll.Core.Interfaces;
-using Payroll.Core.DTOs;
+using Payroll.Infrastructure.Data;
 
 public class PayrollService : IPayrollService
 {
-    private readonly IPayrollRepository _repository;
+    private readonly PayrollDbContext _context;
     private readonly IAttendanceClient _attendanceClient;
     private readonly IHrClient _hrClient;
 
-    private const decimal SelfDeduction = 11_000_000m;      // Giảm trừ bản thân 11tr
-    private const decimal DependentDeduction = 4_400_000m;  // Giảm trừ người phụ thuộc 4.4tr/người
-
     public PayrollService(
-        IPayrollRepository repository,
+        PayrollDbContext context,
         IAttendanceClient attendanceClient,
         IHrClient hrClient)
     {
-        _repository = repository;
+        _context = context;
         _attendanceClient = attendanceClient;
         _hrClient = hrClient;
     }
 
-    public async Task<PayrollCycleDto> CreateCycleAsync(CreatePayrollCycleRequest req)
+    public async Task<int> CalculatePeriodAsync(int periodId)
     {
-        var existing = await _repository.GetCycleByMonthYearAsync(req.Month, req.Year);
-        if (existing != null)
-            throw new InvalidOperationException($"Kỳ lương tháng {req.Month}/{req.Year} đã tồn tại!");
+        var period = await _context.PayrollPeriods
+            .Include(p => p.Payrolls)
+                .ThenInclude(pr => pr.Allowances)
+            .Include(p => p.Payrolls)
+                .ThenInclude(pr => pr.Paycuts)
+            .FirstOrDefaultAsync(p => p.PayrollPeriodId == periodId);
 
-        var cycle = new PayrollCycle
-        {
-            Month = req.Month,
-            Year = req.Year,
-            Name = $"Bảng lương Tháng {req.Month}/{req.Year}",
-            StandardWorkingDays = req.StandardWorkingDays > 0 ? req.StandardWorkingDays : 22,
-            Status = PayrollStatus.Draft,
-            FromDate = new DateTime(req.Year, req.Month, 1),
-            ToDate = new DateTime(req.Year, req.Month, DateTime.DaysInMonth(req.Year, req.Month))
-        };
-
-        await _repository.AddCycleAsync(cycle);
-        await _repository.SaveChangesAsync();
-
-        return MapToDto(cycle);
-    }
-
-    public async Task<int> CalculatePayrollAsync(Guid cycleId)
-    {
-        var cycle = await _repository.GetCycleByIdAsync(cycleId);
-        if (cycle == null)
+        if (period == null)
             throw new KeyNotFoundException("Không tìm thấy kỳ lương.");
 
-        if (cycle.Status == PayrollStatus.Approved || cycle.Status == PayrollStatus.Paid)
-            throw new InvalidOperationException("Kỳ lương đã chốt hoặc thanh toán, không thể tính lại.");
+        if (period.Status == "approved" || period.Status == "paid")
+            throw new InvalidOperationException("Kỳ lương đã được phê duyệt, không thể tính lại.");
 
-        // 1. Lấy dữ liệu công từ Attendance Service (hoặc mock nếu chưa có)
-        var attendanceData = await _attendanceClient.GetMonthlyAttendanceSummaryAsync(cycle.Month, cycle.Year);
-
-        // 2. Lấy dữ liệu người phụ thuộc từ HR Service
-        var dependentsData = await _hrClient.GetDependentsCountAsync();
-
-        // 3. Lấy hồ sơ lương nhân viên trong DB
-        var profiles = await _repository.GetActiveProfilesAsync();
-
-        // 4. Xóa phiếu lương cũ của kỳ này nếu đang tính lại
-        await _repository.DeletePayslipsByCycleIdAsync(cycleId);
-
-        var payslips = new List<Payslip>();
-
-        foreach (var profile in profiles)
+        // 1. Xóa các dữ liệu tính toán cũ nếu đang tính lại
+        if (period.Payrolls.Any())
         {
-            attendanceData.TryGetValue(profile.EmployeeId, out var work);
-            work ??= new WorkSummaryDto { ActualWorkingDays = cycle.StandardWorkingDays }; // Mặc định đủ công nếu thiếu dữ liệu
-
-            dependentsData.TryGetValue(profile.EmployeeId, out var dependentCount);
-
-            // BƯỚC A: Tính lương theo ngày công
-            decimal dailyRate = profile.BaseSalary / cycle.StandardWorkingDays;
-            decimal actualBase = dailyRate * work.ActualWorkingDays;
-
-            // BƯỚC B: Tính tiền OT (150% ngày thường, 200% cuối tuần, 300% lễ)
-            decimal hourlyRate = dailyRate / 8;
-            decimal otPay = (work.NormalOtHours * hourlyRate * 1.5m)
-                          + (work.WeekendOtHours * hourlyRate * 2.0m)
-                          + (work.HolidayOtHours * hourlyRate * 3.0m);
-
-            decimal gross = actualBase + otPay + profile.TaxableAllowances + profile.NonTaxableAllowances;
-
-            // BƯỚC C: Trích nộp bảo hiểm (10.5%)
-            decimal bhxh = profile.BaseSalary * 0.08m;
-            decimal bhyt = profile.BaseSalary * 0.015m;
-            decimal bhtn = profile.BaseSalary * 0.01m;
-            decimal totalInsurance = bhxh + bhyt + bhtn;
-
-            // BƯỚC D: Thu nhập tính thuế TNCN (OT vượt 100% và phụ cấp miễn thuế được trừ ra)
-            decimal taxFreeOt = (work.NormalOtHours * hourlyRate * 0.5m)
-                              + (work.WeekendOtHours * hourlyRate * 1.0m)
-                              + (work.HolidayOtHours * hourlyRate * 2.0m);
-
-            decimal familyDeduction = SelfDeduction + (dependentCount * DependentDeduction);
-            decimal taxableIncome = gross - profile.NonTaxableAllowances - taxFreeOt;
-            decimal assessableIncome = Math.Max(0, taxableIncome - totalInsurance - familyDeduction);
-
-            // BƯỚC E: Biểu thuế lũy tiến 7 bậc
-            decimal pit = CalculateProgressiveTax(assessableIncome);
-
-            // BƯỚC F: Lương thực nhận (Net)
-            decimal net = gross - totalInsurance - pit;
-
-            payslips.Add(new Payslip
-            {
-                PayrollCycleId = cycleId,
-                EmployeeId = profile.EmployeeId,
-                ActualBaseSalary = actualBase,
-                OvertimePay = otPay,
-                TotalAllowances = profile.TaxableAllowances + profile.NonTaxableAllowances,
-                TotalGrossSalary = gross,
-                SocialInsurance = bhxh,
-                HealthInsurance = bhyt,
-                UnemploymentInsurance = bhtn,
-                TotalInsurance = totalInsurance,
-                TaxableIncome = assessableIncome,
-                PersonalIncomeTax = pit,
-                NetSalary = net
-            });
+            _context.Payrolls.RemoveRange(period.Payrolls);
+            await _context.SaveChangesAsync();
         }
 
-        cycle.Status = PayrollStatus.Calculated;
-        await _repository.AddPayslipsAsync(payslips);
-        await _repository.SaveChangesAsync();
+        // 2. Lấy dữ liệu công từ Attendance Service (hoặc mock nếu chưa chạy)
+        var attendanceData = await _attendanceClient.GetMonthlyAttendanceSummaryAsync(period.Month, period.Year);
 
-        return payslips.Count;
+        // 3. Lấy danh sách nhân viên từ HR Service (Id, Lương cơ bản, Số người phụ thuộc)
+        var employees = await _hrClient.GetEmployeePayrollInfoAsync();
+
+        // 4. Lấy danh mục phụ cấp và lý do trừ lương
+        var lunchAllowanceType = await _context.AllowanceTypes.FirstOrDefaultAsync(t => t.Name.Contains("Ăn trưa"));
+        var bhxhReason = await _context.PaycutReasons.FirstOrDefaultAsync(r => r.Name.Contains("BHXH"));
+        var bhytReason = await _context.PaycutReasons.FirstOrDefaultAsync(r => r.Name.Contains("BHYT"));
+        var bhtnReason = await _context.PaycutReasons.FirstOrDefaultAsync(r => r.Name.Contains("BHTN"));
+        var pitReason = await _context.PaycutReasons.FirstOrDefaultAsync(r => r.Name.Contains("Thuế TNCN"));
+
+        var newPayrolls = new List<Payroll>();
+
+        foreach (var emp in employees)
+        {
+            attendanceData.TryGetValue(emp.EmployeeId, out var actualWorkingDays);
+            if (actualWorkingDays <= 0) actualWorkingDays = 22m; // Mặc định đủ công nếu thiếu dữ liệu chấm công
+
+            decimal standardDays = 22m;
+            decimal baseSalary = emp.BaseSalary > 0 ? emp.BaseSalary : 10_000_000m;
+            decimal earnedBaseSalary = baseSalary * (actualWorkingDays / standardDays);
+
+            var payrollItem = new Payroll
+            {
+                PayrollPeriodId = periodId,
+                EmployeeId = emp.EmployeeId,
+                BaseSalary = baseSalary,
+                WorkingDay = actualWorkingDays,
+                StandardWorkingDays = standardDays,
+                Status = "calculated",
+                CalculatedAt = DateTime.UtcNow
+            };
+
+            // TẠO GÓI PHỤ CẤP (ALLOWANCE)
+            var allowance = new Allowance { Status = "active" };
+            decimal lunchAmount = 730_000m; // Phụ cấp ăn trưa 730k
+            if (lunchAllowanceType != null)
+            {
+                allowance.Details.Add(new AllowanceDetail
+                {
+                    AllowanceTypeId = lunchAllowanceType.AllowanceTypeId,
+                    Description = "Tiền ăn trưa tháng",
+                    Amount = lunchAmount
+                });
+            }
+            payrollItem.TotalAllowance = allowance.Details.Sum(d => d.Amount);
+            payrollItem.Allowances.Add(allowance);
+
+            // TÍNH LƯƠNG GROSS
+            payrollItem.GrossSalary = earnedBaseSalary + payrollItem.TotalAllowance;
+
+            // TẠO GÓI KHẤU TRỪ (PAYCUT)
+            var paycut = new Paycut { Status = "active" };
+
+            // Trừ bảo hiểm (10.5%)
+            decimal bhxh = baseSalary * 0.08m;
+            decimal bhyt = baseSalary * 0.015m;
+            decimal bhtn = baseSalary * 0.01m;
+            decimal totalInsurance = bhxh + bhyt + bhtn;
+
+            if (bhxhReason != null)
+                paycut.Details.Add(new PaycutDetail { PaycutReasonId = bhxhReason.PaycutReasonId, Description = "BHXH 8%", RateApplied = 0.08m, Amount = bhxh });
+            if (bhytReason != null)
+                paycut.Details.Add(new PaycutDetail { PaycutReasonId = bhytReason.PaycutReasonId, Description = "BHYT 1.5%", RateApplied = 0.015m, Amount = bhyt });
+            if (bhtnReason != null)
+                paycut.Details.Add(new PaycutDetail { PaycutReasonId = bhtnReason.PaycutReasonId, Description = "BHTN 1%", RateApplied = 0.01m, Amount = bhtn });
+
+            // Tính thuế TNCN lũy tiến 7 bậc (giảm trừ bản thân 11tr, người phụ thuộc 4.4tr)
+            decimal familyDeduction = 11_000_000m + (emp.DependentCount * 4_400_000m);
+            decimal taxableIncome = payrollItem.GrossSalary - lunchAmount; // Phụ cấp ăn trưa miễn thuế
+            decimal assessableIncome = Math.Max(0, taxableIncome - totalInsurance - familyDeduction);
+            decimal pit = CalculateProgressiveTax(assessableIncome);
+
+            if (pitReason != null && pit > 0)
+                paycut.Details.Add(new PaycutDetail { PaycutReasonId = pitReason.PaycutReasonId, Description = "Thuế TNCN lũy tiến", RateApplied = 0m, Amount = pit });
+
+            payrollItem.TotalPaycut = paycut.Details.Sum(d => d.Amount);
+            payrollItem.Paycuts.Add(paycut);
+
+            // TÍNH LƯƠNG NET THỰC NHẬN
+            payrollItem.NetSalary = payrollItem.GrossSalary - payrollItem.TotalPaycut;
+
+            newPayrolls.Add(payrollItem);
+        }
+
+        period.Status = "calculated";
+        await _context.Payrolls.AddRangeAsync(newPayrolls);
+        await _context.SaveChangesAsync();
+
+        return newPayrolls.Count;
     }
 
     private decimal CalculateProgressiveTax(decimal income)
@@ -306,400 +607,54 @@ public class PayrollService : IPayrollService
         if (income <= 80_000_000m) return 9_750_000m + (income - 52_000_000m) * 0.30m;
         return 18_150_000m + (income - 80_000_000m) * 0.35m;
     }
-
-    public async Task<bool> ApproveCycleAsync(Guid cycleId)
-    {
-        var cycle = await _repository.GetCycleByIdAsync(cycleId);
-        if (cycle == null || cycle.Status != PayrollStatus.Calculated)
-            return false;
-
-        cycle.Status = PayrollStatus.Approved;
-        await _repository.SaveChangesAsync();
-        return true;
-    }
-
-    public async Task<PayrollCycleDto?> GetCycleByIdAsync(Guid cycleId)
-    {
-        var cycle = await _repository.GetCycleWithPayslipsAsync(cycleId);
-        return cycle == null ? null : MapToDto(cycle);
-    }
-
-    private static PayrollCycleDto MapToDto(PayrollCycle cycle) => new()
-    {
-        Id = cycle.Id,
-        Month = cycle.Month,
-        Year = cycle.Year,
-        Name = cycle.Name,
-        Status = cycle.Status.ToString(),
-        StandardWorkingDays = cycle.StandardWorkingDays,
-        Payslips = cycle.Payslips.Select(p => new PayslipDto
-        {
-            Id = p.Id,
-            EmployeeId = p.EmployeeId,
-            GrossSalary = p.TotalGrossSalary,
-            TotalInsurance = p.TotalInsurance,
-            PersonalIncomeTax = p.PersonalIncomeTax,
-            NetSalary = p.NetSalary
-        }).ToList()
-    };
 }
 ```
 
 ---
 
-### 3.2. Tầng Kết nối Cơ sở dữ liệu PostgreSQL (`Infrastructure/`)
+## 7. DỮ LIỆU KHỞI TẠO MẪU CHO DANH MỤC (SEED DATA)
 
-#### A. Cấu hình DbContext (`Infrastructure/Data/PayrollDbContext.cs`)
-```csharp
-namespace Payroll.Infrastructure.Data;
-
-using Microsoft.EntityFrameworkCore;
-using Payroll.Core.Entities;
-
-public class PayrollDbContext : DbContext
-{
-    public PayrollDbContext(DbContextOptions<PayrollDbContext> options) : base(options) { }
-
-    public DbSet<PayrollCycle> PayrollCycles => Set<PayrollCycle>();
-    public DbSet<Payslip> Payslips => Set<Payslip>();
-    public DbSet<EmployeeSalaryProfile> SalaryProfiles => Set<EmployeeSalaryProfile>();
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        base.OnModelCreating(modelBuilder);
-        
-        // Cấu hình kiểu dữ liệu chính xác cho PostgreSQL
-        modelBuilder.Entity<Payslip>(b =>
-        {
-            b.ToTable("payslips");
-            b.Property(p => p.ActualBaseSalary).HasColumnType("numeric(18,2)");
-            b.Property(p => p.OvertimePay).HasColumnType("numeric(18,2)");
-            b.Property(p => p.TotalGrossSalary).HasColumnType("numeric(18,2)");
-            b.Property(p => p.TotalInsurance).HasColumnType("numeric(18,2)");
-            b.Property(p => p.PersonalIncomeTax).HasColumnType("numeric(18,2)");
-            b.Property(p => p.NetSalary).HasColumnType("numeric(18,2)");
-            b.Property(p => p.CreatedAt).HasColumnType("timestamp with time zone");
-        });
-
-        modelBuilder.Entity<EmployeeSalaryProfile>(b =>
-        {
-            b.ToTable("employee_salary_profiles");
-            b.Property(p => p.BaseSalary).HasColumnType("numeric(18,2)");
-            b.Property(p => p.TaxableAllowances).HasColumnType("numeric(18,2)");
-            b.Property(p => p.NonTaxableAllowances).HasColumnType("numeric(18,2)");
-        });
-
-        modelBuilder.Entity<PayrollCycle>(b =>
-        {
-            b.ToTable("payroll_cycles");
-            b.HasIndex(c => new { c.Year, c.Month }).IsUnique();
-        });
-    }
-}
-```
-
-#### B. Repository truy vấn dữ liệu (`Infrastructure/Repositories/PayrollRepository.cs`)
-```csharp
-namespace Payroll.Infrastructure.Repositories;
-
-using Microsoft.EntityFrameworkCore;
-using Payroll.Core.Entities;
-using Payroll.Core.Interfaces;
-using Payroll.Infrastructure.Data;
-
-public class PayrollRepository : IPayrollRepository
-{
-    private readonly PayrollDbContext _context;
-
-    public PayrollRepository(PayrollDbContext context)
-    {
-        _context = context;
-    }
-
-    public async Task<PayrollCycle?> GetCycleByIdAsync(Guid id) =>
-        await _context.PayrollCycles.FindAsync(id);
-
-    public async Task<PayrollCycle?> GetCycleByMonthYearAsync(int month, int year) =>
-        await _context.PayrollCycles.FirstOrDefaultAsync(c => c.Month == month && c.Year == year);
-
-    public async Task<PayrollCycle?> GetCycleWithPayslipsAsync(Guid id) =>
-        await _context.PayrollCycles
-            .Include(c => c.Payslips)
-            .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Id == id);
-
-    public async Task<List<EmployeeSalaryProfile>> GetActiveProfilesAsync() =>
-        await _context.SalaryProfiles.Where(p => p.IsActive).ToListAsync();
-
-    public async Task AddCycleAsync(PayrollCycle cycle) =>
-        await _context.PayrollCycles.AddAsync(cycle);
-
-    public async Task AddPayslipsAsync(IEnumerable<Payslip> payslips) =>
-        await _context.Payslips.AddRangeAsync(payslips);
-
-    public async Task DeletePayslipsByCycleIdAsync(Guid cycleId)
-    {
-        var oldPayslips = await _context.Payslips.Where(p => p.PayrollCycleId == cycleId).ToListAsync();
-        _context.Payslips.RemoveRange(oldPayslips);
-    }
-
-    public async Task<int> SaveChangesAsync() =>
-        await _context.SaveChangesAsync();
-}
-```
-
-#### C. HttpClient có cơ chế tự Mock dự phòng (`Infrastructure/External/`)
-> [!TIP]
-> **Cực kỳ tiện lợi khi làm đồ án:** Nếu service `Attendance` hoặc `HR` của nhóm bạn chưa chạy, hàm này sẽ tự động bắt ngoại lệ và trả về dữ liệu mẫu để bạn test được Payroll mà không bị tắc nghẽn!
+Để hệ thống tính lương chạy được ngay lập tức sau khi cập nhật Database, bạn có thể thêm đoạn Seed Data sau vào hàm `OnModelCreating` trong `PayrollDbContext.cs`:
 
 ```csharp
-namespace Payroll.Infrastructure.External;
+// Seed dữ liệu cho danh mục Loại phụ cấp
+modelBuilder.Entity<AllowanceType>().HasData(
+    new AllowanceType { AllowanceTypeId = 1, Name = "Phụ cấp ăn trưa", Description = "Hỗ trợ bữa ăn giữa ca, miễn thuế theo quy định", Status = "active" },
+    new AllowanceType { AllowanceTypeId = 2, Name = "Phụ cấp xăng xe & đi lại", Description = "Hỗ trợ chi phí xăng xe", Status = "active" },
+    new AllowanceType { AllowanceTypeId = 3, Name = "Phụ cấp trách nhiệm", Description = "Phụ cấp theo chức vụ quản lý", Status = "active" },
+    new AllowanceType { AllowanceTypeId = 4, Name = "Làm thêm giờ (OT)", Description = "Tiền lương làm thêm ngoài giờ", Status = "active" }
+);
 
-using System.Net.Http.Json;
-using Payroll.Core.DTOs;
-using Payroll.Core.Interfaces;
-
-public class AttendanceClient : IAttendanceClient
-{
-    private readonly HttpClient _client;
-
-    public AttendanceClient(HttpClient client) => _client = client;
-
-    public async Task<Dictionary<Guid, WorkSummaryDto>> GetMonthlyAttendanceSummaryAsync(int month, int year)
-    {
-        try
-        {
-            var res = await _client.GetFromJsonAsync<Dictionary<Guid, WorkSummaryDto>>(
-                $"/api/attendance/summary?month={month}&year={year}");
-            return res ?? new();
-        }
-        catch
-        {
-            // TỰ ĐỘNG FALLBACK DỮ LIỆU GIẢ NẾU SERVICE ATTENDANCE CHƯA BẬT
-            return new Dictionary<Guid, WorkSummaryDto>();
-        }
-    }
-}
+// Seed dữ liệu cho danh mục Lý do khấu trừ
+modelBuilder.Entity<PaycutReason>().HasData(
+    new PaycutReason { PaycutReasonId = 1, Name = "Bảo hiểm xã hội (BHXH)", CalculationType = "percentage", DefaultRate = 0.0800m, Status = "active" },
+    new PaycutReason { PaycutReasonId = 2, Name = "Bảo hiểm y tế (BHYT)", CalculationType = "percentage", DefaultRate = 0.0150m, Status = "active" },
+    new PaycutReason { PaycutReasonId = 3, Name = "Bảo hiểm thất nghiệp (BHTN)", CalculationType = "percentage", DefaultRate = 0.0100m, Status = "active" },
+    new PaycutReason { PaycutReasonId = 4, Name = "Thuế thu nhập cá nhân (TNCN)", CalculationType = "formula", DefaultRate = 0m, Status = "active" },
+    new PaycutReason { PaycutReasonId = 5, Name = "Phạt đi muộn / về sớm", CalculationType = "fixed", DefaultRate = 100_000m, Status = "active" }
+);
 ```
 
 ---
 
-### 3.3. Tầng Controllers (`Controllers/`)
+## 8. LỆNH POSTGRESQL MIGRATION CHO MÔ HÌNH MỚI
 
-Controller chỉ đóng vai trò tiếp nhận dữ liệu và chuyển thẳng vào `IPayrollService`:
+Sau khi copy các Entities và DbContext theo sơ đồ ERD mới, chạy 2 lệnh sau tại thư mục `src/Payroll`:
 
-```csharp
-namespace Payroll.Controllers;
-
-using Microsoft.AspNetCore.Mvc;
-using Payroll.Core.DTOs;
-using Payroll.Core.Interfaces;
-
-[ApiController]
-[Route("api/payroll-cycles")]
-public class PayrollCyclesController : ControllerBase
-{
-    private readonly IPayrollService _payrollService;
-
-    public PayrollCyclesController(IPayrollService payrollService)
-    {
-        _payrollService = payrollService;
-    }
-
-    // 1. Tạo kỳ lương mới (POST /api/payroll-cycles)
-    [HttpPost]
-    public async Task<IActionResult> CreateCycle([FromBody] CreatePayrollCycleRequest req)
-    {
-        try
-        {
-            var result = await _payrollService.CreateCycleAsync(req);
-            return CreatedAtAction(nameof(GetCycleById), new { id = result.Id }, result);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
-    // 2. Kích hoạt tính lương (POST /api/payroll-cycles/{id}/calculate)
-    [HttpPost("{id:guid}/calculate")]
-    public async Task<IActionResult> CalculatePayroll(Guid id)
-    {
-        try
-        {
-            int count = await _payrollService.CalculatePayrollAsync(id);
-            return Ok(new { message = $"Tính lương thành công cho {count} nhân viên.", totalEmployees = count });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
-    // 3. Phê duyệt bảng lương (POST /api/payroll-cycles/{id}/approve)
-    [HttpPost("{id:guid}/approve")]
-    public async Task<IActionResult> ApproveCycle(Guid id)
-    {
-        bool success = await _payrollService.ApproveCycleAsync(id);
-        if (!success)
-            return BadRequest(new { message = "Không thể duyệt kỳ lương (chưa tính hoặc không tồn tại)." });
-        
-        return Ok(new { message = "Kỳ lương đã được phê duyệt thành công." });
-    }
-
-    // 4. Xem chi tiết bảng lương (GET /api/payroll-cycles/{id})
-    [HttpGet("{id:guid}")]
-    public async Task<IActionResult> GetCycleById(Guid id)
-    {
-        var cycle = await _payrollService.GetCycleByIdAsync(id);
-        if (cycle == null)
-            return NotFound(new { message = "Không tìm thấy kỳ lương." });
-
-        return Ok(cycle);
-    }
-}
-```
-
----
-
-### 3.4. Cấu hình Khởi động trong `Program.cs`
-
-```csharp
-using Microsoft.EntityFrameworkCore;
-using Payroll.Core.Interfaces;
-using Payroll.Core.Services;
-using Payroll.Infrastructure.Data;
-using Payroll.Infrastructure.External;
-using Payroll.Infrastructure.Repositories;
-
-var builder = WebApplication.CreateBuilder(args);
-
-// 1. Cấu hình PostgreSQL DbContext
-var connectionString = builder.Configuration.GetConnectionString("PayrollDb");
-builder.Services.AddDbContext<PayrollDbContext>(options =>
-{
-    options.UseNpgsql(connectionString)
-           .UseSnakeCaseNamingConvention(); // Chuyển cột thành chữ thường snake_case chuẩn Postgres
-});
-
-// 2. Đăng ký Dependency Injection
-builder.Services.AddScoped<IPayrollRepository, PayrollRepository>();
-builder.Services.AddScoped<IPayrollService, PayrollService>();
-
-// 3. Đăng ký HttpClients gọi sang service khác
-builder.Services.AddHttpClient<IAttendanceClient, AttendanceClient>(c =>
-{
-    c.BaseAddress = new Uri(builder.Configuration["ExternalServices:AttendanceUrl"] ?? "http://localhost:5001");
-});
-builder.Services.AddHttpClient<IHrClient, HrClient>(c =>
-{
-    c.BaseAddress = new Uri(builder.Configuration["ExternalServices:HrUrl"] ?? "http://localhost:5002");
-});
-
-// 4. Cấu hình Web API & Swagger UI
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-var app = builder.Build();
-
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
-app.UseHttpsRedirection();
-app.UseAuthorization();
-app.MapControllers();
-
-app.Run();
-```
-
----
-
-## 4. QUY TRÌNH THỰC HIỆN TỪNG BƯỚC (STEP-BY-STEP)
-
-Để hoàn thiện service `Payroll` từ trạng thái hiện tại, bạn chỉ cần thực hiện 6 bước ngắn gọn sau:
-
-### Bước 1: Cài đặt các gói NuGet vào `src/Payroll/`
-Mở PowerShell tại thư mục `src/Payroll`:
 ```powershell
-cd src/Payroll
-dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL
-dotnet add package EFCore.NamingConventions
-dotnet add package Microsoft.EntityFrameworkCore.Design
-dotnet add package Swashbuckle.AspNetCore
-```
+# 1. Tạo migration mới bám sát ERD
+dotnet ef migrations add CreatePayrollErdSchema
 
-### Bước 2: Tạo các thư mục theo cấu trúc
-```powershell
-New-Item -ItemType Directory -Force -Path Core/Entities, Core/Enums, Core/DTOs, Core/Interfaces, Core/Services
-New-Item -ItemType Directory -Force -Path Infrastructure/Data, Infrastructure/Repositories, Infrastructure/External
-New-Item -ItemType Directory -Force -Path Controllers
-```
-
-### Bước 3: Tạo các file Code
-Lần lượt copy các đoạn code đã thiết kế ở Mục 3 vào các thư mục tương ứng:
-1. `Core/Entities/`: `BaseEntity.cs`, `PayrollCycle.cs`, `Payslip.cs`, `EmployeeSalaryProfile.cs`.
-2. `Core/Enums/`: `PayrollStatus.cs`.
-3. `Core/Interfaces/`: `IPayrollService.cs`, `IPayrollRepository.cs`, `IAttendanceClient.cs`, `IHrClient.cs`.
-4. `Core/Services/`: `PayrollService.cs`.
-5. `Infrastructure/Data/`: `PayrollDbContext.cs`.
-6. `Infrastructure/Repositories/`: `PayrollRepository.cs`.
-7. `Infrastructure/External/`: `AttendanceClient.cs`, `HrClient.cs`.
-8. `Controllers/`: `PayrollCyclesController.cs`.
-
-### Bước 4: Cấu hình `appsettings.json`
-Mở file `src/Payroll/appsettings.json` và thêm chuỗi kết nối PostgreSQL:
-```json
-{
-  "ConnectionStrings": {
-    "PayrollDb": "Host=localhost;Port=5432;Database=hrm_payroll;Username=postgres;Password=YourPostgresPassword"
-  },
-  "ExternalServices": {
-    "AttendanceUrl": "http://localhost:5001",
-    "HrUrl": "http://localhost:5002"
-  },
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
-    }
-  },
-  "AllowedHosts": "*"
-}
-```
-
-### Bước 5: Chạy Migration khởi tạo CSDL PostgreSQL
-Chạy lệnh sau ngay tại thư mục `src/Payroll`:
-```powershell
-# Tạo file migration
-dotnet ef migrations add InitialPayrollDb
-
-# Áp dụng bảng vào PostgreSQL
+# 2. Áp dụng bảng và Seed data vào PostgreSQL
 dotnet ef database update
 ```
-*(Nếu chưa có DB, EF Core sẽ tự động tạo database `hrm_payroll` và các bảng `payroll_cycles`, `payslips`, `employee_salary_profiles` trong PostgreSQL).*
 
-### Bước 6: Khởi chạy và Test thử trên Swagger UI
-```powershell
-dotnet run
-```
-Mở trình duyệt truy cập: `https://localhost:7xxx/swagger`
-- Gọi `POST /api/payroll-cycles` với body `{"month": 10, "year": 2026, "standardWorkingDays": 22}`.
-- Gọi `POST /api/payroll-cycles/{id}/calculate` để tính toán toàn bộ tiền lương, thuế TNCN và bảo hiểm.
-- Gọi `GET /api/payroll-cycles/{id}` để xem kết quả bảng lương hoàn chỉnh!
-
----
-
-## 5. BẢN THUYẾT MINH NHANH KHI BẢO VỆ ĐỒ ÁN VỚI GIẢNG VIÊN
-
-Khi thầy cô hỏi về kiến trúc của service này, bạn có thể trả lời tự tin như sau:
-
-1. **"Kiến trúc của service này là gì?"**  
-   $\rightarrow$ *"Dạ thưa thầy/cô, service Payroll áp dụng mô hình Clean Architecture tinh giản kết hợp Repository Pattern. Toàn bộ logic nghiệp vụ (tính thuế TNCN lũy tiến 7 bậc, BHXH 8%, OT 150-300%) được cô lập hoàn toàn trong `Core/Services/PayrollService.cs`, không bị lẫn vào Controller hay câu lệnh SQL."*
-2. **"Tại sao em dùng PostgreSQL thay vì SQL Server?"**  
-   $\rightarrow$ *"Dạ vì PostgreSQL là hệ quản trị mã nguồn mở phổ biến trong các hệ thống doanh nghiệp hiện đại, hỗ trợ kiểu số thực chính xác cao `numeric(18,2)` rất phù hợp để lưu tiền lương và hàm sinh khóa ngẫu nhiên `uuid_generate_v4` tối ưu cho hệ thống phân tán."*
-3. **"Nếu service Attendance bị lỗi thì service Payroll có tính lương được không?"**  
-   $\rightarrow$ *"Dạ có, em đã thiết kế cơ chế Fallback trong `AttendanceClient`. Nếu service chấm công chưa bật hoặc mất mạng, service Payroll sẽ lấy ngày công chuẩn mặc định để vẫn tính được lương demo mà không bị sập chương trình."*
+Kiểm tra trong pgAdmin hoặc DBeaver, cơ sở dữ liệu `hrm_payroll` sẽ có đầy đủ **7 bảng** liên kết chặt chẽ:
+- `payroll_period`
+- `payroll`
+- `allowance`
+- `allowance_type`
+- `allowance_detail`
+- `paycut`
+- `paycut_reason`
+- `paycut_detail`
