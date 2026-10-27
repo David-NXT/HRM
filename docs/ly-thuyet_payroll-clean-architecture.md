@@ -771,63 +771,88 @@ public static class DependencyInjection
 
 ---
 
-## 5. THIẾT KẾ CƠ SỞ DỮ LIỆU POSTGRESQL (PHYSICAL SCHEMA)
+## 5. THIẾT KẾ CƠ SỞ DỮ LIỆU POSTGRESQL (PHYSICAL SCHEMA THEO ERD CHÍNH THỨC)
 
-Mô hình dữ liệu quan hệ cho `hrm_payroll` trong PostgreSQL:
+Mô hình dữ liệu quan hệ cho `hrm_payroll` trong PostgreSQL được chuẩn hóa theo ERD chính thức của đồ án:
 
 ```mermaid
 erDiagram
-    payroll_cycles ||--o{ payslips : "contains"
-    payslips ||--o{ payslip_details : "has"
-    employee_salary_profiles ||--o{ payslips : "referenced by"
+    PAYROLL_PERIOD ||--o{ PAYROLL : "contains"
+    PAYROLL ||--o{ PAYCUT : "has"
+    PAYROLL ||--o{ ALLOWANCE : "has"
+    PAYCUT ||--o{ PAYCUT_DETAIL : "contains"
+    PAYCUT_REASON ||--o{ PAYCUT_DETAIL : "classifies"
+    ALLOWANCE ||--o{ ALLOWANCE_DETAIL : "contains"
+    ALLOWANCE_TYPE ||--o{ ALLOWANCE_DETAIL : "classifies"
 
-    payroll_cycles {
-        uuid id PK
+    PAYROLL_PERIOD {
+        int payroll_period_id PK
         int year
         int month
-        varchar name
-        int standard_working_days
         varchar status
-        timestamptz from_date
-        timestamptz to_date
         timestamptz created_at
-        timestamptz updated_at
     }
 
-    employee_salary_profiles {
-        uuid id PK
-        uuid employee_id UK
+    PAYROLL {
+        int payroll_id PK
+        int payroll_period_id FK
+        int employee_id
         numeric base_salary
-        numeric taxable_allowances
-        numeric non_taxable_allowances
-        numeric insurance_salary_cap
-        varchar bank_account_number
-        varchar bank_name
-        boolean is_active
-        timestamptz created_at
-    }
-
-    payslips {
-        uuid id PK
-        uuid payroll_cycle_id FK
-        uuid employee_id
-        numeric actual_base_salary
-        numeric overtime_pay
-        numeric total_allowances
-        numeric total_insurance_deduction
-        numeric personal_income_tax
-        numeric other_deductions
+        numeric working_day
+        numeric standard_working_days
+        numeric total_allowance
+        numeric total_paycut
+        numeric gross_salary
         numeric net_salary
+        varchar status
+        timestamptz calculated_at
+        timestamptz approved_at
+        timestamptz paid_at
+    }
+
+    PAYCUT {
+        int paycut_id PK
+        int payroll_id FK
+        varchar status
+    }
+
+    PAYCUT_REASON {
+        int paycut_reason_id PK
+        varchar name
+        varchar calculation_type
+        numeric default_rate
+        varchar status
+    }
+
+    PAYCUT_DETAIL {
+        int paycut_detail_id PK
+        int paycut_id FK
+        int paycut_reason_id FK
+        varchar description
+        numeric rate_applied
+        numeric amount
         timestamptz created_at
     }
 
-    payslip_details {
-        uuid id PK
-        uuid payslip_id FK
-        varchar item_name
-        varchar item_type
+    ALLOWANCE {
+        int allowance_id PK
+        int payroll_id FK
+        varchar status
+    }
+
+    ALLOWANCE_TYPE {
+        int allowance_type_id PK
+        varchar name
+        varchar description
+        varchar status
+    }
+
+    ALLOWANCE_DETAIL {
+        int allowance_detail_id PK
+        int allowance_id FK
+        int allowance_type_id FK
+        varchar description
         numeric amount
-        varchar note
     }
 ```
 
