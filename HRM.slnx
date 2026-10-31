@@ -5,4 +5,7 @@
     <Project Path="src/Payroll/Payroll.csproj" />
     <Project Path="src/Project/Project.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/HR.Tests/HR.Tests.csproj" />
+  </Folder>
 </Solution>
