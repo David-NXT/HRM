@@ -1,41 +1,41 @@
-var builder = WebApplication.CreateBuilder(args);
+using DotNetEnv;
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
-
-var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+static string FindEnvFile()
 {
-    app.MapOpenApi();
+    // check current path or app path
+    var startDirectories = new[]
+    {
+        Directory.GetCurrentDirectory(),
+        AppContext.BaseDirectory
+    };
+
+    foreach (var startDirectory in startDirectories)
+    {
+        var directory = new DirectoryInfo(startDirectory);
+
+        while (directory != null)
+        {
+            // current path concat /.env
+            var envPath = Path.Combine(directory.FullName,".env");
+
+            if (File.Exists(envPath))
+            {
+                return envPath;
+            }
+
+            // Backtrack from current folder
+            directory = directory.Parent;
+        }
+    }
+
+    throw new FileNotFoundException("Cannot find .env in the current directory or its parent directories.");
 }
 
-app.UseHttpsRedirection();
+var envPath = FindEnvFile();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+Env.Load(envPath);
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
 
-app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+
+var builder = WebApplication.CreateBuilder(args); 
