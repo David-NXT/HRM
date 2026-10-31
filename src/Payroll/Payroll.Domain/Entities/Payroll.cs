@@ -1,4 +1,4 @@
-namespace Payroll.Core.Entities;
+namespace Payroll.Domain.Entities;
 
 public class Payroll
 {

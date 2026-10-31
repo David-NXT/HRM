@@ -1,6 +1,6 @@
 using System.Data;
 
-namespace Payroll.Core.Entities;
+namespace Payroll.Domain.Entities;
 
 public class PayCutDetail
 {
