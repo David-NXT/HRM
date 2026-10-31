@@ -2,11 +2,11 @@ namespace Payroll.Core.Entities;
 
 public class PayrollPeriod
 {
-    public int payrollPeriodID {get; set;}
-    public int year {get; set;}
-    public int month {get; set;}
-    public string status {get; set;} = "Draft"; // draft, calculated, approved, paid
-    public DateTime createdAt {get; set;} = DateTime.UtcNow;
+    public int PayrollPeriodID {get; set;}
+    public int Year {get; set;}
+    public int Month {get; set;}
+    public string Status {get; set;} = "draft"; // draft, calculated, approved, paid
+    public DateTime CreatedAt {get; set;} = DateTime.UtcNow;
 
     public List<Payroll> Payrolls {get; set;} = new();
 }

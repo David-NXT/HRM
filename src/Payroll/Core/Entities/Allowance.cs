@@ -4,7 +4,7 @@ public class Allowance
 {
     public int AllowanceID {get; set;}
     public int PayrollID {get; set;}
-    public string Status {get; set;} = "draft";
+    public string Status {get; set;} = "active";
 
     //Quan hệ
     public Payroll? Payroll {get; set;}

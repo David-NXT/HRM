@@ -6,7 +6,7 @@ public class Payroll
     public int PayrollPeriodID {get; set;}
     public int EmployeeID {get; set;}
     public decimal BaseSalary {get; set;}
-    public decimal WorkingDay {get; set;}
+    public decimal WorkingDays {get; set;}
     public decimal StandardWorkingDay {get; set;} = 22m;
     public decimal TotalAllowance {get; set;}
     public decimal ToTalPayCut {get; set;}
