@@ -2,7 +2,12 @@
   <Folder Name="/src/">
     <Project Path="src/Attendance/Attendance.csproj" />
     <Project Path="src/HR/HR.csproj" />
-    <Project Path="src/Payroll/Payroll.csproj" />
     <Project Path="src/Project/Project.csproj" />
+  </Folder>
+  <Folder Name="/src/Payroll/">
+    <Project Path="src/Payroll/Payroll.API/Payroll.API.csproj" />
+    <Project Path="src/Payroll/Payroll.Application/Payroll.Application.csproj" />
+    <Project Path="src/Payroll/Payroll.Domain/Payroll.Domain.csproj" />
+    <Project Path="src/Payroll/Payroll.Infrastructure/Payroll.Infrastructure.csproj" />
   </Folder>
 </Solution>
