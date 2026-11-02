@@ -103,6 +103,18 @@ public class PayrollDbContext : DbContext
             entity.Property(pd => pd.RateApplied).HasPrecision(18, 4);
             entity.Property(pd => pd.Amount).HasPrecision(18, 2);
         });
+
+        // Allowance configuration
+        modelBuilder.Entity<AllowanceType>(entity =>
+        {
+            entity.Property(at => at.DefaultRate).HasPrecision(18, 4);
+        });
+        
+        // Pay cut configuration
+        modelBuilder.Entity<PayCutReason>(entity =>
+        {
+            entity.Property(pr => pr.DefaultRate).HasPrecision(18, 4);
+        });
     }
 
 
