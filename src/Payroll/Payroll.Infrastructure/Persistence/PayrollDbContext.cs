@@ -12,16 +12,16 @@ public class PayrollDbContext : DbContext
     }
 
     // Entities
-    public DbSet<Allowance> Allowances {get; set;} = null;
-    public DbSet<AllowanceDetail> AllowanceDetails {get; set;} = null;
-    public DbSet<AllowanceType> AllowanceTypes {get; set;} = null;
+    public DbSet<Allowance> Allowances {get; set;} = null!;
+    public DbSet<AllowanceDetail> AllowanceDetails {get; set;} = null!;
+    public DbSet<AllowanceType> AllowanceTypes {get; set;} = null!;
 
-    public DbSet<PayCut> PayCuts {get; set;} = null;
-    public DbSet<PayCutDetail> PayCutDetails {get; set;} = null;
-    public DbSet<PayCutReason> PayCutReasons {get; set;} = null;
+    public DbSet<PayCut> PayCuts {get; set;} = null!;
+    public DbSet<PayCutDetail> PayCutDetails {get; set;} = null!;
+    public DbSet<PayCutReason> PayCutReasons {get; set;} = null!;
 
-    public DbSet<PayrollEntity> Payrolls {get; set;} = null;
-    public DbSet<PayrollPeriod> PayrollPeriods {get; set;} = null;
+    public DbSet<PayrollEntity> Payrolls {get; set;} = null!;
+    public DbSet<PayrollPeriod> PayrollPeriods {get; set;} = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
