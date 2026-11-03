@@ -115,6 +115,10 @@ public class PayrollDbContext : DbContext
         {
             entity.Property(pr => pr.DefaultRate).HasPrecision(18, 4);
         });
+
+        modelBuilder.Entity<PayrollPeriod>()
+        .HasIndex(pp => new { pp.Year, pp.Month})
+        .IsUnique();
     }
 
 

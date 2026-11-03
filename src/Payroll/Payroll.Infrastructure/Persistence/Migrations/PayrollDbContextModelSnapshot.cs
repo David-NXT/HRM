@@ -287,6 +287,9 @@ namespace Payroll.Infrastructure.Persistence.Migrations
 
                     b.HasKey("PayrollPeriodID");
 
+                    b.HasIndex("Year", "Month")
+                        .IsUnique();
+
                     b.ToTable("PayrollPeriods");
                 });
 

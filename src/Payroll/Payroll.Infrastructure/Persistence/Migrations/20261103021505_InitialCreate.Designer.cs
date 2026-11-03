@@ -12,7 +12,7 @@ using Payroll.Infrastructure.Persistence;
 namespace Payroll.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(PayrollDbContext))]
-    [Migration("20261102181041_InitialCreate")]
+    [Migration("20261103021505_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -289,6 +289,9 @@ namespace Payroll.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("PayrollPeriodID");
+
+                    b.HasIndex("Year", "Month")
+                        .IsUnique();
 
                     b.ToTable("PayrollPeriods");
                 });

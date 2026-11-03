@@ -222,6 +222,12 @@ namespace Payroll.Infrastructure.Persistence.Migrations
                 column: "PayrollID");
 
             migrationBuilder.CreateIndex(
+                name: "IX_PayrollPeriods_Year_Month",
+                table: "PayrollPeriods",
+                columns: new[] { "Year", "Month" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Payrolls_PayrollPeriodID_EmployeeID",
                 table: "Payrolls",
                 columns: new[] { "PayrollPeriodID", "EmployeeID" },
