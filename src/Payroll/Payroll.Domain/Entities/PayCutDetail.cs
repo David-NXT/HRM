@@ -1,5 +1,3 @@
-using System.Data;
-
 namespace Payroll.Domain.Entities;
 
 public class PayCutDetail
