@@ -44,9 +44,26 @@ var builder = WebApplication.CreateBuilder(args);
 
 var connectionString= builder.Configuration.GetConnectionString("PayrollConnection");
 
-if (string.IsNullOrEmpty(connectionString))
+if (string.IsNullOrWhiteSpace(connectionString))
 {
     throw new InvalidOperationException ("PayrollConnection connection string is missing.");
 }
 
 builder.Services.AddDbContext<PayrollDbContext>(option => option.UseNpgsql(connectionString));
+
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddOpenApi();
+
+var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+}
+
+app.UseHttpsRedirection();
+
+app.MapControllers();
+
+app.Run();
