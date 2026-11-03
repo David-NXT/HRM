@@ -1,6 +1,6 @@
 using DotNetEnv;
 using Microsoft.EntityFrameworkCore;
-using Payroll.Infrastructure.Persistence;
+using Payroll.Infrastructure;
 
 static string FindEnvFile()
 {
@@ -49,7 +49,7 @@ if (string.IsNullOrWhiteSpace(connectionString))
     throw new InvalidOperationException ("PayrollConnection connection string is missing.");
 }
 
-builder.Services.AddDbContext<PayrollDbContext>(option => option.UseNpgsql(connectionString));
+builder.Services.AddInfrastructure(builder.Configuration);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
