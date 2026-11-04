@@ -1,6 +1,45 @@
 @HR_HostAddress = http://localhost:5012
+@HR_Role = HR
 
-GET {{HR_HostAddress}}/weatherforecast/
-Accept: application/json
+### Danh sách hồ sơ
+GET {{HR_HostAddress}}/employees?page=1&pageSize=20
+X-Role: {{HR_Role}}
 
-###
+### Tra cứu
+GET {{HR_HostAddress}}/employees?keyword=NV001
+X-Role: {{HR_Role}}
+
+### Thêm hồ sơ
+POST {{HR_HostAddress}}/employees
+Content-Type: application/json
+X-Role: {{HR_Role}}
+
+{
+  "employeeCode": "NV001",
+  "fullName": "Nguyễn Văn A",
+  "dateOfBirth": "1998-05-12",
+  "gender": "Nam",
+  "email": "vana@example.com",
+  "phone": "0901234567",
+  "citizenId": "079198001234",
+  "address": "Quận 1, TP.HCM"
+}
+
+### Cập nhật hồ sơ
+PUT {{HR_HostAddress}}/employees/1
+Content-Type: application/json
+X-Role: {{HR_Role}}
+
+{
+  "fullName": "Nguyễn Văn A",
+  "dateOfBirth": "1998-05-12",
+  "gender": "Male",
+  "email": "vana@example.com",
+  "phone": "0901234567",
+  "citizenId": "079198001234",
+  "address": "Quận 3, TP.HCM"
+}
+
+### Khóa hồ sơ
+POST {{HR_HostAddress}}/employees/1/lock
+X-Role: {{HR_Role}}

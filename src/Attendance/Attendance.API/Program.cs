@@ -1,6 +1,11 @@
 using Attendance.Data;
 using Attendance.Services;
 using DotNetEnv;
+using HR.Core.Interfaces;
+using HR.Core.Services;
+using HR.Infrastructure.Auth;
+using HR.Infrastructure.Data;
+using HR.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 
 static string? FindEnvFile()
@@ -59,6 +64,12 @@ builder.Services.AddScoped<ILeaveRequestService, LeaveRequestService>();
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+builder.Services.AddControllers();
+builder.Services.AddRazorPages();
+builder.Services.AddDbContext<HrDbContext>(options => options.UseNpgsql(connectionString));
+builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+builder.Services.AddScoped<IEmployeeService, EmployeeService>();
+builder.Services.AddScoped<HrRoleFilter>();
 
 var app = builder.Build();
 
@@ -72,8 +83,3 @@ app.MapControllers();
 app.MapGet("/", () => "Attendance API running");
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
