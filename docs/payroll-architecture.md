@@ -1,9 +1,10 @@
 # THIẾT KẾ KIẾN TRÚC & QUY TRÌNH TRIỂN KHAI SERVICE PAYROLL
+
 **Hệ thống:** HRM (Human Resource Management) - Đồ án môn học C# (Năm 3 SGU)  
 **Mô hình dữ liệu:** Chuẩn hóa theo sơ đồ ERD chính thức của dự án  
 **Định hướng kiến trúc:** Clean Architecture tinh giản (Pragmatic Clean Architecture)  
 **Cơ sở dữ liệu:** PostgreSQL (Npgsql + Entity Framework Core)  
-**Nền tảng:** .NET 10 / ASP.NET Core Web API  
+**Nền tảng:** .NET 10 / ASP.NET Core Web API
 
 ---
 
@@ -98,18 +99,19 @@ erDiagram
 
 Cơ sở dữ liệu gồm **7 bảng** chính, phân cấp quản lý lương, phụ cấp và các khoản khấu trừ cực kỳ chuyên nghiệp:
 
-| Bảng | Khóa chính | Khóa ngoại | Ý nghĩa nghiệp vụ |
-| :--- | :--- | :--- | :--- |
-| **`payroll_period`** | `payroll_period_id` (`int`) | - | Quản lý kỳ tính lương (Tháng, Năm, trạng thái `draft`, `calculated`, `approved`, `paid`). |
-| **`payroll`** | `payroll_id` (`int`) | `payroll_period_id` | Bảng lương tổng hợp của từng nhân viên (`employee_id`): ngày công, lương cơ bản, tổng phụ cấp, tổng khấu trừ, lương Gross, lương Net và mốc thời gian duyệt/chi trả. |
-| **`allowance`** | `allowance_id` (`int`) | `payroll_id` | Đại diện cho gói phụ cấp được cấp trong phiếu lương của nhân viên. |
-| **`allowance_type`** | `allowance_type_id` (`int`) | - | Danh mục loại phụ cấp: Ăn trưa, Xăng xe, Trách nhiệm, Làm thêm giờ (OT), Thâm niên. |
-| **`allowance_detail`** | `allowance_detail_id` (`int`) | `allowance_id`, `allowance_type_id` | Chi tiết số tiền của từng khoản phụ cấp thuộc phiếu lương. |
-| **`paycut`** | `paycut_id` (`int`) | `payroll_id` | Đại diện cho gói các khoản trừ lương của nhân viên trong kỳ. |
-| **`paycut_reason`** | `paycut_reason_id` (`int`) | - | Danh mục lý do trừ lương: BHXH (8%), BHYT (1.5%), BHTN (1%), Thuế TNCN, Đi trễ/về sớm, Nghỉ không phép. |
-| **`paycut_detail`** | `paycut_detail_id` (`int`) | `paycut_id`, `paycut_reason_id` | Chi tiết số tiền bị trừ, tỷ lệ áp dụng (`rate_applied`) và diễn giải. |
+| Bảng                   | Khóa chính                    | Khóa ngoại                          | Ý nghĩa nghiệp vụ                                                                                                                                                    |
+| :--------------------- | :---------------------------- | :---------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`payroll_period`**   | `payroll_period_id` (`int`)   | -                                   | Quản lý kỳ tính lương (Tháng, Năm, trạng thái `draft`, `calculated`, `approved`, `paid`).                                                                            |
+| **`payroll`**          | `payroll_id` (`int`)          | `payroll_period_id`                 | Bảng lương tổng hợp của từng nhân viên (`employee_id`): ngày công, lương cơ bản, tổng phụ cấp, tổng khấu trừ, lương Gross, lương Net và mốc thời gian duyệt/chi trả. |
+| **`allowance`**        | `allowance_id` (`int`)        | `payroll_id`                        | Đại diện cho gói phụ cấp được cấp trong phiếu lương của nhân viên.                                                                                                   |
+| **`allowance_type`**   | `allowance_type_id` (`int`)   | -                                   | Danh mục loại phụ cấp: Ăn trưa, Xăng xe, Trách nhiệm, Làm thêm giờ (OT), Thâm niên.                                                                                  |
+| **`allowance_detail`** | `allowance_detail_id` (`int`) | `allowance_id`, `allowance_type_id` | Chi tiết số tiền của từng khoản phụ cấp thuộc phiếu lương.                                                                                                           |
+| **`paycut`**           | `paycut_id` (`int`)           | `payroll_id`                        | Đại diện cho gói các khoản trừ lương của nhân viên trong kỳ.                                                                                                         |
+| **`paycut_reason`**    | `paycut_reason_id` (`int`)    | -                                   | Danh mục lý do trừ lương: BHXH (8%), BHYT (1.5%), BHTN (1%), Thuế TNCN, Đi trễ/về sớm, Nghỉ không phép.                                                              |
+| **`paycut_detail`**    | `paycut_detail_id` (`int`)    | `paycut_id`, `paycut_reason_id`     | Chi tiết số tiền bị trừ, tỷ lệ áp dụng (`rate_applied`) và diễn giải.                                                                                                |
 
 ### Công thức tính toán tổng thể:
+
 1. **Lương cơ bản theo công:**  
    $$\text{Lương ngày công} = \text{base\_salary} \times \left(\frac{\text{working\_day}}{\text{standard\_working\_days}}\right)$$
 2. **Tổng phụ cấp (`total_allowance`):**  
@@ -118,7 +120,7 @@ Cơ sở dữ liệu gồm **7 bảng** chính, phân cấp quản lý lương, 
    $$\text{gross\_salary} = \text{Lương ngày công} + \text{total\_allowance}$$
 4. **Tổng khoản trừ (`total_paycut`):**  
    $$\text{total\_paycut} = \sum (\text{paycut\_detail.amount})$$  
-   *(Bao gồm: Bảo hiểm 10.5% + Thuế TNCN lũy tiến + Phạt đi muộn/nghỉ không phép)*
+   _(Bao gồm: Bảo hiểm 10.5% + Thuế TNCN lũy tiến + Phạt đi muộn/nghỉ không phép)_
 5. **Lương thực nhận Net (`net_salary`):**  
    $$\text{net\_salary} = \text{gross\_salary} - \text{total\_paycut}$$
 
@@ -187,6 +189,7 @@ src/Payroll/
 Tất cả các thực thể đều sử dụng kiểu khóa chính `int` tự tăng (Identity) và `decimal` cho tiền tệ/ngày công theo đúng hình ảnh ERD:
 
 ### 4.1. `PayrollPeriod.cs`
+
 ```csharp
 namespace Payroll.Core.Entities;
 
@@ -204,6 +207,7 @@ public class PayrollPeriod
 ```
 
 ### 4.2. `Payroll.cs`
+
 ```csharp
 namespace Payroll.Core.Entities;
 
@@ -212,16 +216,16 @@ public class Payroll
     public int PayrollId { get; set; }
     public int PayrollPeriodId { get; set; }
     public int EmployeeId { get; set; }
-    
+
     public decimal BaseSalary { get; set; }
     public decimal WorkingDay { get; set; }
     public decimal StandardWorkingDays { get; set; } = 22m;
-    
+
     public decimal TotalAllowance { get; set; }
     public decimal TotalPaycut { get; set; }
     public decimal GrossSalary { get; set; }
     public decimal NetSalary { get; set; }
-    
+
     public string Status { get; set; } = "draft"; // draft, calculated, approved, paid
     public DateTime? CalculatedAt { get; set; }
     public DateTime? ApprovedAt { get; set; }
@@ -235,6 +239,7 @@ public class Payroll
 ```
 
 ### 4.3. Các thực thể Phụ cấp: `Allowance.cs`, `AllowanceType.cs`, `AllowanceDetail.cs`
+
 ```csharp
 namespace Payroll.Core.Entities;
 
@@ -272,6 +277,7 @@ public class AllowanceDetail
 ```
 
 ### 4.4. Các thực thể Khấu trừ lương: `Paycut.cs`, `PaycutReason.cs`, `PaycutDetail.cs`
+
 ```csharp
 namespace Payroll.Core.Entities;
 
@@ -316,6 +322,7 @@ public class PaycutDetail
 ## 5. THIẾT KẾ CƠ SỞ DỮ LIỆU POSTGRESQL VỚI EF CORE
 
 ### 5.1. `PayrollDbContext.cs` (`Infrastructure/Data/`)
+
 Khai báo đầy đủ 7 `DbSet` và áp dụng ánh xạ Fluent API:
 
 ```csharp
@@ -364,7 +371,7 @@ public class PayrollDbContext : DbContext
             b.Property(p => p.TotalPaycut).HasColumnType("numeric(18,2)");
             b.Property(p => p.GrossSalary).HasColumnType("numeric(18,2)");
             b.Property(p => p.NetSalary).HasColumnType("numeric(18,2)");
-            
+
             b.HasOne(p => p.PayrollPeriod)
              .WithMany(period => period.Payrolls)
              .HasForeignKey(p => p.PayrollPeriodId)
@@ -451,6 +458,7 @@ public class PayrollDbContext : DbContext
 ## 6. LOGIC NGHIỆP VỤ TÍNH LƯƠNG (`Core/Services/PayrollService.cs`)
 
 Service này điều phối việc tính toán:
+
 1. Đọc số ngày công từ `Attendance Service`.
 2. Tạo bản ghi `Allowance` và chèn các `AllowanceDetail` (Ăn trưa, Phụ cấp trách nhiệm, OT).
 3. Tạo bản ghi `Paycut` và chèn các `PaycutDetail` (BHXH 8%, BHYT 1.5%, BHTN 1%, Thuế TNCN).
@@ -650,6 +658,7 @@ dotnet ef database update
 ```
 
 Kiểm tra trong pgAdmin hoặc DBeaver, cơ sở dữ liệu `hrm_payroll` sẽ có đầy đủ **7 bảng** liên kết chặt chẽ:
+
 - `payroll_period`
 - `payroll`
 - `allowance`

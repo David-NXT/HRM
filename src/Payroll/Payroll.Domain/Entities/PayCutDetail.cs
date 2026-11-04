@@ -1,6 +1,4 @@
-using System.Data;
-
-namespace Payroll.Core.Entities;
+namespace Payroll.Domain.Entities;
 
 public class PayCutDetail
 {
@@ -8,8 +6,9 @@ public class PayCutDetail
     public int PayCutID {get; set;}
     public int PayCutReasonID {get; set;}
     public string Description {get; set;} = "";
+    public decimal RateApplied {get; set;}
     public decimal Amount {get; set;}
-    public DateTime CreatedAt {get; set;}
+    public DateTime CreatedAt {get; set;} = DateTime.UtcNow;
 
     //quan hệ
     public PayCut? PayCut {get; set;}

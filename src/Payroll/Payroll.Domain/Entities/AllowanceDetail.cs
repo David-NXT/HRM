@@ -1,4 +1,4 @@
-namespace Payroll.Core.Entities;
+namespace Payroll.Domain.Entities;
 
 public class AllowanceDetail
 {
@@ -6,6 +6,7 @@ public class AllowanceDetail
     public int AllowanceID {get; set;}
     public int AllowanceTypeID {get; set;}
     public string Description {get; set;} = "";
+    public decimal RateApplied {get; set;} 
     public decimal Amount {get; set;}
 
     //Quan hệ
