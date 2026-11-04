@@ -9,7 +9,7 @@ public class Payroll
     public decimal WorkingDays {get; set;}
     public decimal StandardWorkingDay {get; set;} = 22m;
     public decimal TotalAllowance {get; set;}
-    public decimal ToTalPayCut {get; set;}
+    public decimal TotalPayCut {get; set;}
     public decimal GrossSalary {get; set;}
     public decimal NetSalary  {get; set;}
     public string Status {get; set;} = "draft"; // draft, calculated, approved, paid
