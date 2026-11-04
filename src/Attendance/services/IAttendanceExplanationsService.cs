@@ -4,9 +4,9 @@ namespace Attendance.Services;
 
 public interface IAttendanceExplanationsService
 {
-    Task<List<AttendanceExplanationDto>> GetAllAsync (CancellationToken cancellationToken);
-    Task<AttendanceExplanationDto?> GetByIdAsync (Guid id, CancellationToken cancellationToken);
-    Task<AttendanceExplanationDto> CreateAsync (AttendanceExplanationDto dto, CancellationToken cancellationToken);
-    Task<AttendanceExplanationDto?> UpdateAsync (AttendanceExplanationDto dto, CancellationToken cancellationToken);
-    Task<bool> DeleteAsync (AttendanceExplanationDto dto, CancellationToken cancellationToken);
+    Task<List<AttendanceExplanationDto>> GetAllAsync(CancellationToken cancellationToken = default);
+    Task<AttendanceExplanationDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<AttendanceExplanationDto> CreateAsync(CreateAttendanceExplanationDto dto, CancellationToken cancellationToken = default);
+    Task<AttendanceExplanationDto?> UpdateAsync(Guid id, UpdateAttendanceExplanationDto dto, CancellationToken cancellationToken = default);
+    Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }

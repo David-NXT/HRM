@@ -1,4 +1,3 @@
-
 using Attendance.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -32,4 +31,27 @@ public class AttendanceDbContext : DbContext
 
     public DbSet<LeaveRequest> LeaveRequests
         => Set<LeaveRequest>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<AttendanceRecord>()
+            .HasOne(x => x.WorkShift)
+            .WithMany()
+            .HasForeignKey(x => x.ShiftId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<ShiftAssignment>()
+            .HasOne(x => x.WorkShift)
+            .WithMany()
+            .HasForeignKey(x => x.ShiftId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<AttendanceExplanation>()
+            .HasOne(x => x.Attendance)
+            .WithMany(x => x.AttendanceExplanations)
+            .HasForeignKey(x => x.AttendanceId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
 }

@@ -112,6 +112,8 @@ namespace Attendance.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ShiftId");
+
                     b.ToTable("AttendanceRecords");
                 });
 
@@ -262,6 +264,8 @@ namespace Attendance.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ShiftId");
+
                     b.ToTable("ShiftAssignments");
                 });
 
@@ -299,12 +303,39 @@ namespace Attendance.Migrations
             modelBuilder.Entity("Attendance.Models.AttendanceExplanation", b =>
                 {
                     b.HasOne("Attendance.Models.AttendanceRecord", "Attendance")
-                        .WithMany()
+                        .WithMany("AttendanceExplanations")
                         .HasForeignKey("AttendanceId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Attendance");
+                });
+
+            modelBuilder.Entity("Attendance.Models.AttendanceRecord", b =>
+                {
+                    b.HasOne("Attendance.Models.WorkShift", "WorkShift")
+                        .WithMany()
+                        .HasForeignKey("ShiftId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("WorkShift");
+                });
+
+            modelBuilder.Entity("Attendance.Models.ShiftAssignment", b =>
+                {
+                    b.HasOne("Attendance.Models.WorkShift", "WorkShift")
+                        .WithMany()
+                        .HasForeignKey("ShiftId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("WorkShift");
+                });
+
+            modelBuilder.Entity("Attendance.Models.AttendanceRecord", b =>
+                {
+                    b.Navigation("AttendanceExplanations");
                 });
 #pragma warning restore 612, 618
         }
