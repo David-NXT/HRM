@@ -4,9 +4,8 @@
   <Folder Name="/src/Attendance/Attendance.API/">
     <Project Path="src/Attendance/Attendance.API/Attendance.csproj" />
   </Folder>
-  <Folder Name="/src/HR/" />
-  <Folder Name="/src/HR/HR.API/">
-    <Project Path="src/HR/HR.API/HR.csproj" />
+  <Folder Name="/src/HR/">
+    <Project Path="src/HR/HR.csproj" />
   </Folder>
   <Folder Name="/src/Payroll/">
     <Project Path="src/Payroll/Payroll.API/Payroll.API.csproj" />
@@ -17,5 +16,8 @@
   <Folder Name="/src/Project/" />
   <Folder Name="/src/Project/Project.API/">
     <Project Path="src/Project/Project.API/Project.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/HR.Tests/HR.Tests.csproj" />
   </Folder>
 </Solution>

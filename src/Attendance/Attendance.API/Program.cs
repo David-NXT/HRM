@@ -1,6 +1,11 @@
 using Attendance.Data;
 using Attendance.Services;
 using DotNetEnv;
+using HR.Core.Interfaces;
+using HR.Core.Services;
+using HR.Infrastructure.Auth;
+using HR.Infrastructure.Data;
+using HR.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -69,6 +74,12 @@ builder.Services.AddScoped<ILeaveRequestService, LeaveRequestService>();
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+builder.Services.AddControllers();
+builder.Services.AddRazorPages();
+builder.Services.AddDbContext<HrDbContext>(options => options.UseNpgsql(connectionString));
+builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+builder.Services.AddScoped<IEmployeeService, EmployeeService>();
+builder.Services.AddScoped<HrRoleFilter>();
 
 var app = builder.Build();
 
