@@ -1,8 +1,11 @@
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace Attendance.Models;
 public class AttendanceExplanation
 {
     public Guid Id { get; set; }
 
+    [ForeignKey(nameof(Attendance))]
     public Guid AttendanceId { get; set; }
 
     public Guid EmployeeId { get; set; }
@@ -22,5 +25,4 @@ public class AttendanceExplanation
     public AttendanceRecord? Attendance { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
-
 }
