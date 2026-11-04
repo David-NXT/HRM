@@ -1,4 +1,4 @@
-<Solution>
+﻿<Solution>
   <Folder Name="/src/">
     <Project Path="src/Attendance/Attendance.csproj" />
     <Project Path="src/HR/HR.csproj" />
@@ -9,3 +9,4 @@
     <Project Path="tests/HR.Tests/HR.Tests.csproj" />
   </Folder>
 </Solution>
+
