@@ -27,7 +27,8 @@ public class WorkShiftService : IWorkShiftService
                 StartTime = x.StartTime,
                 EndTime = x.EndTime,
                 Description = x.Description,
-                IsActive = x.IsActive
+                IsActive = x.IsActive,
+                EffectiveDate = x.EffectiveDate
             })
             .ToListAsync(cancellationToken);
     }
@@ -66,7 +67,8 @@ public class WorkShiftService : IWorkShiftService
             StartTime = dto.StartTime,
             EndTime = dto.EndTime,
             Description = dto.Description,
-            IsActive = dto.IsActive
+            IsActive = dto.IsActive,
+            EffectiveDate = dto.EffectiveDate
         };
 
         _context.WorkShifts.Add(entity);
@@ -115,6 +117,11 @@ public class WorkShiftService : IWorkShiftService
             entity.IsActive = dto.IsActive.Value;
         }
 
+        if (dto.EffectiveDate.HasValue)
+        {
+            entity.EffectiveDate = dto.EffectiveDate.Value;
+        }
+
         await _context.SaveChangesAsync(cancellationToken);
 
         return MapToDto(entity);
@@ -145,7 +152,8 @@ public class WorkShiftService : IWorkShiftService
             StartTime = entity.StartTime,
             EndTime = entity.EndTime,
             Description = entity.Description,
-            IsActive = entity.IsActive
+            IsActive = entity.IsActive,
+            EffectiveDate = entity.EffectiveDate
         };
     }
 }

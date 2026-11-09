@@ -9,7 +9,12 @@
 
   <ItemGroup>
     <Compile Include="Program.cs" />
-    <Compile Include="..\**\*.cs" Exclude="..\Attendance.API\**\*.cs;..\**\bin\**\*.cs;..\**\obj\**\*.cs" />
+    <Compile Include="..\Controllers\**\*.cs" />
+    <Compile Include="..\Data\**\*.cs" />
+    <Compile Include="..\DTOs\**\*.cs" />
+    <Compile Include="..\Migrations\**\*.cs" />
+    <Compile Include="..\Models\**\*.cs" />
+    <Compile Include="..\Services\**\*.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -23,7 +28,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\HR\HR.csproj" />
   </ItemGroup>
 
 </Project>
