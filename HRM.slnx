@@ -20,4 +20,5 @@
   <Folder Name="/tests/">
     <Project Path="tests/HR.Tests/HR.Tests.csproj" />
   </Folder>
+  <Project Path="FE/Attendance/Attendance.csproj" Id="72f350d4-74d9-4720-9fa0-64d25e3c3a1a" />
 </Solution>

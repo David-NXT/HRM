@@ -32,6 +32,18 @@ public class AttendanceService : IAttendanceService
                 LateMins = x.LateMins,
                 EarlyLeaveMins = x.EarlyLeaveMins,
                 OTMins = x.OTMins,
+                ActualOTMins = x.ActualOTMins,
+                IsLate = x.IsLate,
+                IsEarlyLeave = x.IsEarlyLeave,
+                CheckInSource = x.CheckInSource,
+                CheckOutSource = x.CheckOutSource,
+                CheckInLatitude = x.CheckInLatitude,
+                CheckInLongitude = x.CheckInLongitude,
+                CheckInLocation = x.CheckInLocation,
+                CheckOutLatitude = x.CheckOutLatitude,
+                CheckOutLongitude = x.CheckOutLongitude,
+                CheckOutLocation = x.CheckOutLocation,
+                DeviceId = x.DeviceId,
                 Note = x.Note,
                 CreatedAt = x.CreatedAt,
                 UpdatedAt = x.UpdatedAt
@@ -78,6 +90,18 @@ public class AttendanceService : IAttendanceService
             LateMins = dto.LateMins,
             EarlyLeaveMins = dto.EarlyLeaveMins,
             OTMins = dto.OTMins,
+            ActualOTMins = dto.ActualOTMins,
+            IsLate = dto.IsLate,
+            IsEarlyLeave = dto.IsEarlyLeave,
+            CheckInSource = dto.CheckInSource,
+            CheckOutSource = dto.CheckOutSource,
+            CheckInLatitude = dto.CheckInLatitude,
+            CheckInLongitude = dto.CheckInLongitude,
+            CheckInLocation = dto.CheckInLocation,
+            CheckOutLatitude = dto.CheckOutLatitude,
+            CheckOutLongitude = dto.CheckOutLongitude,
+            CheckOutLocation = dto.CheckOutLocation,
+            DeviceId = dto.DeviceId,
             Note = dto.Note,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -149,6 +173,66 @@ public class AttendanceService : IAttendanceService
             entity.OTMins = dto.OTMins.Value;
         }
 
+        if (dto.ActualOTMins.HasValue)
+        {
+            entity.ActualOTMins = dto.ActualOTMins.Value;
+        }
+
+        if (dto.IsLate.HasValue)
+        {
+            entity.IsLate = dto.IsLate.Value;
+        }
+
+        if (dto.IsEarlyLeave.HasValue)
+        {
+            entity.IsEarlyLeave = dto.IsEarlyLeave.Value;
+        }
+
+        if (dto.CheckInSource != null)
+        {
+            entity.CheckInSource = dto.CheckInSource;
+        }
+
+        if (dto.CheckOutSource != null)
+        {
+            entity.CheckOutSource = dto.CheckOutSource;
+        }
+
+        if (dto.CheckInLatitude.HasValue)
+        {
+            entity.CheckInLatitude = dto.CheckInLatitude.Value;
+        }
+
+        if (dto.CheckInLongitude.HasValue)
+        {
+            entity.CheckInLongitude = dto.CheckInLongitude.Value;
+        }
+
+        if (dto.CheckInLocation != null)
+        {
+            entity.CheckInLocation = dto.CheckInLocation;
+        }
+
+        if (dto.CheckOutLatitude.HasValue)
+        {
+            entity.CheckOutLatitude = dto.CheckOutLatitude.Value;
+        }
+
+        if (dto.CheckOutLongitude.HasValue)
+        {
+            entity.CheckOutLongitude = dto.CheckOutLongitude.Value;
+        }
+
+        if (dto.CheckOutLocation != null)
+        {
+            entity.CheckOutLocation = dto.CheckOutLocation;
+        }
+
+        if (dto.DeviceId != null)
+        {
+            entity.DeviceId = dto.DeviceId;
+        }
+
         if (dto.Note != null)
         {
             entity.Note = dto.Note;
@@ -191,6 +275,18 @@ public class AttendanceService : IAttendanceService
             LateMins = entity.LateMins,
             EarlyLeaveMins = entity.EarlyLeaveMins,
             OTMins = entity.OTMins,
+            ActualOTMins = entity.ActualOTMins,
+            IsLate = entity.IsLate,
+            IsEarlyLeave = entity.IsEarlyLeave,
+            CheckInSource = entity.CheckInSource,
+            CheckOutSource = entity.CheckOutSource,
+            CheckInLatitude = entity.CheckInLatitude,
+            CheckInLongitude = entity.CheckInLongitude,
+            CheckInLocation = entity.CheckInLocation,
+            CheckOutLatitude = entity.CheckOutLatitude,
+            CheckOutLongitude = entity.CheckOutLongitude,
+            CheckOutLocation = entity.CheckOutLocation,
+            DeviceId = entity.DeviceId,
             Note = entity.Note,
             CreatedAt = entity.CreatedAt,
             UpdatedAt = entity.UpdatedAt

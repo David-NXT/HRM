@@ -22,6 +22,30 @@ public class UpdateAttendanceRecordDto
 
     public int? OTMins { get; set; }
 
+    public int? ActualOTMins { get; set; }
+
+    public bool? IsLate { get; set; }
+
+    public bool? IsEarlyLeave { get; set; }
+
+    public string? CheckInSource { get; set; }
+
+    public string? CheckOutSource { get; set; }
+
+    public double? CheckInLatitude { get; set; }
+
+    public double? CheckInLongitude { get; set; }
+
+    public string? CheckInLocation { get; set; }
+
+    public double? CheckOutLatitude { get; set; }
+
+    public double? CheckOutLongitude { get; set; }
+
+    public string? CheckOutLocation { get; set; }
+
+    public string? DeviceId { get; set; }
+
     public string? Note { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
