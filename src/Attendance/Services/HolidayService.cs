@@ -23,6 +23,7 @@ public class HolidayService : IHolidayService
             {
                 Id = x.Id,
                 Date = x.Date,
+                EndDate = x.EndDate,
                 Name = x.Name,
                 Description = x.Description,
                 HolidayType = x.HolidayType,
@@ -62,6 +63,7 @@ public class HolidayService : IHolidayService
         {
             Id = Guid.NewGuid(),
             Date = dto.Date,
+            EndDate = dto.EndDate,
             Name = dto.Name.Trim(),
             Description = dto.Description,
             HolidayType = dto.HolidayType.Trim(),
@@ -88,6 +90,11 @@ public class HolidayService : IHolidayService
         if (dto.Date.HasValue)
         {
             entity.Date = dto.Date.Value;
+        }
+
+        if (dto.EndDate.HasValue)
+        {
+            entity.EndDate = dto.EndDate.Value;
         }
 
         if (!string.IsNullOrWhiteSpace(dto.Name))
@@ -136,6 +143,7 @@ public class HolidayService : IHolidayService
         {
             Id = entity.Id,
             Date = entity.Date,
+            EndDate = entity.EndDate,
             Name = entity.Name,
             Description = entity.Description,
             HolidayType = entity.HolidayType,

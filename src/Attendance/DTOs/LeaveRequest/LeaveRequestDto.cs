@@ -12,11 +12,17 @@ public class LeaveRequestDto
 
     public DateOnly EndDate { get; set; }
 
+    public decimal TotalDays { get; set; }
+
     public string Reason { get; set; } = string.Empty;
 
     public string Status { get; set; } = string.Empty;
 
     public string? ApprovedBy { get; set; }
+
+    public DateTime? ApprovedAt { get; set; }
+
+    public string? RejectionReason { get; set; }
 
     public DateTime CreatedAt { get; set; }
 

@@ -96,6 +96,24 @@ app.Use(async (context, next) =>
     }
 });
 
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (EmployeeNotAvailableException exception) when (!context.Response.HasStarted)
+    {
+        context.Response.StatusCode = StatusCodes.Status400BadRequest;
+        await context.Response.WriteAsJsonAsync(new { message = exception.Message });
+    }
+    catch (HttpRequestException) when (!context.Response.HasStarted)
+    {
+        context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+        await context.Response.WriteAsJsonAsync(new { message = "HR employee directory is unavailable." });
+    }
+});
+
 // 5. Automatically create Database if it does not exist
 var connectionBuilder =
     new NpgsqlConnectionStringBuilder(connectionString);
