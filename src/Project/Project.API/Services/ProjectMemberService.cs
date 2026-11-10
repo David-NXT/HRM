@@ -8,10 +8,12 @@ namespace Project.API.Services;
 public class ProjectMemberService : IProjectMemberService
 {
     private readonly ProjectManagementDbContext _context;
+    private readonly IHrEmployeeDirectoryClient _employees;
 
-    public ProjectMemberService(ProjectManagementDbContext context)
+    public ProjectMemberService(ProjectManagementDbContext context, IHrEmployeeDirectoryClient employees)
     {
         _context = context;
+        _employees = employees;
     }
 
     public async Task<IEnumerable<ProjectMember>> GetProjectMembersAsync(Guid? projectId = null)
@@ -37,6 +39,7 @@ public class ProjectMemberService : IProjectMemberService
 
     public async Task<ProjectMember> CreateProjectMemberAsync(CreateProjectMemberDto dto)
     {
+        await EnsureAssignableEmployeeAsync(dto.EmployeeId);
         var member = new ProjectMember
         {
             ProjectMemberId = Guid.NewGuid(),
@@ -61,6 +64,7 @@ public class ProjectMemberService : IProjectMemberService
         if (member == null)
             return false;
 
+        await EnsureAssignableEmployeeAsync(dto.EmployeeId);
         member.ProjectId = dto.ProjectId;
         member.EmployeeId = dto.EmployeeId;
         member.ProjectRoleId = dto.ProjectRoleId;
@@ -83,5 +87,11 @@ public class ProjectMemberService : IProjectMemberService
         await _context.SaveChangesAsync();
 
         return true;
+    }
+
+    private async System.Threading.Tasks.Task EnsureAssignableEmployeeAsync(Guid employeeId)
+    {
+        if (await _employees.GetActiveEmployeeAsync(employeeId, CancellationToken.None) is null)
+            throw new ArgumentException("Employee does not exist or is not active in HR.", nameof(employeeId));
     }
 }

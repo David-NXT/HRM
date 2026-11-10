@@ -1,5 +1,9 @@
 @HR_HostAddress = http://localhost:5012
 @HR_Role = HR
+@EmployeeId = 6ccd5ae5-4266-4745-8dc0-4ab0721e2861
+@ContractAlertId = 60eb3b35-51e1-42ab-bc14-e930b70d9667
+
+### Thay các GUID mẫu bằng employeeId/contractAlertId từ response thực tế
 
 ### Danh sách hồ sơ
 GET {{HR_HostAddress}}/employees?page=1&pageSize=20
@@ -26,7 +30,7 @@ X-Role: {{HR_Role}}
 }
 
 ### Cập nhật hồ sơ
-PUT {{HR_HostAddress}}/employees/1
+PUT {{HR_HostAddress}}/employees/{{EmployeeId}}
 Content-Type: application/json
 X-Role: {{HR_Role}}
 
@@ -41,5 +45,23 @@ X-Role: {{HR_Role}}
 }
 
 ### Khóa hồ sơ
-POST {{HR_HostAddress}}/employees/1/lock
+POST {{HR_HostAddress}}/employees/{{EmployeeId}}/lock
 X-Role: {{HR_Role}}
+
+### Directory local: chỉ fallback X-Role ở Development khi HR chưa cấu hình key
+GET {{HR_HostAddress}}/internal/employees?page=1&pageSize=20
+X-Role: {{HR_Role}}
+
+### HR06: lọc cảnh báo
+GET {{HR_HostAddress}}/contract-alerts?status=NEW&page=1&pageSize=20
+X-Role: {{HR_Role}}
+
+### HR06: cập nhật; thay ID và expectedVersion bằng response mới nhất
+PATCH {{HR_HostAddress}}/contract-alerts/{{ContractAlertId}}
+Content-Type: application/json
+X-Role: {{HR_Role}}
+
+{
+  "status": "IN_PROGRESS",
+  "expectedVersion": 1
+}

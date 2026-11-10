@@ -5,7 +5,10 @@
     <Project Path="src/Attendance/Attendance.API/Attendance.csproj" />
   </Folder>
   <Folder Name="/src/HR/">
-    <Project Path="src/HR/HR.csproj" />
+    <Project Path="src/HR/HR.API/HR.API.csproj" />
+    <Project Path="src/HR/HR.Application/HR.Application.csproj" />
+    <Project Path="src/HR/HR.Domain/HR.Domain.csproj" />
+    <Project Path="src/HR/HR.Infrastructure/HR.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/src/Payroll/">
     <Project Path="src/Payroll/Payroll.API/Payroll.API.csproj" />
