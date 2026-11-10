@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -7,7 +7,7 @@ namespace Admin.WinForms
     public partial class MainForm : Form
     {
         // Biến lưu trữ nút đang được chọn (Active) hiện tại
-        private Button currentActiveButton = null;
+        private Button? currentActiveButton = null;
 
         public MainForm()
         {
