@@ -1,11 +1,10 @@
-using HR.Core.DTOs;
+using HR.Application.DTOs.Employees;
+using HR.Application.Interfaces.Repositories;
+using HR.Application.Services.Employees;
 using Xunit;
-using HR.Core.Employees;
-using HR.Core.Entities;
-using HR.Core.Exceptions;
-using HR.Core.Interfaces;
-using HR.Core.Services;
-
+using HR.Domain.Constants;
+using HR.Domain.Entities;
+using HR.Application.Exceptions;
 namespace HR.Tests;
 
 public class EmployeeServiceTests
@@ -58,7 +57,7 @@ public class EmployeeServiceTests
         var service = new EmployeeService(new FakeEmployeeRepository());
 
         var error = await Assert.ThrowsAsync<HrException>(() =>
-            service.UpdateAsync(9, SampleUpdate(), CancellationToken.None));
+            service.UpdateAsync(Id(9), SampleUpdate(), CancellationToken.None));
 
         Assert.Equal(404, error.StatusCode);
         Assert.Equal("EmployeeNotFound", error.Code);
@@ -87,7 +86,7 @@ public class EmployeeServiceTests
     {
         var service = new EmployeeService(new FakeEmployeeRepository());
 
-        var error = await Assert.ThrowsAsync<HrException>(() => service.LockAsync(4, CancellationToken.None));
+        var error = await Assert.ThrowsAsync<HrException>(() => service.LockAsync(Id(4), CancellationToken.None));
 
         Assert.Equal(404, error.StatusCode);
     }
@@ -105,6 +104,21 @@ public class EmployeeServiceTests
     }
 
     [Fact]
+    public async Task Lock_ResignedEmployee_KeepsResignedStatus()
+    {
+        var repository = new FakeEmployeeRepository();
+        var service = new EmployeeService(repository);
+        var created = await service.CreateAsync(Sample("NV002"), CancellationToken.None);
+        repository.Items[0].Status = EmployeeStatuses.Resigned;
+
+        var error = await Assert.ThrowsAsync<HrException>(() => service.LockAsync(created.EmployeeId, CancellationToken.None));
+
+        Assert.Equal(409, error.StatusCode);
+        Assert.Equal(EmployeeStatuses.Resigned, repository.Items[0].Status);
+        Assert.Equal(1, repository.SaveCount);
+    }
+
+    [Fact]
     public async Task Create_SaveFailure_ReturnsServerError()
     {
         var repository = new FakeEmployeeRepository { FailOnSave = true };
@@ -114,6 +128,35 @@ public class EmployeeServiceTests
 
         Assert.Equal(500, error.StatusCode);
         Assert.Equal("SaveError", error.Code);
+    }
+
+    [Fact]
+    public async Task InternalDirectory_ReturnsGuidAndOrganizationWithoutPersonalData()
+    {
+        var repository = new FakeEmployeeRepository();
+        var employee = new Employee { EmployeeId = Id(23), EmployeeCode = "NV001", FullName = "Nguyễn Văn A",
+            CitizenId = "079198001234", Email = "private@example.com", Department = new Department { Name = "Nhân sự" }, Position = new Position { Name = "Chuyên viên" } };
+        repository.Items.Add(employee);
+        var dto = await new EmployeeService(repository).GetActiveDirectoryEntryAsync(employee.EmployeeId, CancellationToken.None);
+        Assert.Equal(employee.EmployeeId, dto.EmployeeId);
+        Assert.Equal("Nhân sự", dto.DepartmentName);
+        Assert.Equal("Chuyên viên", dto.PositionName);
+        var json = System.Text.Json.JsonSerializer.Serialize(dto);
+        Assert.DoesNotContain(employee.CitizenId, json);
+        Assert.DoesNotContain(employee.Email, json);
+        Assert.Equal(6, System.Text.Json.JsonDocument.Parse(json).RootElement.EnumerateObject().Count());
+    }
+
+    [Theory]
+    [InlineData(EmployeeStatuses.Locked)]
+    [InlineData(EmployeeStatuses.Resigned)]
+    public async Task InternalDirectory_NonActiveEmployeeReturns404(string status)
+    {
+        var repository = new FakeEmployeeRepository();
+        var employee = new Employee { EmployeeId = Id(1), Status = status }; repository.Items.Add(employee);
+        var error = await Assert.ThrowsAsync<HrException>(() => new EmployeeService(repository)
+            .GetActiveDirectoryEntryAsync(employee.EmployeeId, CancellationToken.None));
+        Assert.Equal(404, error.StatusCode);
     }
 
     [Fact]
@@ -169,10 +212,7 @@ public class EmployeeServiceTests
             return Task.FromResult(((IReadOnlyList<Employee>)items, items.Length));
         }
 
-        public Task<Employee?> GetByGuidAsync(Guid employeeGuid, CancellationToken cancellationToken) =>
-            Task.FromResult(Items.FirstOrDefault(employee => employee.EmployeeGuid == employeeGuid));
-
-        public Task<Employee?> GetByIdAsync(int id, CancellationToken cancellationToken) =>
+        public Task<Employee?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
             Task.FromResult(Items.FirstOrDefault(employee => employee.EmployeeId == id));
 
         public Task<bool> CodeExistsAsync(string employeeCode, CancellationToken cancellationToken) =>
@@ -180,7 +220,7 @@ public class EmployeeServiceTests
 
         public Task AddAsync(Employee employee, CancellationToken cancellationToken)
         {
-            employee.EmployeeId = Items.Count + 1;
+            employee.EmployeeId = Id(Items.Count + 1);
             Items.Add(employee);
             return Task.CompletedTask;
         }

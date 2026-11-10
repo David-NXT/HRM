@@ -1,0 +1,92 @@
+@page "/contract-expiry"
+@{ Layout = null; }
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>HR - Cảnh báo hợp đồng hết hạn</title>
+    <style>
+        body{font:15px Segoe UI,Arial;background:#f3f6fa;color:#182230;margin:0}header{background:#12304a;color:white;padding:22px max(20px,calc((100% - 1150px)/2))}header a{color:white;margin-right:18px}main{max-width:1150px;margin:25px auto;padding:0 20px}.card{background:white;border:1px solid #dce4ec;border-radius:9px;padding:18px;margin-bottom:16px}.filters{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}label{display:grid;gap:5px}input,select,button{font:inherit;padding:8px;border:1px solid #c7d2de;border-radius:5px;min-width:0}button{background:#1769aa;color:white;cursor:pointer}button:disabled{opacity:.55;cursor:default}.secondary{background:white;color:#25364a}.row{display:flex;gap:8px;align-items:end;margin-top:12px}.row>*{flex:1}.status{min-height:24px;white-space:pre-wrap}.table{overflow:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid #e6ebf0}dl{display:grid;grid-template-columns:200px 1fr;gap:10px}dt{font-weight:600}dd{margin:0;overflow-wrap:anywhere}.old{color:#875600}.summary{background:#eef5fb;padding:12px;border-radius:5px}@@media(max-width:760px){.filters{grid-template-columns:1fr}.row{flex-wrap:wrap}dl{grid-template-columns:1fr}}
+    </style>
+</head>
+<body>
+<header><h1>Cảnh báo hợp đồng hết hạn</h1><nav><a href="/">Hồ sơ nhân viên</a><a href="/employment">Hợp đồng và công tác</a><a href="/lifecycle">Tiếp nhận / nghỉ việc</a></nav></header>
+<main>
+    <p id="status" class="status" role="status" aria-live="polite"></p>
+    <section class="card">
+        <form id="filters" class="filters">
+            <label>Trạng thái<select name="status"><option value="">Tất cả</option><option value="NEW">Mới</option><option value="VIEWED">Đã xem</option><option value="IN_PROGRESS">Đang xử lý</option></select></label>
+            <label>Hết hạn từ ngày<input name="expiresFrom" type="date"></label>
+            <label>Đến ngày<input name="expiresTo" type="date"></label>
+            <label>Tìm nhân viên<input id="employeeKeyword" type="search" placeholder="Mã hoặc họ tên"></label>
+            <button id="findEmployee" type="button" class="secondary">Tìm nhân viên</button>
+            <label>Nhân viên<select name="employeeId"><option value="">Tất cả nhân viên</option></select></label>
+            <button type="submit">Lọc cảnh báo</button>
+        </form>
+    </section>
+    <section class="card">
+        <div class="table"><table><thead><tr><th>Nhân viên</th><th>Hợp đồng</th><th>Hết hạn</th><th>Còn lại</th><th>Trạng thái</th><th>Đợt cảnh báo</th><th>Thao tác</th></tr></thead><tbody id="rows"></tbody></table></div>
+        <div class="row"><button id="previous" type="button" class="secondary">Trang trước</button><span id="pageInfo"></span><button id="next" type="button" class="secondary">Trang sau</button></div>
+    </section>
+    <section id="detail" class="card" hidden>
+        <h2>Chi tiết cảnh báo</h2><p id="cycleInfo" class="summary"></p><dl id="detailFields"></dl>
+        <div class="row"><label>Trạng thái xử lý<select id="alertStatus"><option value="NEW">Mới</option><option value="VIEWED">Đã xem</option><option value="IN_PROGRESS">Đang xử lý</option></select></label><button id="saveStatus" type="button">Lưu trạng thái</button><a id="renewLink" href="/employment">Mở hợp đồng</a></div>
+    </section>
+</main>
+<script>
+const form=document.querySelector('#filters'),statusBox=document.querySelector('#status');
+let page=1,total=0,currentAlert=null,busy=false;const pageSize=20;
+async function request(url,options={}){
+    const response=await fetch(url,{...options,headers:{'Content-Type':'application/json','X-Role':'HR'}});
+    const body=await response.json().catch(()=>null);
+    if(!response.ok)throw Error(body?.message||body?.title||response.statusText);
+    return body;
+}
+async function perform(action){
+    if(busy)return;busy=true;statusBox.textContent='Đang tải…';
+    document.querySelectorAll('button').forEach(button=>button.disabled=true);
+    try{await action()}catch(error){statusBox.textContent=error.message}
+    finally{busy=false;document.querySelectorAll('button').forEach(button=>button.disabled=false);updatePagination()}
+}
+function updatePagination(){document.querySelector('#previous').disabled=busy||page===1;document.querySelector('#next').disabled=busy||page*pageSize>=total;document.querySelector('#pageInfo').textContent=`Trang ${page} · ${total} cảnh báo`}
+function cell(row,value){const td=document.createElement('td');td.textContent=value??'';row.append(td);return td}
+async function loadEmployees(){
+    const query=new URLSearchParams({keyword:document.querySelector('#employeeKeyword').value,page:'1',pageSize:'100'});
+    const employees=await request('/employees?'+query);const select=form.elements.employeeId;
+    select.replaceChildren(new Option('Tất cả nhân viên',''));
+    for(const item of employees.items)select.add(new Option(`${item.employeeCode} — ${item.fullName}`,item.employeeId));
+}
+async function loadAlerts(){
+    const query=new URLSearchParams({page:String(page),pageSize:String(pageSize)});
+    for(const key of ['status','employeeId','expiresFrom','expiresTo'])if(form.elements[key].value)query.set(key,form.elements[key].value);
+    const result=await request('/contract-alerts?'+query);total=result.total;
+    const rows=document.querySelector('#rows');rows.replaceChildren();
+    for(const item of result.items){
+        const row=document.createElement('tr');cell(row,`${item.employeeCode} — ${item.employeeName}`);cell(row,item.contractNumber);cell(row,item.expiryDate);
+        cell(row,item.daysRemaining<0?`Quá hạn ${-item.daysRemaining} ngày`:`${item.daysRemaining} ngày`);cell(row,item.status);
+        cell(row,item.isCurrentCycle?'Theo ngày hạn hiện tại':'Đợt cũ (hợp đồng đã đổi)').className=item.isCurrentCycle?'':'old';
+        const action=cell(row,'');const open=document.createElement('button');open.type='button';open.textContent='Xem';open.onclick=()=>perform(async()=>{showDetail(await request('/contract-alerts/'+item.contractAlertId));statusBox.textContent='Đã tải chi tiết.'});action.append(open);rows.append(row);
+    }
+    updatePagination();statusBox.textContent=result.items.length?'Đã tải danh sách cảnh báo.':'Không có cảnh báo phù hợp.';
+}
+function showDetail(alert){
+    currentAlert=alert;document.querySelector('#detail').hidden=false;
+    document.querySelector('#cycleInfo').textContent=alert.isCurrentCycle?'Cảnh báo thuộc ngày hết hạn hiện tại của hợp đồng.':'Cảnh báo được giữ để tra cứu; hợp đồng đã gia hạn hoặc thay đổi ngày hết hạn.';
+    const fields={ 'Nhân viên':`${alert.employeeCode} — ${alert.employeeName}`,'Trạng thái nhân viên':alert.employeeStatus,'Số hợp đồng':alert.contractNumber,'Loại hợp đồng':alert.contractType,'Trạng thái hợp đồng':alert.contractStatus,'Ngày bắt đầu':alert.contractStartDate,'Ngày hạn của đợt cảnh báo':alert.expiryDate,'Ngày hạn hiện tại':alert.currentContractEndDate??'Không xác định','Cảnh báo được tạo':new Date(alert.createdAt).toLocaleString() };
+    const root=document.querySelector('#detailFields');root.replaceChildren();
+    for(const [key,value]of Object.entries(fields)){const dt=document.createElement('dt');dt.textContent=key;const dd=document.createElement('dd');dd.textContent=value;root.append(dt,dd)}
+    document.querySelector('#alertStatus').value=alert.status;
+    const link=document.querySelector('#renewLink');const query=new URLSearchParams({employeeId:String(alert.employeeId)});
+    if(alert.isCurrentCycle){query.set('renewContractId',String(alert.contractId));link.textContent='Tạo hợp đồng gia hạn'}else link.textContent='Xem hợp đồng hiện tại';
+    link.href='/employment?'+query;
+}
+form.onsubmit=event=>{event.preventDefault();page=1;document.querySelector('#detail').hidden=true;currentAlert=null;perform(loadAlerts)};
+document.querySelector('#findEmployee').onclick=()=>perform(async()=>{await loadEmployees();statusBox.textContent='Đã tải nhân viên (tối đa 100 kết quả).'});
+document.querySelector('#previous').onclick=()=>{if(page>1){page--;perform(loadAlerts)}};
+document.querySelector('#next').onclick=()=>{if(page*pageSize<total){page++;perform(loadAlerts)}};
+document.querySelector('#saveStatus').onclick=()=>{if(!currentAlert)return;const alert=currentAlert;perform(async()=>{const updated=await request('/contract-alerts/'+alert.contractAlertId,{method:'PATCH',body:JSON.stringify({status:document.querySelector('#alertStatus').value,expectedVersion:alert.version})});showDetail(updated);await loadAlerts();statusBox.textContent='Đã lưu trạng thái xử lý.'})};
+perform(async()=>{await Promise.all([loadEmployees(),loadAlerts()])});
+</script>
+</body>
+</html>
