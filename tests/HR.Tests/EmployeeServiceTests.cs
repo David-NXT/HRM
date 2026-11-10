@@ -154,6 +154,24 @@ public class EmployeeServiceTests
             return Task.FromResult(((IReadOnlyList<Employee>)items, items.Length));
         }
 
+        public Task<(IReadOnlyList<Employee> Items, int Total)> SearchActiveAsync(
+            string? keyword,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken)
+        {
+            var items = Items.Where(employee =>
+                    employee.Status == EmployeeStatuses.Active
+                    && (string.IsNullOrWhiteSpace(keyword)
+                        || employee.EmployeeCode.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+                        || employee.FullName.Contains(keyword, StringComparison.OrdinalIgnoreCase)))
+                .ToArray();
+            return Task.FromResult(((IReadOnlyList<Employee>)items, items.Length));
+        }
+
+        public Task<Employee?> GetByGuidAsync(Guid employeeGuid, CancellationToken cancellationToken) =>
+            Task.FromResult(Items.FirstOrDefault(employee => employee.EmployeeGuid == employeeGuid));
+
         public Task<Employee?> GetByIdAsync(int id, CancellationToken cancellationToken) =>
             Task.FromResult(Items.FirstOrDefault(employee => employee.EmployeeId == id));
 

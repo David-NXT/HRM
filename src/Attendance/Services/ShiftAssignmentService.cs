@@ -8,10 +8,12 @@ namespace Attendance.Services;
 public class ShiftAssignmentService : IShiftAssignmentService
 {
     private readonly AttendanceDbContext _context;
+    private readonly IHrEmployeeDirectoryClient _employees;
 
-    public ShiftAssignmentService(AttendanceDbContext context)
+    public ShiftAssignmentService(AttendanceDbContext context, IHrEmployeeDirectoryClient employees)
     {
         _context = context;
+        _employees = employees;
     }
 
     public async Task<List<ShiftAssignmentDto>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -56,6 +58,8 @@ public class ShiftAssignmentService : IShiftAssignmentService
             throw new ArgumentException("EmployeeId is required.", nameof(dto));
         }
 
+        await EnsureActiveEmployeeAsync(dto.EmployeeId, cancellationToken);
+
         if (dto.ShiftId == Guid.Empty)
         {
             throw new ArgumentException("ShiftId is required.", nameof(dto));
@@ -93,6 +97,7 @@ public class ShiftAssignmentService : IShiftAssignmentService
 
         if (dto.EmployeeId.HasValue)
         {
+            await EnsureActiveEmployeeAsync(dto.EmployeeId.Value, cancellationToken);
             entity.EmployeeId = dto.EmployeeId.Value;
         }
 
@@ -146,6 +151,14 @@ public class ShiftAssignmentService : IShiftAssignmentService
         _context.ShiftAssignments.Remove(entity);
         await _context.SaveChangesAsync(cancellationToken);
         return true;
+    }
+
+    private async Task EnsureActiveEmployeeAsync(Guid employeeId, CancellationToken cancellationToken)
+    {
+        if (await _employees.GetActiveEmployeeAsync(employeeId, cancellationToken) is null)
+        {
+            throw new EmployeeNotAvailableException(employeeId);
+        }
     }
 
     private static ShiftAssignmentDto MapToDto(ShiftAssignment entity)

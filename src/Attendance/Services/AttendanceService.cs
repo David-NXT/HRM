@@ -8,10 +8,12 @@ namespace Attendance.Services;
 public class AttendanceService : IAttendanceService
 {
     private readonly AttendanceDbContext _context;
+    private readonly IHrEmployeeDirectoryClient _employees;
 
-    public AttendanceService(AttendanceDbContext context)
+    public AttendanceService(AttendanceDbContext context, IHrEmployeeDirectoryClient employees)
     {
         _context = context;
+        _employees = employees;
     }
 
     public async Task<List<AttendanceRecordDto>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -72,6 +74,8 @@ public class AttendanceService : IAttendanceService
             throw new ArgumentException("EmployeeId is required.", nameof(dto));
         }
 
+        await EnsureActiveEmployeeAsync(dto.EmployeeId, cancellationToken);
+
         if (dto.ShiftId == Guid.Empty)
         {
             throw new ArgumentException("ShiftId is required.", nameof(dto));
@@ -125,6 +129,7 @@ public class AttendanceService : IAttendanceService
 
         if (dto.EmployeeId.HasValue)
         {
+            await EnsureActiveEmployeeAsync(dto.EmployeeId.Value, cancellationToken);
             entity.EmployeeId = dto.EmployeeId.Value;
         }
 
@@ -258,6 +263,14 @@ public class AttendanceService : IAttendanceService
         _context.AttendanceRecords.Remove(entity);
         await _context.SaveChangesAsync(cancellationToken);
         return true;
+    }
+
+    private async Task EnsureActiveEmployeeAsync(Guid employeeId, CancellationToken cancellationToken)
+    {
+        if (await _employees.GetActiveEmployeeAsync(employeeId, cancellationToken) is null)
+        {
+            throw new EmployeeNotAvailableException(employeeId);
+        }
     }
 
     private static AttendanceRecordDto MapToDto(AttendanceRecord entity)

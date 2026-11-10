@@ -6,6 +6,9 @@ public class Employee
 {
     public int EmployeeId { get; set; }
 
+    // Stable identifier shared with Attendance and Project services.
+    public Guid EmployeeGuid { get; set; } = Guid.NewGuid();
+
     public string EmployeeCode { get; set; } = string.Empty;
 
     public string FullName { get; set; } = string.Empty;

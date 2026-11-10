@@ -8,10 +8,12 @@ namespace Attendance.Services;
 public class OTRequestService : IOTRequestService
 {
     private readonly AttendanceDbContext _context;
+    private readonly IHrEmployeeDirectoryClient _employees;
 
-    public OTRequestService(AttendanceDbContext context)
+    public OTRequestService(AttendanceDbContext context, IHrEmployeeDirectoryClient employees)
     {
         _context = context;
+        _employees = employees;
     }
 
     public async Task<List<OTRequestDto>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -63,6 +65,7 @@ public class OTRequestService : IOTRequestService
             throw new ArgumentException("EmployeeId is required.", nameof(dto));
         }
 
+        await EnsureActiveEmployeeAsync(dto.EmployeeId, cancellationToken);
         var plannedHours = dto.PlannedHours;
         if (plannedHours <= 0 && dto.EndTime > dto.StartTime)
         {
@@ -106,6 +109,7 @@ public class OTRequestService : IOTRequestService
 
         if (dto.EmployeeId.HasValue)
         {
+            await EnsureActiveEmployeeAsync(dto.EmployeeId.Value, cancellationToken);
             entity.EmployeeId = dto.EmployeeId.Value;
         }
 
@@ -194,6 +198,14 @@ public class OTRequestService : IOTRequestService
         _context.OTRequests.Remove(entity);
         await _context.SaveChangesAsync(cancellationToken);
         return true;
+    }
+
+    private async Task EnsureActiveEmployeeAsync(Guid employeeId, CancellationToken cancellationToken)
+    {
+        if (await _employees.GetActiveEmployeeAsync(employeeId, cancellationToken) is null)
+        {
+            throw new EmployeeNotAvailableException(employeeId);
+        }
     }
 
     private static OTRequestDto MapToDto(OTRequest entity)

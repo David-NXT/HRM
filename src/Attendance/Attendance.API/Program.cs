@@ -1,11 +1,6 @@
 using Attendance.Data;
 using Attendance.Services;
 using DotNetEnv;
-/* using HR.Core.Interfaces;
-using HR.Core.Services;
-using HR.Infrastructure.Auth;
-using HR.Infrastructure.Data;
-using HR.Infrastructure.Repositories; */
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -74,14 +69,50 @@ builder.Services.AddScoped<ILeaveRequestService, LeaveRequestService>();
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
-builder.Services.AddControllers();
-builder.Services.AddRazorPages();
-/* builder.Services.AddDbContext<HrDbContext>(options => options.UseNpgsql(connectionString));
-builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
-builder.Services.AddScoped<IEmployeeService, EmployeeService>();
-builder.Services.AddScoped<HrRoleFilter>();*/
+var hrBaseUrl = builder.Configuration["Services:HR:BaseUrl"] ?? "http://localhost:5012/";
+builder.Services.AddHttpClient<IHrEmployeeDirectoryClient, HrEmployeeDirectoryClient>(client =>
+{
+    client.BaseAddress = new Uri(hrBaseUrl);
+    client.DefaultRequestHeaders.Add("X-Role", "HR");
+});
 
 var app = builder.Build();
+
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (EmployeeNotAvailableException exception) when (!context.Response.HasStarted)
+    {
+        context.Response.StatusCode = StatusCodes.Status400BadRequest;
+        await context.Response.WriteAsJsonAsync(new { message = exception.Message });
+    }
+    catch (HttpRequestException) when (!context.Response.HasStarted)
+    {
+        context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+        await context.Response.WriteAsJsonAsync(new { message = "HR employee directory is unavailable." });
+    }
+});
+
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (EmployeeNotAvailableException exception) when (!context.Response.HasStarted)
+    {
+        context.Response.StatusCode = StatusCodes.Status400BadRequest;
+        await context.Response.WriteAsJsonAsync(new { message = exception.Message });
+    }
+    catch (HttpRequestException) when (!context.Response.HasStarted)
+    {
+        context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+        await context.Response.WriteAsJsonAsync(new { message = "HR employee directory is unavailable." });
+    }
+});
 
 // 5. Automatically create Database if it does not exist
 var connectionBuilder =

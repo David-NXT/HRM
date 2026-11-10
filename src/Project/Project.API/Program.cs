@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Project.API.Data;
+using Project.API.Services;
 using DotNetEnv;
 
 Env.Load("../.env");
@@ -21,6 +22,12 @@ builder.Services.AddDbContext<ProjectManagementDbContext>(options =>
 // Add services to the container
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
+var hrBaseUrl = builder.Configuration["Services:HR:BaseUrl"] ?? "http://localhost:5012/";
+builder.Services.AddHttpClient<IHrEmployeeDirectoryClient, HrEmployeeDirectoryClient>(client =>
+{
+    client.BaseAddress = new Uri(hrBaseUrl);
+    client.DefaultRequestHeaders.Add("X-Role", "HR");
+});
 
 var app = builder.Build();
 
