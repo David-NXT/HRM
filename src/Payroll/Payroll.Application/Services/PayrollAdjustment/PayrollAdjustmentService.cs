@@ -1,0 +1,223 @@
+﻿using Microsoft.EntityFrameworkCore;
+using Payroll.Application.DTOs.PayrollAdjustment;
+using Payroll.Application.Interfaces;
+using Payroll.Domain.Entities;
+using PayrollEntity = global::Payroll.Domain.Entities.Payroll;
+
+namespace Payroll.Application.Services.PayrollAdjustment;
+
+public class PayrollAdjustmentService
+{
+    private readonly IApplicationDbContext _context;
+
+    public PayrollAdjustmentService(IApplicationDbContext context)
+    {
+        _context = context;
+    }
+
+    // Add allowance or bonus
+    public async Task<CreateAllowanceResponse> AddAllowanceAsync(
+        int payrollID,
+        CreateAllowanceRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        // 1. Validate request
+        if (request.Amount <= 0)
+        {
+            throw new ArgumentException(
+                "Allowance amount must be greater than zero."
+            );
+        }
+
+        if (request.RateApplied < 0)
+        {
+            throw new ArgumentException(
+                "Rate applied cannot be negative."
+            );
+        }
+
+        // 2. Find payroll
+        var payroll = await _context.Payrolls
+            .FirstOrDefaultAsync(
+                p => p.PayrollID == payrollID,
+                cancellationToken
+            );
+
+        if (payroll == null)
+        {
+            throw new InvalidOperationException(
+                "Payroll does not exist."
+            );
+        }
+
+        // 3. Only draft payroll can be adjusted
+        if (payroll.Status != "draft")
+        {
+            throw new InvalidOperationException(
+                "Cannot adjust a payroll that is not draft."
+            );
+        }
+
+        // 4. Check allowance type
+        var allowanceType = await _context.AllowanceTypes
+            .FirstOrDefaultAsync(
+                at => at.AllowanceTypeID == request.AllowanceTypeID,
+                cancellationToken
+            );
+
+        if (allowanceType == null || allowanceType.Status != "active")
+        {
+            throw new InvalidOperationException(
+                "Allowance type does not exist or is inactive."
+            );
+        }
+
+        // 5. Find active allowance group
+        var allowance = await _context.Allowances
+            .FirstOrDefaultAsync(
+                a => a.PayrollID == payrollID &&
+                     a.Status == "active",
+                cancellationToken
+            );
+
+        // 6. Create allowance group if it does not exist
+        if (allowance == null)
+        {
+            allowance = new Allowance
+            {
+                PayrollID = payrollID,
+                Status = "active"
+            };
+
+            _context.Allowances.Add(allowance);
+        }
+
+        // 7. Create allowance detail
+        var detail = new AllowanceDetail
+        {
+            AllowanceTypeID = request.AllowanceTypeID,
+            Description = request.Description.Trim(),
+            RateApplied = request.RateApplied,
+            Amount = request.Amount
+        };
+
+        allowance.AllowanceDetails.Add(detail);
+
+        // 8. Save
+        await _context.SaveChangesAsync(cancellationToken);
+
+        // 9. Return response
+        return new CreateAllowanceResponse
+        {
+            AllowanceDetailID = detail.AllowanceDetailID,
+            PayrollID = payrollID,
+            AllowanceTypeID = detail.AllowanceTypeID,
+            Description = detail.Description,
+            RateApplied = detail.RateApplied,
+            Amount = detail.Amount
+        };
+    }
+
+    // Add deduction
+    public async Task<CreatePayCutResponse> AddPayCutAsync(
+        int payrollID,
+        CreatePayCutRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        // 1. Validate request
+        if (request.Amount <= 0)
+        {
+            throw new ArgumentException(
+                "Pay cut amount must be greater than zero."
+            );
+        }
+
+        if (request.RateApplied < 0)
+        {
+            throw new ArgumentException(
+                "Rate applied cannot be negative."
+            );
+        }
+
+        // 2. Find payroll
+        var payroll = await _context.Payrolls
+            .FirstOrDefaultAsync(
+                p => p.PayrollID == payrollID,
+                cancellationToken
+            );
+
+        if (payroll == null)
+        {
+            throw new InvalidOperationException(
+                "Payroll does not exist."
+            );
+        }
+
+        // 3. Only draft payroll can be adjusted
+        if (payroll.Status != "draft")
+        {
+            throw new InvalidOperationException(
+                "Cannot adjust a payroll that is not draft."
+            );
+        }
+
+        // 4. Check pay cut reason
+        var reason = await _context.PayCutReasons
+            .FirstOrDefaultAsync(
+                r => r.PayCutReasonID == request.PayCutReasonID,
+                cancellationToken
+            );
+
+        if (reason == null || reason.Status != "active")
+        {
+            throw new InvalidOperationException(
+                "Pay cut reason does not exist or is inactive."
+            );
+        }
+
+        // 5. Find active pay cut group
+        var payCut = await _context.PayCuts
+            .FirstOrDefaultAsync(
+                pc => pc.PayrollID == payrollID &&
+                      pc.Status == "active",
+                cancellationToken
+            );
+
+        // 6. Create pay cut group if it does not exist
+        if (payCut == null)
+        {
+            payCut = new PayCut
+            {
+                PayrollID = payrollID,
+                Status = "active"
+            };
+
+            _context.PayCuts.Add(payCut);
+        }
+
+        // 7. Create pay cut detail
+        var detail = new PayCutDetail
+        {
+            PayCutReasonID = request.PayCutReasonID,
+            Description = request.Description.Trim(),
+            RateApplied = request.RateApplied,
+            Amount = request.Amount
+        };
+
+        payCut.Details.Add(detail);
+
+        // 8. Save
+        await _context.SaveChangesAsync(cancellationToken);
+
+        // 9. Return response
+        return new CreatePayCutResponse
+        {
+            PayCutDetailID = detail.PayCutDetailID,
+            PayrollID = payrollID,
+            PayCutReasonID = detail.PayCutReasonID,
+            Description = detail.Description,
+            RateApplied = detail.RateApplied,
+            Amount = detail.Amount
+        };
+    }
+}
