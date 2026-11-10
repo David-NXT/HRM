@@ -18,6 +18,7 @@
     <Project Path="src/Project/Project.API/Project.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Payroll.Application.Tests/Payroll.Application.Tests.csproj" />
     <Project Path="tests/HR.Tests/HR.Tests.csproj" />
   </Folder>
   <Project Path="FE/HR/HR.csproj" Id="4e4f6de0-0ed2-4b97-939b-3ba449db0494" />
