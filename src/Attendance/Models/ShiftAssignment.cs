@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace Attendance.Models;
 public class ShiftAssignment
 {
@@ -5,6 +7,7 @@ public class ShiftAssignment
 
     public Guid EmployeeId {get; set;}
 
+    [ForeignKey(nameof(WorkShift))]
     public Guid ShiftId { get; set; }
 
     public DateOnly Date {get; set;}
@@ -21,4 +24,5 @@ public class ShiftAssignment
 
     public DateTime? UpdatedAt {get; set;}
 
+    public WorkShift? WorkShift { get; set; }
 }
