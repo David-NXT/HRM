@@ -8,10 +8,12 @@ namespace Attendance.Services;
 public class LeaveRequestService : ILeaveRequestService
 {
     private readonly AttendanceDbContext _context;
+    private readonly IHrEmployeeDirectoryClient _employees;
 
-    public LeaveRequestService(AttendanceDbContext context)
+    public LeaveRequestService(AttendanceDbContext context, IHrEmployeeDirectoryClient employees)
     {
         _context = context;
+        _employees = employees;
     }
 
     public async Task<List<LeaveRequestDto>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -26,9 +28,12 @@ public class LeaveRequestService : ILeaveRequestService
                 LeaveType = x.LeaveType,
                 StartDate = x.StartDate,
                 EndDate = x.EndDate,
+                TotalDays = x.TotalDays,
                 Reason = x.Reason,
                 Status = x.Status,
                 ApprovedBy = x.ApprovedBy,
+                ApprovedAt = x.ApprovedAt,
+                RejectionReason = x.RejectionReason,
                 CreatedAt = x.CreatedAt,
                 UpdatedAt = x.UpdatedAt
             })
@@ -56,6 +61,8 @@ public class LeaveRequestService : ILeaveRequestService
             throw new ArgumentException("EmployeeId is required.", nameof(dto));
         }
 
+        await EnsureActiveEmployeeAsync(dto.EmployeeId, cancellationToken);
+
         if (string.IsNullOrWhiteSpace(dto.LeaveType))
         {
             throw new ArgumentException("LeaveType is required.", nameof(dto));
@@ -73,6 +80,7 @@ public class LeaveRequestService : ILeaveRequestService
             LeaveType = dto.LeaveType.Trim(),
             StartDate = dto.StartDate,
             EndDate = dto.EndDate,
+            TotalDays = dto.TotalDays > 0 ? dto.TotalDays : 1.0m,
             Reason = dto.Reason.Trim(),
             Status = string.IsNullOrWhiteSpace(dto.Status) ? "Pending" : dto.Status,
             ApprovedBy = dto.ApprovedBy,
@@ -98,6 +106,7 @@ public class LeaveRequestService : ILeaveRequestService
 
         if (dto.EmployeeId.HasValue)
         {
+            await EnsureActiveEmployeeAsync(dto.EmployeeId.Value, cancellationToken);
             entity.EmployeeId = dto.EmployeeId.Value;
         }
 
@@ -116,6 +125,11 @@ public class LeaveRequestService : ILeaveRequestService
             entity.EndDate = dto.EndDate.Value;
         }
 
+        if (dto.TotalDays.HasValue)
+        {
+            entity.TotalDays = dto.TotalDays.Value;
+        }
+
         if (!string.IsNullOrWhiteSpace(dto.Reason))
         {
             entity.Reason = dto.Reason.Trim();
@@ -129,6 +143,16 @@ public class LeaveRequestService : ILeaveRequestService
         if (dto.ApprovedBy != null)
         {
             entity.ApprovedBy = dto.ApprovedBy;
+        }
+
+        if (dto.ApprovedAt.HasValue)
+        {
+            entity.ApprovedAt = dto.ApprovedAt.Value;
+        }
+
+        if (dto.RejectionReason != null)
+        {
+            entity.RejectionReason = dto.RejectionReason;
         }
 
         entity.UpdatedAt = DateTime.UtcNow;
@@ -153,6 +177,14 @@ public class LeaveRequestService : ILeaveRequestService
         return true;
     }
 
+    private async Task EnsureActiveEmployeeAsync(Guid employeeId, CancellationToken cancellationToken)
+    {
+        if (await _employees.GetActiveEmployeeAsync(employeeId, cancellationToken) is null)
+        {
+            throw new EmployeeNotAvailableException(employeeId);
+        }
+    }
+
     private static LeaveRequestDto MapToDto(LeaveRequest entity)
     {
         return new LeaveRequestDto
@@ -162,9 +194,12 @@ public class LeaveRequestService : ILeaveRequestService
             LeaveType = entity.LeaveType,
             StartDate = entity.StartDate,
             EndDate = entity.EndDate,
+            TotalDays = entity.TotalDays,
             Reason = entity.Reason,
             Status = entity.Status,
             ApprovedBy = entity.ApprovedBy,
+            ApprovedAt = entity.ApprovedAt,
+            RejectionReason = entity.RejectionReason,
             CreatedAt = entity.CreatedAt,
             UpdatedAt = entity.UpdatedAt
         };

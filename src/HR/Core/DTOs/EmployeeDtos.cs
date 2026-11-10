@@ -31,7 +31,20 @@ public sealed record EmployeeDto(
     string? Address,
     string Status,
     DateTime CreatedAt,
-    DateTime UpdatedAt);
+    DateTime UpdatedAt,
+    Guid EmployeeGuid);
+
+public sealed record EmployeeDirectoryEntry(
+    Guid EmployeeId,
+    string EmployeeCode,
+    string FullName,
+    string Status);
+
+public sealed record EmployeeDirectoryListDto(
+    IReadOnlyList<EmployeeDirectoryEntry> Items,
+    int Page,
+    int PageSize,
+    int Total);
 
 public sealed record EmployeeListDto(
     IReadOnlyList<EmployeeDto> Items,

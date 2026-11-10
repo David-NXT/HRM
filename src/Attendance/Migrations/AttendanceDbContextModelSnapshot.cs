@@ -22,26 +22,77 @@ namespace Attendance.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Attendance.Models.AttendanceConfigAuditLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ConfigType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("EntityId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("NewValues")
+                        .HasColumnType("text");
+
+                    b.Property<string>("OldValues")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("PerformedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PerformedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AttendanceConfigAuditLogs");
+                });
+
             modelBuilder.Entity("Attendance.Models.AttendanceExplanation", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("ApprovedBy")
                         .HasColumnType("text");
 
-                    b.Property<Guid>("AttendanceId")
+                    b.Property<string>("AttachmentUrl")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("AttendanceId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
                     b.Property<Guid>("EmployeeId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("ExplanationType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("Reason")
                         .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("RejectionReason")
                         .HasColumnType("text");
 
                     b.Property<TimeOnly?>("RequestedTimeIn")
@@ -64,11 +115,71 @@ namespace Attendance.Migrations
                     b.ToTable("AttendanceExplanations");
                 });
 
+            modelBuilder.Entity("Attendance.Models.AttendanceExplanationAttachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ExplanationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<long?>("FileSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("FileType")
+                        .HasColumnType("text");
+
+                    b.Property<string>("FileUrl")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExplanationId");
+
+                    b.ToTable("AttendanceExplanationAttachments");
+                });
+
             modelBuilder.Entity("Attendance.Models.AttendanceRecord", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<int>("ActualOTMins")
+                        .HasColumnType("integer");
+
+                    b.Property<double?>("CheckInLatitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("CheckInLocation")
+                        .HasColumnType("text");
+
+                    b.Property<double?>("CheckInLongitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("CheckInSource")
+                        .HasColumnType("text");
+
+                    b.Property<double?>("CheckOutLatitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("CheckOutLocation")
+                        .HasColumnType("text");
+
+                    b.Property<double?>("CheckOutLongitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("CheckOutSource")
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -76,11 +187,20 @@ namespace Attendance.Migrations
                     b.Property<DateOnly>("Date")
                         .HasColumnType("date");
 
+                    b.Property<string>("DeviceId")
+                        .HasColumnType("text");
+
                     b.Property<int>("EarlyLeaveMins")
                         .HasColumnType("integer");
 
                     b.Property<Guid>("EmployeeId")
                         .HasColumnType("uuid");
+
+                    b.Property<bool>("IsEarlyLeave")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsLate")
+                        .HasColumnType("boolean");
 
                     b.Property<int>("LateMins")
                         .HasColumnType("integer");
@@ -117,6 +237,48 @@ namespace Attendance.Migrations
                     b.ToTable("AttendanceRecords");
                 });
 
+            modelBuilder.Entity("Attendance.Models.AttendanceRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AllowedEarlyLeaveMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("AllowedLateMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<DateOnly>("EffectiveDate")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("MaxViolationsPerMonth")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RuleName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AttendanceRules");
+                });
+
             modelBuilder.Entity("Attendance.Models.Holiday", b =>
                 {
                     b.Property<Guid>("Id")
@@ -131,6 +293,9 @@ namespace Attendance.Migrations
 
                     b.Property<string>("Description")
                         .HasColumnType("text");
+
+                    b.Property<DateOnly?>("EndDate")
+                        .HasColumnType("date");
 
                     b.Property<string>("HolidayType")
                         .IsRequired()
@@ -148,11 +313,53 @@ namespace Attendance.Migrations
                     b.ToTable("Holidays");
                 });
 
+            modelBuilder.Entity("Attendance.Models.LeaveBalance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("CarriedOverDays")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("RemainingDays")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal>("TotalDays")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("UsedDays")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("LeaveBalances");
+                });
+
             modelBuilder.Entity("Attendance.Models.LeaveRequest", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("ApprovedBy")
                         .HasColumnType("text");
@@ -174,12 +381,19 @@ namespace Attendance.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("RejectionReason")
+                        .HasColumnType("text");
+
                     b.Property<DateOnly>("StartDate")
                         .HasColumnType("date");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<decimal>("TotalDays")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -195,6 +409,13 @@ namespace Attendance.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<decimal?>("ActualHours")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("ApprovedBy")
                         .HasColumnType("text");
 
@@ -204,13 +425,30 @@ namespace Attendance.Migrations
                     b.Property<DateOnly>("Date")
                         .HasColumnType("date");
 
+                    b.Property<string>("DayType")
+                        .HasColumnType("text");
+
                     b.Property<Guid>("EmployeeId")
                         .HasColumnType("uuid");
 
                     b.Property<TimeOnly>("EndTime")
                         .HasColumnType("time without time zone");
 
+                    b.Property<bool>("IsUnplanned")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("Multiplier")
+                        .HasPrecision(4, 2)
+                        .HasColumnType("numeric(4,2)");
+
+                    b.Property<decimal>("PlannedHours")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
                     b.Property<string>("Reason")
+                        .HasColumnType("text");
+
+                    b.Property<string>("RejectionReason")
                         .HasColumnType("text");
 
                     b.Property<TimeOnly>("StartTime")
@@ -226,6 +464,55 @@ namespace Attendance.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("OTRequests");
+                });
+
+            modelBuilder.Entity("Attendance.Models.OvertimeRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DayType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<DateOnly>("EffectiveDate")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("MaxHoursPerDay")
+                        .HasPrecision(4, 2)
+                        .HasColumnType("numeric(4,2)");
+
+                    b.Property<decimal>("MaxHoursPerMonth")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal>("MaxHoursPerYear")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("numeric(6,2)");
+
+                    b.Property<decimal>("Multiplier")
+                        .HasPrecision(4, 2)
+                        .HasColumnType("numeric(4,2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("OvertimeRules");
                 });
 
             modelBuilder.Entity("Attendance.Models.ShiftAssignment", b =>
@@ -269,6 +556,118 @@ namespace Attendance.Migrations
                     b.ToTable("ShiftAssignments");
                 });
 
+            modelBuilder.Entity("Attendance.Models.TimesheetPeriod", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime?>("LockedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LockedBy")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("TimesheetPeriods");
+                });
+
+            modelBuilder.Entity("Attendance.Models.TimesheetSummary", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("ActualWorkingDays")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("EarlyLeaveOccurrences")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("HolidayOTHours")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("numeric(6,2)");
+
+                    b.Property<int>("LateOccurrences")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("NormalOTHours")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("numeric(6,2)");
+
+                    b.Property<decimal>("PaidLeaveDays")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<Guid>("PeriodId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("StandardWorkingDays")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<int>("TotalEarlyLeaveMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TotalLateMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("TotalWorkingHours")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("numeric(6,2)");
+
+                    b.Property<decimal>("UnpaidLeaveDays")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("WeekendOTHours")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("numeric(6,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PeriodId");
+
+                    b.ToTable("TimesheetSummaries");
+                });
+
             modelBuilder.Entity("Attendance.Models.WorkShift", b =>
                 {
                     b.Property<Guid>("Id")
@@ -281,6 +680,9 @@ namespace Attendance.Migrations
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<DateOnly?>("EffectiveDate")
+                        .HasColumnType("date");
 
                     b.Property<TimeOnly>("EndTime")
                         .HasColumnType("time without time zone");
@@ -305,10 +707,20 @@ namespace Attendance.Migrations
                     b.HasOne("Attendance.Models.AttendanceRecord", "Attendance")
                         .WithMany("AttendanceExplanations")
                         .HasForeignKey("AttendanceId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Attendance");
+                });
+
+            modelBuilder.Entity("Attendance.Models.AttendanceExplanationAttachment", b =>
+                {
+                    b.HasOne("Attendance.Models.AttendanceExplanation", "Explanation")
+                        .WithMany("Attachments")
+                        .HasForeignKey("ExplanationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Explanation");
                 });
 
             modelBuilder.Entity("Attendance.Models.AttendanceRecord", b =>
@@ -333,9 +745,30 @@ namespace Attendance.Migrations
                     b.Navigation("WorkShift");
                 });
 
+            modelBuilder.Entity("Attendance.Models.TimesheetSummary", b =>
+                {
+                    b.HasOne("Attendance.Models.TimesheetPeriod", "Period")
+                        .WithMany("Summaries")
+                        .HasForeignKey("PeriodId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Period");
+                });
+
+            modelBuilder.Entity("Attendance.Models.AttendanceExplanation", b =>
+                {
+                    b.Navigation("Attachments");
+                });
+
             modelBuilder.Entity("Attendance.Models.AttendanceRecord", b =>
                 {
                     b.Navigation("AttendanceExplanations");
+                });
+
+            modelBuilder.Entity("Attendance.Models.TimesheetPeriod", b =>
+                {
+                    b.Navigation("Summaries");
                 });
 #pragma warning restore 612, 618
         }

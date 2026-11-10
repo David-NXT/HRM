@@ -11,6 +11,8 @@ public sealed class EmployeeConfiguration : IEntityTypeConfiguration<Employee>
         builder.ToTable("employee");
         builder.HasKey(employee => employee.EmployeeId);
         builder.Property(employee => employee.EmployeeId).HasColumnName("employee_id").ValueGeneratedOnAdd();
+        builder.Property(employee => employee.EmployeeGuid).HasColumnName("employee_guid").HasDefaultValueSql("gen_random_uuid()");
+        builder.HasIndex(employee => employee.EmployeeGuid).IsUnique();
         builder.Property(employee => employee.EmployeeCode).HasColumnName("employee_code").HasMaxLength(20).IsRequired();
         builder.HasIndex(employee => employee.EmployeeCode).IsUnique();
         builder.Property(employee => employee.FullName).HasColumnName("full_name").HasMaxLength(150).IsRequired();

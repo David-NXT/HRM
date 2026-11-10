@@ -62,6 +62,12 @@ namespace HR.Infrastructure.Data.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("employee_code");
 
+                    b.Property<Guid>("EmployeeGuid")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("employee_guid")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -93,6 +99,9 @@ namespace HR.Infrastructure.Data.Migrations
                     b.HasKey("EmployeeId");
 
                     b.HasIndex("EmployeeCode")
+                        .IsUnique();
+
+                    b.HasIndex("EmployeeGuid")
                         .IsUnique();
 
                     b.ToTable("employee", (string)null);

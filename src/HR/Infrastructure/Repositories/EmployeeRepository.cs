@@ -46,6 +46,34 @@ public sealed class EmployeeRepository : IEmployeeRepository
         return (items, total);
     }
 
+    public async Task<(IReadOnlyList<Employee> Items, int Total)> SearchActiveAsync(
+        string? keyword,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        var query = _db.Employees.AsNoTracking().Where(employee => employee.Status == "ACTIVE");
+        if (!string.IsNullOrWhiteSpace(keyword))
+        {
+            var pattern = "%" + EscapeLike(keyword.Trim()) + "%";
+            query = query.Where(employee =>
+                EF.Functions.ILike(employee.EmployeeCode, pattern, "\\")
+                || EF.Functions.ILike(employee.FullName, pattern, "\\"));
+        }
+
+        var total = await query.CountAsync(cancellationToken);
+        var items = await query
+            .OrderBy(employee => employee.EmployeeCode)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, total);
+    }
+
+    public Task<Employee?> GetByGuidAsync(Guid employeeGuid, CancellationToken cancellationToken) =>
+        _db.Employees.FirstOrDefaultAsync(employee => employee.EmployeeGuid == employeeGuid, cancellationToken);
+
     public Task<Employee?> GetByIdAsync(int id, CancellationToken cancellationToken) =>
         _db.Employees.FirstOrDefaultAsync(employee => employee.EmployeeId == id, cancellationToken);
 

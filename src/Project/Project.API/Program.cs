@@ -1,7 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Project.API.Data;
-using DotNetEnv;
 using Project.API.Services;
+using DotNetEnv;
+
 
 Env.Load("../.env");
 
@@ -29,6 +30,13 @@ builder.Services.AddScoped<IProjectRoleService, ProjectRoleService>();
 builder.Services.AddScoped<IHourlyRateService, HourlyRateService>();
 builder.Services.AddScoped<ITimesheetService, TimesheetService>();
 builder.Services.AddScoped<IPayrollDataService, PayrollDataService>();
+var hrBaseUrl = builder.Configuration["Services:HR:BaseUrl"] ?? "http://localhost:5012/";
+builder.Services.AddHttpClient<IHrEmployeeDirectoryClient, HrEmployeeDirectoryClient>(client =>
+{
+    client.BaseAddress = new Uri(hrBaseUrl);
+    client.DefaultRequestHeaders.Add("X-Role", "HR");
+});
+
 var app = builder.Build();
 
 // Configure HTTP request pipeline

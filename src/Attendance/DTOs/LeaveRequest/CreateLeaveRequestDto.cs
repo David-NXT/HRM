@@ -16,6 +16,8 @@ public class CreateLeaveRequestDto
     [Required]
     public DateOnly EndDate { get; set; }
 
+    public decimal TotalDays { get; set; } = 1.0m;
+
     [Required]
     public string Reason { get; set; } = string.Empty;
 

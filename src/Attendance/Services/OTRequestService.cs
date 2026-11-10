@@ -8,10 +8,12 @@ namespace Attendance.Services;
 public class OTRequestService : IOTRequestService
 {
     private readonly AttendanceDbContext _context;
+    private readonly IHrEmployeeDirectoryClient _employees;
 
-    public OTRequestService(AttendanceDbContext context)
+    public OTRequestService(AttendanceDbContext context, IHrEmployeeDirectoryClient employees)
     {
         _context = context;
+        _employees = employees;
     }
 
     public async Task<List<OTRequestDto>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -26,9 +28,16 @@ public class OTRequestService : IOTRequestService
                 Date = x.Date,
                 StartTime = x.StartTime,
                 EndTime = x.EndTime,
+                PlannedHours = x.PlannedHours,
+                ActualHours = x.ActualHours,
+                DayType = x.DayType,
+                Multiplier = x.Multiplier,
+                IsUnplanned = x.IsUnplanned,
                 Reason = x.Reason,
                 Status = x.Status,
                 ApprovedBy = x.ApprovedBy,
+                ApprovedAt = x.ApprovedAt,
+                RejectionReason = x.RejectionReason,
                 CreatedAt = x.CreatedAt,
                 UpdatedAt = x.UpdatedAt
             })
@@ -56,6 +65,14 @@ public class OTRequestService : IOTRequestService
             throw new ArgumentException("EmployeeId is required.", nameof(dto));
         }
 
+        await EnsureActiveEmployeeAsync(dto.EmployeeId, cancellationToken);
+        var plannedHours = dto.PlannedHours;
+        if (plannedHours <= 0 && dto.EndTime > dto.StartTime)
+        {
+            var span = dto.EndTime - dto.StartTime;
+            plannedHours = (decimal)span.TotalHours;
+        }
+
         var entity = new OTRequest
         {
             Id = Guid.NewGuid(),
@@ -63,6 +80,10 @@ public class OTRequestService : IOTRequestService
             Date = dto.Date,
             StartTime = dto.StartTime,
             EndTime = dto.EndTime,
+            PlannedHours = plannedHours,
+            DayType = dto.DayType,
+            Multiplier = dto.Multiplier > 0 ? dto.Multiplier : 1.5m,
+            IsUnplanned = dto.IsUnplanned,
             Reason = dto.Reason,
             Status = string.IsNullOrWhiteSpace(dto.Status) ? "Pending" : dto.Status,
             ApprovedBy = dto.ApprovedBy,
@@ -88,6 +109,7 @@ public class OTRequestService : IOTRequestService
 
         if (dto.EmployeeId.HasValue)
         {
+            await EnsureActiveEmployeeAsync(dto.EmployeeId.Value, cancellationToken);
             entity.EmployeeId = dto.EmployeeId.Value;
         }
 
@@ -106,6 +128,31 @@ public class OTRequestService : IOTRequestService
             entity.EndTime = dto.EndTime.Value;
         }
 
+        if (dto.PlannedHours.HasValue)
+        {
+            entity.PlannedHours = dto.PlannedHours.Value;
+        }
+
+        if (dto.ActualHours.HasValue)
+        {
+            entity.ActualHours = dto.ActualHours.Value;
+        }
+
+        if (dto.DayType != null)
+        {
+            entity.DayType = dto.DayType;
+        }
+
+        if (dto.Multiplier.HasValue)
+        {
+            entity.Multiplier = dto.Multiplier.Value;
+        }
+
+        if (dto.IsUnplanned.HasValue)
+        {
+            entity.IsUnplanned = dto.IsUnplanned.Value;
+        }
+
         if (dto.Reason != null)
         {
             entity.Reason = dto.Reason;
@@ -119,6 +166,16 @@ public class OTRequestService : IOTRequestService
         if (dto.ApprovedBy != null)
         {
             entity.ApprovedBy = dto.ApprovedBy;
+        }
+
+        if (dto.ApprovedAt.HasValue)
+        {
+            entity.ApprovedAt = dto.ApprovedAt.Value;
+        }
+
+        if (dto.RejectionReason != null)
+        {
+            entity.RejectionReason = dto.RejectionReason;
         }
 
         entity.UpdatedAt = DateTime.UtcNow;
@@ -143,6 +200,14 @@ public class OTRequestService : IOTRequestService
         return true;
     }
 
+    private async Task EnsureActiveEmployeeAsync(Guid employeeId, CancellationToken cancellationToken)
+    {
+        if (await _employees.GetActiveEmployeeAsync(employeeId, cancellationToken) is null)
+        {
+            throw new EmployeeNotAvailableException(employeeId);
+        }
+    }
+
     private static OTRequestDto MapToDto(OTRequest entity)
     {
         return new OTRequestDto
@@ -152,9 +217,16 @@ public class OTRequestService : IOTRequestService
             Date = entity.Date,
             StartTime = entity.StartTime,
             EndTime = entity.EndTime,
+            PlannedHours = entity.PlannedHours,
+            ActualHours = entity.ActualHours,
+            DayType = entity.DayType,
+            Multiplier = entity.Multiplier,
+            IsUnplanned = entity.IsUnplanned,
             Reason = entity.Reason,
             Status = entity.Status,
             ApprovedBy = entity.ApprovedBy,
+            ApprovedAt = entity.ApprovedAt,
+            RejectionReason = entity.RejectionReason,
             CreatedAt = entity.CreatedAt,
             UpdatedAt = entity.UpdatedAt
         };
