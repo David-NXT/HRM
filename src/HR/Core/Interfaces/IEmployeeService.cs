@@ -6,6 +6,10 @@ public interface IEmployeeService
 {
     Task<EmployeeListDto> ListAsync(string? keyword, int page, int pageSize, CancellationToken cancellationToken);
 
+    Task<EmployeeDirectoryListDto> ListActiveDirectoryAsync(string? keyword, int page, int pageSize, CancellationToken cancellationToken);
+
+    Task<EmployeeDirectoryEntry> GetActiveDirectoryEntryAsync(Guid employeeGuid, CancellationToken cancellationToken);
+
     Task<EmployeeDto> GetAsync(int id, CancellationToken cancellationToken);
 
     Task<EmployeeDto> CreateAsync(CreateEmployeeRequest request, CancellationToken cancellationToken);

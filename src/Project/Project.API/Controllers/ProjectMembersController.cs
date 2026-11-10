@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Project.API.Data;
 using Project.API.DTOs;
 using Project.API.Entities;
+using Project.API.Services;
 
 namespace Project.API.Controllers;
 
@@ -11,10 +12,12 @@ namespace Project.API.Controllers;
 public class ProjectMembersController : ControllerBase
 {
     private readonly ProjectManagementDbContext _context;
+    private readonly IHrEmployeeDirectoryClient _employees;
 
-    public ProjectMembersController(ProjectManagementDbContext context)
+    public ProjectMembersController(ProjectManagementDbContext context, IHrEmployeeDirectoryClient employees)
     {
         _context = context;
+        _employees = employees;
     }
 
     [HttpGet]
@@ -63,8 +66,19 @@ public class ProjectMembersController : ControllerBase
 
     [HttpPost]
     public async Task<IActionResult> CreateProjectMember(
-        CreateProjectMemberDto dto)
+        CreateProjectMemberDto dto,
+        CancellationToken cancellationToken)
     {
+        try
+        {
+            if (await _employees.GetActiveEmployeeAsync(dto.EmployeeId, cancellationToken) is null)
+                return BadRequest("Employee does not exist or is not active in HR.");
+        }
+        catch (HttpRequestException)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, "HR employee directory is unavailable.");
+        }
+
         var projectExists = await _context.Projects
             .AnyAsync(p => p.ProjectId == dto.ProjectId);
 
@@ -99,8 +113,19 @@ public class ProjectMembersController : ControllerBase
 
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> UpdateProjectMember(
-        Guid id, CreateProjectMemberDto dto)
+        Guid id, CreateProjectMemberDto dto,
+        CancellationToken cancellationToken)
     {
+        try
+        {
+            if (await _employees.GetActiveEmployeeAsync(dto.EmployeeId, cancellationToken) is null)
+                return BadRequest("Employee does not exist or is not active in HR.");
+        }
+        catch (HttpRequestException)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, "HR employee directory is unavailable.");
+        }
+
         var member = await _context.ProjectMembers.FindAsync(id);
 
         if (member == null)

@@ -31,6 +31,30 @@ public sealed class EmployeeService : IEmployeeService
         return new EmployeeListDto(items.Select(ToDto).ToArray(), page, pageSize, total);
     }
 
+    public async Task<EmployeeDirectoryListDto> ListActiveDirectoryAsync(
+        string? keyword,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        ValidatePage(page, pageSize);
+        var (items, total) = await _employees.SearchActiveAsync(keyword, page, pageSize, cancellationToken);
+        return new EmployeeDirectoryListDto(items.Select(ToDirectoryEntry).ToArray(), page, pageSize, total);
+    }
+
+    public async Task<EmployeeDirectoryEntry> GetActiveDirectoryEntryAsync(
+        Guid employeeGuid,
+        CancellationToken cancellationToken)
+    {
+        var employee = await _employees.GetByGuidAsync(employeeGuid, cancellationToken);
+        if (employee is null || employee.Status != EmployeeStatuses.Active)
+        {
+            throw new HrException(404, "EmployeeNotFound", "Không tìm thấy nhân viên đang hoạt động.");
+        }
+
+        return ToDirectoryEntry(employee);
+    }
+
     public async Task<EmployeeDto> GetAsync(int id, CancellationToken cancellationToken)
     {
         var employee = await _employees.GetByIdAsync(id, cancellationToken);
@@ -227,7 +251,19 @@ public sealed class EmployeeService : IEmployeeService
             employee.Address,
             employee.Status,
             employee.CreatedAt,
-            employee.UpdatedAt);
+            employee.UpdatedAt,
+            employee.EmployeeGuid);
+
+    private static EmployeeDirectoryEntry ToDirectoryEntry(Employee employee) =>
+        new(employee.EmployeeGuid, employee.EmployeeCode, employee.FullName, employee.Status);
+
+    private static void ValidatePage(int page, int pageSize)
+    {
+        if (page < 1 || pageSize < 1 || pageSize > 100)
+        {
+            throw new HrException(400, "ValidationError", "Số trang phải từ 1 và kích thước trang từ 1 đến 100.");
+        }
+    }
 
     private sealed record EmployeeProfile(
         string EmployeeCode,
