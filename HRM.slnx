@@ -21,6 +21,7 @@
     <Project Path="tests/Payroll.Application.Tests/Payroll.Application.Tests.csproj" />
     <Project Path="tests/HR.Tests/HR.Tests.csproj" />
   </Folder>
+  <Project Path="FE/Project/Project.csproj" Id="ed173ebf-6dd9-4f3b-b967-39b8ea0fdc9e" />
   <Project Path="FE/HR/HR.csproj" Id="4e4f6de0-0ed2-4b97-939b-3ba449db0494" />
   <Project Path="FE/Attendance/Attendance.csproj" Id="72f350d4-74d9-4720-9fa0-64d25e3c3a1a" />
 </Solution>
