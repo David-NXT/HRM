@@ -1,10 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Payroll.Domain.Entities;
 using PayrollEntity = global::Payroll.Domain.Entities.Payroll;
+using Payroll.Application.Interfaces;
 
 namespace Payroll.Infrastructure.Persistence;
 
-public class PayrollDbContext : DbContext
+public class PayrollDbContext : DbContext, IApplicationDbContext
 {
     public PayrollDbContext (DbContextOptions<PayrollDbContext> options) : base(options)
     {
@@ -120,6 +121,5 @@ public class PayrollDbContext : DbContext
         .HasIndex(pp => new { pp.Year, pp.Month})
         .IsUnique();
     }
-
 
 }

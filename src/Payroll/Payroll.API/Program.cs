@@ -1,5 +1,6 @@
 using DotNetEnv;
 using Microsoft.EntityFrameworkCore;
+using Payroll.Application;
 using Payroll.Infrastructure;
 
 static string FindEnvFile()
@@ -49,6 +50,7 @@ if (string.IsNullOrWhiteSpace(connectionString))
     throw new InvalidOperationException ("PayrollConnection connection string is missing.");
 }
 
+builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
 builder.Services.AddControllers();

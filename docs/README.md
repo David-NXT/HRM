@@ -41,3 +41,17 @@ flowchart TD
     INFRA --> DOMAIN
     INFRA --> DB
 ```
+
+Program.cs
+|
+| AddInfrastructure()
+v
+DependencyInjection.cs
+|
+| AddDbContext()
+v
+PayrollDbContext
+|
+| UseNpgsql()
+v
+PostgreSQL

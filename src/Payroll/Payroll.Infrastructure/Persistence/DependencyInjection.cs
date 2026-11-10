@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Payroll.Infrastructure.Persistence;
+using Payroll.Application.Interfaces;
 
 namespace Payroll.Infrastructure;
 
@@ -20,6 +21,8 @@ public static class DependencyInjection
         }
 
         services.AddDbContext<PayrollDbContext>(options => options.UseNpgsql(connectionString));
+        
+        services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<PayrollDbContext>());
 
         return services;
     }
