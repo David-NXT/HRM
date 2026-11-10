@@ -66,6 +66,11 @@ builder.Services.AddScoped<IWorkShiftService, WorkShiftService>();
 builder.Services.AddScoped<IShiftAssignmentService, ShiftAssignmentService>();
 builder.Services.AddScoped<IOTRequestService, OTRequestService>();
 builder.Services.AddScoped<ILeaveRequestService, LeaveRequestService>();
+builder.Services.AddScoped<ITimesheetService, TimesheetService>();
+builder.Services.AddScoped<ILeaveBalanceService, LeaveBalanceService>();
+builder.Services.AddScoped<IOvertimeRuleService, OvertimeRuleService>();
+builder.Services.AddScoped<IAttendanceRuleService, AttendanceRuleService>();
+builder.Services.AddScoped<IAttendanceConfigAuditLogService, AttendanceConfigAuditLogService>();
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
