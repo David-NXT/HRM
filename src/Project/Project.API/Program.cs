@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Project.API.Data;
 using DotNetEnv;
+using Project.API.Services;
 
 Env.Load("../.env");
 
@@ -21,7 +22,13 @@ builder.Services.AddDbContext<ProjectManagementDbContext>(options =>
 // Add services to the container
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
-
+builder.Services.AddScoped<IProjectService, ProjectService>();
+builder.Services.AddScoped<ITaskService, TaskService>();
+builder.Services.AddScoped<IProjectMemberService, ProjectMemberService>();
+builder.Services.AddScoped<IProjectRoleService, ProjectRoleService>();
+builder.Services.AddScoped<IHourlyRateService, HourlyRateService>();
+builder.Services.AddScoped<ITimesheetService, TimesheetService>();
+builder.Services.AddScoped<IPayrollDataService, PayrollDataService>();
 var app = builder.Build();
 
 // Configure HTTP request pipeline
