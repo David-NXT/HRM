@@ -44,20 +44,35 @@ public class ProjectMemberService : IProjectMemberService
     public async Task<ProjectMember> CreateProjectMemberAsync(
         CreateProjectMemberDto dto)
     {
+        // 1. Kiểm tra nhân viên từ HR Service trước
+        var employee = await _employees.GetActiveEmployeeAsync(
+            dto.EmployeeId,
+            CancellationToken.None);
+
+        if (employee == null)
+        {
+            throw new ArgumentException(
+                "Employee does not exist or is not active.");
+        }
+
+        // 2. Kiểm tra ngày tham gia
         ValidateMemberDates(dto.JoinDate, dto.LeaveDate);
 
+        // 3. Kiểm tra Project
         var projectExists = await _context.Projects
             .AnyAsync(p => p.ProjectId == dto.ProjectId);
 
         if (!projectExists)
             throw new ArgumentException("Project does not exist.");
 
+        // 4. Kiểm tra ProjectRole
         var roleExists = await _context.ProjectRoles
             .AnyAsync(r => r.ProjectRoleId == dto.ProjectRoleId);
 
         if (!roleExists)
             throw new ArgumentException("Project role does not exist.");
 
+        // 5. Kiểm tra thành viên bị trùng thời gian
         var hasOverlap = await HasOverlappingMembershipAsync(
             dto.ProjectId,
             dto.EmployeeId,
@@ -68,6 +83,7 @@ public class ProjectMemberService : IProjectMemberService
             throw new InvalidOperationException(
                 "Employee already has an overlapping membership in this project.");
 
+        // 6. Tạo ProjectMember
         var member = new ProjectMember
         {
             ProjectMemberId = Guid.NewGuid(),
