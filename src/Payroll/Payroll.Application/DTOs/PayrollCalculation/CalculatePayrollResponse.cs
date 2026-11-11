@@ -2,8 +2,8 @@ namespace Payroll.Application.DTOs.PayrollCalculation;
 
 public class CalculatePayrollResponse
 {
-    public int PayrollID { get; set; }
-    public int EmployeeID { get; set; }
+    public Guid PayrollID { get; set; }
+    public Guid EmployeeID { get; set; }
 
     public decimal BaseSalary { get; set; }
     public decimal WorkingDays { get; set; }

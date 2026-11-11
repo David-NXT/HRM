@@ -1,11 +1,10 @@
-using HR.Core.DTOs;
+using HR.Application.DTOs.Employees;
+using HR.Application.Interfaces.Repositories;
+using HR.Application.Services.Employees;
 using Xunit;
-using HR.Core.Employees;
-using HR.Core.Entities;
-using HR.Core.Exceptions;
-using HR.Core.Interfaces;
-using HR.Core.Services;
-
+using HR.Domain.Constants;
+using HR.Domain.Entities;
+using HR.Application.Exceptions;
 namespace HR.Tests;
 
 public class EmployeeServiceTests
@@ -58,7 +57,7 @@ public class EmployeeServiceTests
         var service = new EmployeeService(new FakeEmployeeRepository());
 
         var error = await Assert.ThrowsAsync<HrException>(() =>
-            service.UpdateAsync(9, SampleUpdate(), CancellationToken.None));
+            service.UpdateAsync(Id(9), SampleUpdate(), CancellationToken.None));
 
         Assert.Equal(404, error.StatusCode);
         Assert.Equal("EmployeeNotFound", error.Code);
@@ -87,7 +86,7 @@ public class EmployeeServiceTests
     {
         var service = new EmployeeService(new FakeEmployeeRepository());
 
-        var error = await Assert.ThrowsAsync<HrException>(() => service.LockAsync(4, CancellationToken.None));
+        var error = await Assert.ThrowsAsync<HrException>(() => service.LockAsync(Id(4), CancellationToken.None));
 
         Assert.Equal(404, error.StatusCode);
     }
@@ -105,6 +104,21 @@ public class EmployeeServiceTests
     }
 
     [Fact]
+    public async Task Lock_ResignedEmployee_KeepsResignedStatus()
+    {
+        var repository = new FakeEmployeeRepository();
+        var service = new EmployeeService(repository);
+        var created = await service.CreateAsync(Sample("NV002"), CancellationToken.None);
+        repository.Items[0].Status = EmployeeStatuses.Resigned;
+
+        var error = await Assert.ThrowsAsync<HrException>(() => service.LockAsync(created.EmployeeId, CancellationToken.None));
+
+        Assert.Equal(409, error.StatusCode);
+        Assert.Equal(EmployeeStatuses.Resigned, repository.Items[0].Status);
+        Assert.Equal(1, repository.SaveCount);
+    }
+
+    [Fact]
     public async Task Create_SaveFailure_ReturnsServerError()
     {
         var repository = new FakeEmployeeRepository { FailOnSave = true };
@@ -114,6 +128,36 @@ public class EmployeeServiceTests
 
         Assert.Equal(500, error.StatusCode);
         Assert.Equal("SaveError", error.Code);
+    }
+
+    [Fact]
+    public async Task InternalDirectory_ReturnsGuidAndOrganizationWithoutPersonalData()
+    {
+        var repository = new FakeEmployeeRepository();
+        var employee = new FullTimeEmployee { EmployeeId = Id(23), EmployeeCode = "NV001", FullName = "Nguyễn Văn A",
+            CitizenId = "079198001234", Email = "private@example.com", Department = new Department { Name = "Nhân sự" }, Position = new Position { Name = "Chuyên viên" } };
+        repository.Items.Add(employee);
+        var dto = await new EmployeeService(repository).GetActiveDirectoryEntryAsync(employee.EmployeeId, CancellationToken.None);
+        Assert.Equal(employee.EmployeeId, dto.EmployeeId);
+        Assert.Equal("Nhân sự", dto.DepartmentName);
+        Assert.Equal("Chuyên viên", dto.PositionName);
+        var json = System.Text.Json.JsonSerializer.Serialize(dto);
+        Assert.DoesNotContain(employee.CitizenId, json);
+        Assert.DoesNotContain(employee.Email, json);
+        Assert.Equal(EmploymentTypes.FullTime, dto.EmploymentType);
+        Assert.Equal(7, System.Text.Json.JsonDocument.Parse(json).RootElement.EnumerateObject().Count());
+    }
+
+    [Theory]
+    [InlineData(EmployeeStatuses.Locked)]
+    [InlineData(EmployeeStatuses.Resigned)]
+    public async Task InternalDirectory_NonActiveEmployeeReturns404(string status)
+    {
+        var repository = new FakeEmployeeRepository();
+        var employee = new FullTimeEmployee { EmployeeId = Id(1), Status = status }; repository.Items.Add(employee);
+        var error = await Assert.ThrowsAsync<HrException>(() => new EmployeeService(repository)
+            .GetActiveDirectoryEntryAsync(employee.EmployeeId, CancellationToken.None));
+        Assert.Equal(404, error.StatusCode);
     }
 
     [Fact]
@@ -128,6 +172,68 @@ public class EmployeeServiceTests
 
     private static CreateEmployeeRequest Sample(string code) =>
         new(code, "Nguyễn Văn A", new DateOnly(1998, 5, 12), "Nam", "vana@example.com", "+84901234567", "079198001234", "Quận 1");
+
+    [Theory]
+    [InlineData("FULL_TIME", typeof(FullTimeEmployee))]
+    [InlineData("PART_TIME", typeof(PartTimeEmployee))]
+    [InlineData(" part_time ", typeof(PartTimeEmployee))]
+    public async Task Create_EmploymentTypeCreatesTheCorrectSubtype(string employmentType, Type subtype)
+    {
+        var repository = new FakeEmployeeRepository();
+        var service = new EmployeeService(repository);
+        var dto = await service.CreateAsync(Sample("NVTYPE") with { EmploymentType = employmentType }, CancellationToken.None);
+
+        Assert.Equal(subtype, Assert.Single(repository.Items).GetType());
+        Assert.Equal(employmentType.Trim().ToUpperInvariant(), dto.EmploymentType);
+        Assert.NotEqual(Guid.Empty, dto.EmployeeId);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("UNKNOWN")]
+    [InlineData("PART_TIME;DROP TABLE employee")]
+    public async Task Create_UnknownEmploymentTypeDoesNotSave(string? employmentType)
+    {
+        var repository = new FakeEmployeeRepository();
+        var service = new EmployeeService(repository);
+        var error = await Assert.ThrowsAsync<HrException>(() => service.CreateAsync(
+            Sample("NVTYPE") with { EmploymentType = employmentType! }, CancellationToken.None));
+
+        Assert.Equal(400, error.StatusCode);
+        Assert.Equal("InvalidEmploymentType", error.Code);
+        Assert.Empty(repository.Items);
+        Assert.Equal(0, repository.SaveCount);
+    }
+
+    [Fact]
+    public async Task OldCreateRequestDefaultsToFullTime()
+    {
+        var repository = new FakeEmployeeRepository();
+        var dto = await new EmployeeService(repository).CreateAsync(Sample("NVOLD"), CancellationToken.None);
+        Assert.IsType<FullTimeEmployee>(Assert.Single(repository.Items));
+        Assert.Equal(EmploymentTypes.FullTime, dto.EmploymentType);
+    }
+
+    [Fact]
+    public async Task PartTime_PersonalUpdateLockAndDirectoryKeepTheSameIdentityAndType()
+    {
+        var repository = new FakeEmployeeRepository();
+        var service = new EmployeeService(repository);
+        var created = await service.CreateAsync(Sample("NVPT") with { EmploymentType = EmploymentTypes.PartTime }, CancellationToken.None);
+        var directory = await service.GetActiveDirectoryEntryAsync(created.EmployeeId, CancellationToken.None);
+        var updated = await service.UpdateAsync(created.EmployeeId, SampleUpdate() with { FullName = "Updated part-time" }, CancellationToken.None);
+        var locked = await service.LockAsync(created.EmployeeId, CancellationToken.None);
+
+        Assert.Equal(EmploymentTypes.PartTime, directory.EmploymentType);
+        Assert.Equal(created.EmployeeId, directory.EmployeeId);
+        Assert.Equal(created.EmployeeId, updated.EmployeeId);
+        Assert.Equal(created.EmployeeId, locked.EmployeeId);
+        Assert.Equal(EmploymentTypes.PartTime, updated.EmploymentType);
+        Assert.Equal(EmploymentTypes.PartTime, locked.EmploymentType);
+        Assert.Equal(EmployeeStatuses.Locked, locked.Status);
+        Assert.IsType<PartTimeEmployee>(Assert.Single(repository.Items));
+    }
 
     private static UpdateEmployeeRequest SampleUpdate() =>
         new("Nguyễn Văn A", new DateOnly(1998, 5, 12), "Male", "vana@example.com", "0901234567", "079198001234", "Quận 1");
@@ -169,10 +275,7 @@ public class EmployeeServiceTests
             return Task.FromResult(((IReadOnlyList<Employee>)items, items.Length));
         }
 
-        public Task<Employee?> GetByGuidAsync(Guid employeeGuid, CancellationToken cancellationToken) =>
-            Task.FromResult(Items.FirstOrDefault(employee => employee.EmployeeGuid == employeeGuid));
-
-        public Task<Employee?> GetByIdAsync(int id, CancellationToken cancellationToken) =>
+        public Task<Employee?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
             Task.FromResult(Items.FirstOrDefault(employee => employee.EmployeeId == id));
 
         public Task<bool> CodeExistsAsync(string employeeCode, CancellationToken cancellationToken) =>
@@ -180,7 +283,7 @@ public class EmployeeServiceTests
 
         public Task AddAsync(Employee employee, CancellationToken cancellationToken)
         {
-            employee.EmployeeId = Items.Count + 1;
+            employee.EmployeeId = Id(Items.Count + 1);
             Items.Add(employee);
             return Task.CompletedTask;
         }

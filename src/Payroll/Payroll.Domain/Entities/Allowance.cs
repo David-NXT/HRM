@@ -2,11 +2,11 @@ namespace Payroll.Domain.Entities;
 
 public class Allowance
 {
-    public int AllowanceID {get; set;}
-    public int PayrollID {get; set;}
-    public string Status {get; set;} = "active";
+    public Guid AllowanceID { get; set; } = Guid.NewGuid();
+    public Guid PayrollID { get; set; }
+    public string Status { get; set; } = "active";
 
-    //Quan hệ
-    public Payroll? Payroll {get; set;}
-    public List<AllowanceDetail> AllowanceDetails {get; set;} = new();
+    // Relationships
+    public Payroll? Payroll { get; set; }
+    public List<AllowanceDetail> AllowanceDetails { get; set; } = new();
 }
