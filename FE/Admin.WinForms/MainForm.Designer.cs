@@ -29,6 +29,7 @@
         private void InitializeComponent()
         {
             panel_Sidebar = new Panel();
+            button_LogOut = new Button();
             label_HRM = new Label();
             flowLayoutPanel2 = new FlowLayoutPanel();
             flowLayoutPanel1 = new FlowLayoutPanel();
@@ -41,12 +42,18 @@
             button_Contract_Work = new Button();
             button_Dashboard = new Button();
             panel_Content = new Panel();
+            panel_header = new Panel();
+            label_Admin = new Label();
+            label_Description = new Label();
+            label_Title = new Label();
             panel_Sidebar.SuspendLayout();
+            panel_header.SuspendLayout();
             SuspendLayout();
             // 
             // panel_Sidebar
             // 
             panel_Sidebar.BackColor = Color.FromArgb(22, 38, 70);
+            panel_Sidebar.Controls.Add(button_LogOut);
             panel_Sidebar.Controls.Add(label_HRM);
             panel_Sidebar.Controls.Add(flowLayoutPanel2);
             panel_Sidebar.Controls.Add(flowLayoutPanel1);
@@ -60,8 +67,25 @@
             panel_Sidebar.Controls.Add(button_Dashboard);
             panel_Sidebar.Location = new Point(0, -1);
             panel_Sidebar.Name = "panel_Sidebar";
-            panel_Sidebar.Size = new Size(300, 797);
+            panel_Sidebar.Size = new Size(300, 1041);
             panel_Sidebar.TabIndex = 0;
+            // 
+            // button_LogOut
+            // 
+            button_LogOut.BackColor = Color.Transparent;
+            button_LogOut.FlatAppearance.BorderSize = 0;
+            button_LogOut.FlatAppearance.MouseDownBackColor = Color.FromArgb(49, 95, 159);
+            button_LogOut.FlatAppearance.MouseOverBackColor = Color.FromArgb(71, 117, 188);
+            button_LogOut.FlatStyle = FlatStyle.Flat;
+            button_LogOut.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            button_LogOut.ForeColor = Color.White;
+            button_LogOut.Location = new Point(12, 974);
+            button_LogOut.Name = "button_LogOut";
+            button_LogOut.Size = new Size(248, 46);
+            button_LogOut.TabIndex = 9;
+            button_LogOut.Text = "Log Out";
+            button_LogOut.TextAlign = ContentAlignment.MiddleLeft;
+            button_LogOut.UseVisualStyleBackColor = false;
             // 
             // label_HRM
             // 
@@ -238,17 +262,58 @@
             // panel_Content
             // 
             panel_Content.BackColor = Color.FromArgb(244, 246, 249);
-            panel_Content.Location = new Point(304, 2);
+            panel_Content.Location = new Point(304, 145);
             panel_Content.Name = "panel_Content";
-            panel_Content.Size = new Size(1264, 794);
+            panel_Content.Size = new Size(1815, 886);
             panel_Content.TabIndex = 1;
+            // 
+            // panel_header
+            // 
+            panel_header.Controls.Add(label_Admin);
+            panel_header.Controls.Add(label_Description);
+            panel_header.Controls.Add(label_Title);
+            panel_header.Location = new Point(304, 4);
+            panel_header.Name = "panel_header";
+            panel_header.Size = new Size(1815, 135);
+            panel_header.TabIndex = 2;
+            // 
+            // label_Admin
+            // 
+            label_Admin.AutoSize = true;
+            label_Admin.Font = new Font("Segoe UI", 12F);
+            label_Admin.Location = new Point(1695, 47);
+            label_Admin.Name = "label_Admin";
+            label_Admin.Size = new Size(114, 45);
+            label_Admin.TabIndex = 2;
+            label_Admin.Text = "Admin";
+            // 
+            // label_Description
+            // 
+            label_Description.AutoSize = true;
+            label_Description.Font = new Font("Segoe UI", 13F);
+            label_Description.Location = new Point(8, 75);
+            label_Description.Name = "label_Description";
+            label_Description.Size = new Size(196, 47);
+            label_Description.TabIndex = 1;
+            label_Description.Text = "Description";
+            // 
+            // label_Title
+            // 
+            label_Title.AutoSize = true;
+            label_Title.Font = new Font("Segoe UI", 16F, FontStyle.Bold);
+            label_Title.Location = new Point(8, 16);
+            label_Title.Name = "label_Title";
+            label_Title.Size = new Size(140, 59);
+            label_Title.TabIndex = 0;
+            label_Title.Text = "Types";
             // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(13F, 32F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.FromArgb(244, 246, 249);
-            ClientSize = new Size(1567, 795);
+            ClientSize = new Size(2125, 1032);
+            Controls.Add(panel_header);
             Controls.Add(panel_Content);
             Controls.Add(panel_Sidebar);
             Name = "MainForm";
@@ -256,6 +321,8 @@
             Load += MainForm_Load;
             panel_Sidebar.ResumeLayout(false);
             panel_Sidebar.PerformLayout();
+            panel_header.ResumeLayout(false);
+            panel_header.PerformLayout();
             ResumeLayout(false);
         }
 
@@ -274,5 +341,10 @@
         private FlowLayoutPanel flowLayoutPanel2;
         private Panel panel_Content;
         private Label label_HRM;
+        private Panel panel_header;
+        private Label label_Admin;
+        private Label label_Description;
+        private Label label_Title;
+        private Button button_LogOut;
     }
 }
