@@ -2,11 +2,11 @@ namespace Payroll.Application.DTOs.PayrollAdjustment;
 
 public class CreateAllowanceResponse
 {
-    public int AllowanceDetailID { get; set; }
+    public Guid AllowanceDetailID { get; set; }
 
-    public int PayrollID { get; set; }
+    public Guid PayrollID { get; set; }
 
-    public int AllowanceTypeID { get; set; }
+    public Guid AllowanceTypeID { get; set; }
 
     public string Description { get; set; } = "";
 

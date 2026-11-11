@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Payroll.Application.DTOs.PayrollAdjustment;
 using Payroll.Application.Interfaces;
 using Payroll.Domain.Entities;
@@ -17,7 +17,7 @@ public class PayrollAdjustmentService
 
     // Add allowance or bonus
     public async Task<CreateAllowanceResponse> AddAllowanceAsync(
-        int payrollID,
+        Guid payrollID,
         CreateAllowanceRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -120,7 +120,7 @@ public class PayrollAdjustmentService
 
     // Add deduction
     public async Task<CreatePayCutResponse> AddPayCutAsync(
-        int payrollID,
+        Guid payrollID,
         CreatePayCutRequest request,
         CancellationToken cancellationToken = default)
     {

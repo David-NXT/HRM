@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Payroll.Application.DTOs.PayrollManagement;
 using Payroll.Application.Interfaces;
 using PayrollEntity = global::Payroll.Domain.Entities.Payroll;
@@ -15,13 +15,13 @@ public class PayrollManagementService
     }
 
     public async Task<CreatePayrollsResponse> CreatePayrollsAsync(
-        int payrollPeriodID,
+        Guid payrollPeriodID,
         CreatePayrollsRequest request,
         CancellationToken cancellationToken = default)
     {
         // 1. Validate employee IDs
         var employeeIDs = request.EmployeeIDs
-            .Where(id => id > 0)
+            .Where(id => id != Guid.Empty)
             .Distinct()
             .ToList();
 
@@ -35,7 +35,7 @@ public class PayrollManagementService
         if (employeeIDs.Count != request.EmployeeIDs.Distinct().Count())
         {
             throw new ArgumentException(
-                "Employee IDs must be positive."
+                "Employee IDs must be valid GUIDs."
             );
         }
 

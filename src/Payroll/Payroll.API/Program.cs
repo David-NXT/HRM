@@ -2,6 +2,7 @@ using DotNetEnv;
 using Microsoft.EntityFrameworkCore;
 using Payroll.Application;
 using Payroll.Infrastructure;
+using Payroll.Infrastructure.Persistence;
 
 static string FindEnvFile()
 {
@@ -19,7 +20,7 @@ static string FindEnvFile()
         while (directory != null)
         {
             // current path concat /.env
-            var envPath = Path.Combine(directory.FullName,".env");
+            var envPath = Path.Combine(directory.FullName, ".env");
 
             if (File.Exists(envPath))
             {
@@ -38,16 +39,13 @@ var envPath = FindEnvFile();
 
 Env.Load(envPath);
 
-
-
-
 var builder = WebApplication.CreateBuilder(args); 
 
-var connectionString= builder.Configuration.GetConnectionString("PayrollConnection");
+var connectionString = builder.Configuration.GetConnectionString("PayrollConnection");
 
 if (string.IsNullOrWhiteSpace(connectionString))
 {
-    throw new InvalidOperationException ("PayrollConnection connection string is missing.");
+    throw new InvalidOperationException("PayrollConnection connection string is missing.");
 }
 
 builder.Services.AddApplication();
@@ -62,6 +60,13 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+}
+
+// Auto seed default and sample data
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<PayrollDbContext>();
+    await PayrollDataSeeder.SeedAsync(context);
 }
 
 app.UseHttpsRedirection();
