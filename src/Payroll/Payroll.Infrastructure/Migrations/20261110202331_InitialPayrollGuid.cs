@@ -1,13 +1,12 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
-using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Payroll.Infrastructure.Persistence.Migrations
+namespace Payroll.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialPayrollGuid : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -16,8 +15,7 @@ namespace Payroll.Infrastructure.Persistence.Migrations
                 name: "AllowanceTypes",
                 columns: table => new
                 {
-                    AllowanceTypeID = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    AllowanceTypeID = table.Column<Guid>(type: "uuid", nullable: false),
                     Name = table.Column<string>(type: "text", nullable: false),
                     Description = table.Column<string>(type: "text", nullable: false),
                     CalculationType = table.Column<string>(type: "text", nullable: false),
@@ -33,8 +31,7 @@ namespace Payroll.Infrastructure.Persistence.Migrations
                 name: "PayCutReasons",
                 columns: table => new
                 {
-                    PayCutReasonID = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    PayCutReasonID = table.Column<Guid>(type: "uuid", nullable: false),
                     Name = table.Column<string>(type: "text", nullable: false),
                     CalculationType = table.Column<string>(type: "text", nullable: false),
                     DefaultRate = table.Column<decimal>(type: "numeric(18,4)", precision: 18, scale: 4, nullable: false),
@@ -49,8 +46,7 @@ namespace Payroll.Infrastructure.Persistence.Migrations
                 name: "PayrollPeriods",
                 columns: table => new
                 {
-                    PayrollPeriodID = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    PayrollPeriodID = table.Column<Guid>(type: "uuid", nullable: false),
                     Year = table.Column<int>(type: "integer", nullable: false),
                     Month = table.Column<int>(type: "integer", nullable: false),
                     Status = table.Column<string>(type: "text", nullable: false),
@@ -65,10 +61,9 @@ namespace Payroll.Infrastructure.Persistence.Migrations
                 name: "Payrolls",
                 columns: table => new
                 {
-                    PayrollID = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    PayrollPeriodID = table.Column<int>(type: "integer", nullable: false),
-                    EmployeeID = table.Column<int>(type: "integer", nullable: false),
+                    PayrollID = table.Column<Guid>(type: "uuid", nullable: false),
+                    PayrollPeriodID = table.Column<Guid>(type: "uuid", nullable: false),
+                    EmployeeID = table.Column<Guid>(type: "uuid", nullable: false),
                     BaseSalary = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
                     WorkingDays = table.Column<decimal>(type: "numeric(5,2)", precision: 5, scale: 2, nullable: false),
                     StandardWorkingDay = table.Column<decimal>(type: "numeric(5,2)", precision: 5, scale: 2, nullable: false),
@@ -96,9 +91,8 @@ namespace Payroll.Infrastructure.Persistence.Migrations
                 name: "Allowances",
                 columns: table => new
                 {
-                    AllowanceID = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    PayrollID = table.Column<int>(type: "integer", nullable: false),
+                    AllowanceID = table.Column<Guid>(type: "uuid", nullable: false),
+                    PayrollID = table.Column<Guid>(type: "uuid", nullable: false),
                     Status = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
@@ -116,9 +110,8 @@ namespace Payroll.Infrastructure.Persistence.Migrations
                 name: "PayCuts",
                 columns: table => new
                 {
-                    PayCutID = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    PayrollID = table.Column<int>(type: "integer", nullable: false),
+                    PayCutID = table.Column<Guid>(type: "uuid", nullable: false),
+                    PayrollID = table.Column<Guid>(type: "uuid", nullable: false),
                     Status = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
@@ -136,10 +129,9 @@ namespace Payroll.Infrastructure.Persistence.Migrations
                 name: "AllowanceDetails",
                 columns: table => new
                 {
-                    AllowanceDetailID = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    AllowanceID = table.Column<int>(type: "integer", nullable: false),
-                    AllowanceTypeID = table.Column<int>(type: "integer", nullable: false),
+                    AllowanceDetailID = table.Column<Guid>(type: "uuid", nullable: false),
+                    AllowanceID = table.Column<Guid>(type: "uuid", nullable: false),
+                    AllowanceTypeID = table.Column<Guid>(type: "uuid", nullable: false),
                     Description = table.Column<string>(type: "text", nullable: false),
                     RateApplied = table.Column<decimal>(type: "numeric(18,4)", precision: 18, scale: 4, nullable: false),
                     Amount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false)
@@ -165,10 +157,9 @@ namespace Payroll.Infrastructure.Persistence.Migrations
                 name: "PayCutDetails",
                 columns: table => new
                 {
-                    PayCutDetailID = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    PayCutID = table.Column<int>(type: "integer", nullable: false),
-                    PayCutReasonID = table.Column<int>(type: "integer", nullable: false),
+                    PayCutDetailID = table.Column<Guid>(type: "uuid", nullable: false),
+                    PayCutID = table.Column<Guid>(type: "uuid", nullable: false),
+                    PayCutReasonID = table.Column<Guid>(type: "uuid", nullable: false),
                     Description = table.Column<string>(type: "text", nullable: false),
                     RateApplied = table.Column<decimal>(type: "numeric(18,4)", precision: 18, scale: 4, nullable: false),
                     Amount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
