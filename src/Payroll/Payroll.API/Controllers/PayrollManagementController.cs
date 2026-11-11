@@ -16,9 +16,9 @@ public class PayrollManagementController : ControllerBase
         _service = service;
     }
 
-    [HttpPost("periods/{payrollPeriodID:int}/payrolls")]
+    [HttpPost("periods/{payrollPeriodID:guid}/payrolls")]
     public async Task<ActionResult<CreatePayrollsResponse>> CreatePayrolls(
-        int payrollPeriodID,
+        Guid payrollPeriodID,
         CreatePayrollsRequest request,
         CancellationToken cancellationToken)
     {

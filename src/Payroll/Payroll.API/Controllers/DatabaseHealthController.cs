@@ -33,4 +33,19 @@ public class DatabaseHealthControllers : ControllerBase
             Database = "connected"
         });
     }
+
+    [HttpPost("seed")]
+    public async Task<IActionResult> SeedSampleData()
+    {
+        await PayrollDataSeeder.SeedAsync(_context);
+
+        return Ok(new
+        {
+            Message = "Sample data seeded successfully.",
+            PeriodsCount = await _context.PayrollPeriods.CountAsync(),
+            PayrollsCount = await _context.Payrolls.CountAsync(),
+            AllowanceTypesCount = await _context.AllowanceTypes.CountAsync(),
+            PayCutReasonsCount = await _context.PayCutReasons.CountAsync()
+        });
+    }
 }

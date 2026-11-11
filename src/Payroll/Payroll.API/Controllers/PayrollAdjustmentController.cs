@@ -16,9 +16,9 @@ public class PayrollAdjustmentController : ControllerBase
         _service = service;
     }
 
-    [HttpPost("{payrollID:int}/allowances")]
+    [HttpPost("{payrollID:guid}/allowances")]
     public async Task<ActionResult<CreateAllowanceResponse>> AddAllowance(
-        int payrollID,
+        Guid payrollID,
         CreateAllowanceRequest request,
         CancellationToken cancellationToken)
     {
@@ -31,9 +31,9 @@ public class PayrollAdjustmentController : ControllerBase
         return StatusCode(201, response);
     }
 
-    [HttpPost("{payrollID:int}/paycuts")]
+    [HttpPost("{payrollID:guid}/paycuts")]
     public async Task<ActionResult<CreatePayCutResponse>> AddPayCut(
-        int payrollID,
+        Guid payrollID,
         CreatePayCutRequest request,
         CancellationToken cancellationToken)
     {

@@ -2,7 +2,7 @@ namespace Payroll.Application.DTOs.PayrollAdjustment;
 
 public class CreateAllowanceRequest
 {
-    public int AllowanceTypeID { get; set; }
+    public Guid AllowanceTypeID { get; set; }
 
     public string Description { get; set; } = "";
 
