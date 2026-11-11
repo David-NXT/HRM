@@ -1,3 +1,5 @@
+using HR.Domain.Constants;
+
 namespace HR.Application.DTOs.Employees;
 
 public sealed record CreateEmployeeRequest(
@@ -8,7 +10,8 @@ public sealed record CreateEmployeeRequest(
     string Email,
     string Phone,
     string CitizenId,
-    string? Address);
+    string? Address,
+    string EmploymentType = EmploymentTypes.FullTime);
 
 public sealed record UpdateEmployeeRequest(
     string FullName,
@@ -35,7 +38,8 @@ public sealed record EmployeeDto(
     Guid? DepartmentId,
     Guid? PositionId,
     string? DepartmentName,
-    string? PositionName);
+    string? PositionName,
+    string EmploymentType);
 
 public sealed record EmployeeDirectoryEntry(
     Guid EmployeeId,
@@ -43,7 +47,8 @@ public sealed record EmployeeDirectoryEntry(
     string FullName,
     string Status,
     string? DepartmentName,
-    string? PositionName);
+    string? PositionName,
+    string EmploymentType = EmploymentTypes.FullTime);
 
 public sealed record EmployeeDirectoryListDto(
     IReadOnlyList<EmployeeDirectoryEntry> Items,

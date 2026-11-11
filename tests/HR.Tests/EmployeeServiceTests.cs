@@ -134,7 +134,7 @@ public class EmployeeServiceTests
     public async Task InternalDirectory_ReturnsGuidAndOrganizationWithoutPersonalData()
     {
         var repository = new FakeEmployeeRepository();
-        var employee = new Employee { EmployeeId = Id(23), EmployeeCode = "NV001", FullName = "Nguyễn Văn A",
+        var employee = new FullTimeEmployee { EmployeeId = Id(23), EmployeeCode = "NV001", FullName = "Nguyễn Văn A",
             CitizenId = "079198001234", Email = "private@example.com", Department = new Department { Name = "Nhân sự" }, Position = new Position { Name = "Chuyên viên" } };
         repository.Items.Add(employee);
         var dto = await new EmployeeService(repository).GetActiveDirectoryEntryAsync(employee.EmployeeId, CancellationToken.None);
@@ -144,7 +144,8 @@ public class EmployeeServiceTests
         var json = System.Text.Json.JsonSerializer.Serialize(dto);
         Assert.DoesNotContain(employee.CitizenId, json);
         Assert.DoesNotContain(employee.Email, json);
-        Assert.Equal(6, System.Text.Json.JsonDocument.Parse(json).RootElement.EnumerateObject().Count());
+        Assert.Equal(EmploymentTypes.FullTime, dto.EmploymentType);
+        Assert.Equal(7, System.Text.Json.JsonDocument.Parse(json).RootElement.EnumerateObject().Count());
     }
 
     [Theory]
@@ -153,7 +154,7 @@ public class EmployeeServiceTests
     public async Task InternalDirectory_NonActiveEmployeeReturns404(string status)
     {
         var repository = new FakeEmployeeRepository();
-        var employee = new Employee { EmployeeId = Id(1), Status = status }; repository.Items.Add(employee);
+        var employee = new FullTimeEmployee { EmployeeId = Id(1), Status = status }; repository.Items.Add(employee);
         var error = await Assert.ThrowsAsync<HrException>(() => new EmployeeService(repository)
             .GetActiveDirectoryEntryAsync(employee.EmployeeId, CancellationToken.None));
         Assert.Equal(404, error.StatusCode);
@@ -171,6 +172,68 @@ public class EmployeeServiceTests
 
     private static CreateEmployeeRequest Sample(string code) =>
         new(code, "Nguyễn Văn A", new DateOnly(1998, 5, 12), "Nam", "vana@example.com", "+84901234567", "079198001234", "Quận 1");
+
+    [Theory]
+    [InlineData("FULL_TIME", typeof(FullTimeEmployee))]
+    [InlineData("PART_TIME", typeof(PartTimeEmployee))]
+    [InlineData(" part_time ", typeof(PartTimeEmployee))]
+    public async Task Create_EmploymentTypeCreatesTheCorrectSubtype(string employmentType, Type subtype)
+    {
+        var repository = new FakeEmployeeRepository();
+        var service = new EmployeeService(repository);
+        var dto = await service.CreateAsync(Sample("NVTYPE") with { EmploymentType = employmentType }, CancellationToken.None);
+
+        Assert.Equal(subtype, Assert.Single(repository.Items).GetType());
+        Assert.Equal(employmentType.Trim().ToUpperInvariant(), dto.EmploymentType);
+        Assert.NotEqual(Guid.Empty, dto.EmployeeId);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("UNKNOWN")]
+    [InlineData("PART_TIME;DROP TABLE employee")]
+    public async Task Create_UnknownEmploymentTypeDoesNotSave(string? employmentType)
+    {
+        var repository = new FakeEmployeeRepository();
+        var service = new EmployeeService(repository);
+        var error = await Assert.ThrowsAsync<HrException>(() => service.CreateAsync(
+            Sample("NVTYPE") with { EmploymentType = employmentType! }, CancellationToken.None));
+
+        Assert.Equal(400, error.StatusCode);
+        Assert.Equal("InvalidEmploymentType", error.Code);
+        Assert.Empty(repository.Items);
+        Assert.Equal(0, repository.SaveCount);
+    }
+
+    [Fact]
+    public async Task OldCreateRequestDefaultsToFullTime()
+    {
+        var repository = new FakeEmployeeRepository();
+        var dto = await new EmployeeService(repository).CreateAsync(Sample("NVOLD"), CancellationToken.None);
+        Assert.IsType<FullTimeEmployee>(Assert.Single(repository.Items));
+        Assert.Equal(EmploymentTypes.FullTime, dto.EmploymentType);
+    }
+
+    [Fact]
+    public async Task PartTime_PersonalUpdateLockAndDirectoryKeepTheSameIdentityAndType()
+    {
+        var repository = new FakeEmployeeRepository();
+        var service = new EmployeeService(repository);
+        var created = await service.CreateAsync(Sample("NVPT") with { EmploymentType = EmploymentTypes.PartTime }, CancellationToken.None);
+        var directory = await service.GetActiveDirectoryEntryAsync(created.EmployeeId, CancellationToken.None);
+        var updated = await service.UpdateAsync(created.EmployeeId, SampleUpdate() with { FullName = "Updated part-time" }, CancellationToken.None);
+        var locked = await service.LockAsync(created.EmployeeId, CancellationToken.None);
+
+        Assert.Equal(EmploymentTypes.PartTime, directory.EmploymentType);
+        Assert.Equal(created.EmployeeId, directory.EmployeeId);
+        Assert.Equal(created.EmployeeId, updated.EmployeeId);
+        Assert.Equal(created.EmployeeId, locked.EmployeeId);
+        Assert.Equal(EmploymentTypes.PartTime, updated.EmploymentType);
+        Assert.Equal(EmploymentTypes.PartTime, locked.EmploymentType);
+        Assert.Equal(EmployeeStatuses.Locked, locked.Status);
+        Assert.IsType<PartTimeEmployee>(Assert.Single(repository.Items));
+    }
 
     private static UpdateEmployeeRequest SampleUpdate() =>
         new("Nguyễn Văn A", new DateOnly(1998, 5, 12), "Male", "vana@example.com", "0901234567", "079198001234", "Quận 1");

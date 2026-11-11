@@ -23,10 +23,13 @@ public sealed class GuidIdentifierTests
             Assert.Equal(typeof(Guid), key.ClrType);
             Assert.Equal("uuid", key.GetColumnType());
             Assert.Equal("gen_random_uuid()", key.GetDefaultValueSql());
-            var first = key.PropertyInfo!.GetValue(Activator.CreateInstance(entity.ClrType));
-            var second = key.PropertyInfo.GetValue(Activator.CreateInstance(entity.ClrType));
-            Assert.NotEqual(Guid.Empty, first);
-            Assert.NotEqual(first, second);
+            if (!entity.ClrType.IsAbstract)
+            {
+                var first = key.PropertyInfo!.GetValue(Activator.CreateInstance(entity.ClrType));
+                var second = key.PropertyInfo.GetValue(Activator.CreateInstance(entity.ClrType));
+                Assert.NotEqual(Guid.Empty, first);
+                Assert.NotEqual(first, second);
+            }
 
             foreach (var property in entity.GetForeignKeys().SelectMany(foreignKey => foreignKey.Properties))
                 Assert.Equal(typeof(Guid), Nullable.GetUnderlyingType(property.ClrType) ?? property.ClrType);
@@ -61,12 +64,12 @@ public sealed class GuidIdentifierTests
             var addedKeys = operations.OfType<AddPrimaryKeyOperation>().ToArray();
             var droppedForeignKeys = operations.OfType<DropForeignKeyOperation>().ToArray();
             var addedForeignKeys = operations.OfType<AddForeignKeyOperation>().ToArray();
-            Assert.Equal(model.GetEntityTypes().Count(), addedKeys.Length);
+            Assert.Equal(model.GetEntityTypes().Count(entity => entity.BaseType is null), addedKeys.Length);
             Assert.Equal(addedKeys.Select(key => key.Name).Order(), droppedKeys.Select(key => key.Name).Order());
             Assert.Equal(addedForeignKeys.Select(key => key.Name).Order(), droppedForeignKeys.Select(key => key.Name).Order());
-            Assert.Equal(model.GetEntityTypes().Sum(entity => entity.GetForeignKeys().Count()), addedForeignKeys.Length);
+            Assert.Equal(model.GetEntityTypes().Where(entity => entity.BaseType is null).Sum(entity => entity.GetForeignKeys().Count()), addedForeignKeys.Length);
 
-            foreach (var entity in model.GetEntityTypes())
+            foreach (var entity in model.GetEntityTypes().Where(entity => entity.BaseType is null))
             {
                 var store = StoreObjectIdentifier.Table(entity.GetTableName()!, entity.GetSchema());
                 foreach (var foreignKey in entity.GetForeignKeys())

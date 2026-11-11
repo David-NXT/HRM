@@ -1,4 +1,5 @@
 <Solution>
+  <Folder Name="/dev/" />
   <Folder Name="/src/" />
   <Folder Name="/src/Attendance/" />
   <Folder Name="/src/Attendance/Attendance.API/">

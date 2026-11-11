@@ -26,7 +26,25 @@ X-Role: {{HR_Role}}
   "email": "vana@example.com",
   "phone": "0901234567",
   "citizenId": "079198001234",
-  "address": "Quận 1, TP.HCM"
+  "address": "Quận 1, TP.HCM",
+  "employmentType": "FULL_TIME"
+}
+
+### Thêm nhân viên part-time: cùng endpoint, employmentType được kiểm tra ở HR
+POST {{HR_HostAddress}}/employees
+Content-Type: application/json
+X-Role: {{HR_Role}}
+
+{
+  "employeeCode": "NVPT001",
+  "fullName": "Nhân viên Part-time",
+  "dateOfBirth": "2000-01-01",
+  "gender": "Other",
+  "email": "parttime@example.com",
+  "phone": "0901234568",
+  "citizenId": "079200001234",
+  "address": null,
+  "employmentType": "PART_TIME"
 }
 
 ### Cập nhật hồ sơ

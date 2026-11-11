@@ -4,7 +4,7 @@ using Project.API.Services;
 using DotNetEnv;
 
 
-Env.Load("../.env");
+Env.NoClobber().TraversePath().Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -43,7 +43,6 @@ builder.Services.AddHttpClient<IHrEmployeeDirectoryClient, HrEmployeeDirectoryCl
 });
 
 var app = builder.Build();
-
 // Configure HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {

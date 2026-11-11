@@ -21,7 +21,8 @@ public sealed record OnboardingResultDto(
     Guid WorkHistoryId,
     DateOnly StartDate,
     Guid DepartmentId,
-    Guid PositionId);
+    Guid PositionId,
+    string EmploymentType);
 
 public sealed record CreateOffboardingChecklistItem(string Title, bool IsRequired);
 

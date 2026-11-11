@@ -2,8 +2,12 @@ using HR.Domain.Constants;
 
 namespace HR.Domain.Entities;
 
-public class Employee
+public abstract class Employee
 {
+    protected Employee(string employmentType) => EmploymentType = employmentType;
+
+    public string EmploymentType { get; private set; }
+
     // One identifier is used in HR and by other services.
     public Guid EmployeeId { get; set; } = Guid.NewGuid();
 
