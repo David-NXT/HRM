@@ -1,3 +1,4 @@
+
 using Microsoft.EntityFrameworkCore;
 using Project.API.Data;
 using Project.API.Entities;
@@ -13,16 +14,26 @@ public class HourlyRateService : IHourlyRateService
         _context = context;
     }
 
-    public async Task<IEnumerable<HourlyRate>> GetHourlyRatesAsync(Guid? projectMemberId = null)
+    // Lấy danh sách đơn giá giờ
+    public async Task<IEnumerable<HourlyRate>> GetHourlyRatesAsync(
+        Guid? projectMemberId = null)
     {
-        var query = _context.HourlyRates.AsNoTracking();
+        var query = _context.HourlyRates
+            .AsNoTracking();
 
         if (projectMemberId.HasValue)
-            query = query.Where(r => r.ProjectMemberId == projectMemberId.Value);
+        {
+            query = query.Where(r =>
+                r.ProjectMemberId == projectMemberId.Value);
+        }
 
-        return await query.ToListAsync();
+        return await query
+            .OrderBy(r => r.ProjectMemberId)
+            .ThenByDescending(r => r.EffectiveFrom)
+            .ToListAsync();
     }
 
+    // Lấy đơn giá giờ theo ID
     public async Task<HourlyRate?> GetHourlyRateAsync(Guid id)
     {
         return await _context.HourlyRates
@@ -30,8 +41,33 @@ public class HourlyRateService : IHourlyRateService
             .FirstOrDefaultAsync(r => r.HourlyRateId == id);
     }
 
-    public async Task<HourlyRate> CreateHourlyRateAsync(HourlyRate input)
+    // Tạo đơn giá giờ
+    public async Task<HourlyRate> CreateHourlyRateAsync(
+        HourlyRate input)
     {
+        ValidateHourlyRate(input);
+
+        var memberExists = await _context.ProjectMembers
+            .AnyAsync(m =>
+                m.ProjectMemberId == input.ProjectMemberId);
+
+        if (!memberExists)
+        {
+            throw new ArgumentException(
+                "Project member does not exist.");
+        }
+
+        var hasOverlap = await HasOverlappingRateAsync(
+            input.ProjectMemberId,
+            input.EffectiveFrom,
+            input.EffectiveTo);
+
+        if (hasOverlap)
+        {
+            throw new InvalidOperationException(
+                "Hourly rate period overlaps with an existing rate.");
+        }
+
         input.HourlyRateId = Guid.NewGuid();
 
         _context.HourlyRates.Add(input);
@@ -40,22 +76,64 @@ public class HourlyRateService : IHourlyRateService
         return input;
     }
 
-    public async Task<bool> UpdateHourlyRateAsync(Guid id, HourlyRate input)
+    // Cập nhật đơn giá giờ
+    
+public async Task<bool> UpdateHourlyRateAsync(
+    Guid id,
+    HourlyRate input)
+{
+    var rate = await _context.HourlyRates.FindAsync(id);
+
+    if (rate == null)
+        return false;
+
+    ValidateHourlyRate(input);
+
+    var memberExists = await _context.ProjectMembers
+        .AnyAsync(m =>
+            m.ProjectMemberId == input.ProjectMemberId);
+
+    if (!memberExists)
+        throw new ArgumentException(
+            "Project member does not exist.");
+
+    var isUsed = await _context.Timesheets
+        .AnyAsync(t =>
+            t.ProjectMemberId == rate.ProjectMemberId &&
+            t.WorkDate >= rate.EffectiveFrom &&
+            (rate.EffectiveTo == null ||
+             t.WorkDate <= rate.EffectiveTo.Value));
+
+    if (isUsed)
     {
-        var rate = await _context.HourlyRates.FindAsync(id);
-
-        if (rate == null)
-            return false;
-
-        rate.ProjectMemberId = input.ProjectMemberId;
-        rate.Rate = input.Rate;
-        rate.EffectiveFrom = input.EffectiveFrom;
-        rate.EffectiveTo = input.EffectiveTo;
-
-        await _context.SaveChangesAsync();
-        return true;
+        throw new InvalidOperationException(
+            "Cannot update an hourly rate that has been used by timesheets. Create a new hourly rate instead.");
     }
 
+    var hasOverlap = await HasOverlappingRateAsync(
+        input.ProjectMemberId,
+        input.EffectiveFrom,
+        input.EffectiveTo,
+        id);
+
+    if (hasOverlap)
+    {
+        throw new InvalidOperationException(
+            "Hourly rate period overlaps with an existing rate.");
+    }
+
+    rate.ProjectMemberId = input.ProjectMemberId;
+    rate.Rate = input.Rate;
+    rate.EffectiveFrom = input.EffectiveFrom;
+    rate.EffectiveTo = input.EffectiveTo;
+
+    await _context.SaveChangesAsync();
+
+    return true;
+}
+
+
+    // Xóa đơn giá giờ
     public async Task<bool> DeleteHourlyRateAsync(Guid id)
     {
         var rate = await _context.HourlyRates.FindAsync(id);
@@ -63,9 +141,69 @@ public class HourlyRateService : IHourlyRateService
         if (rate == null)
             return false;
 
+        var hasTimesheet = await _context.Timesheets
+            .AnyAsync(t =>
+                t.ProjectMemberId == rate.ProjectMemberId &&
+                t.WorkDate >= rate.EffectiveFrom &&
+                (rate.EffectiveTo == null ||
+                 t.WorkDate <= rate.EffectiveTo.Value));
+
+        if (hasTimesheet)
+        {
+            throw new InvalidOperationException(
+                "Cannot delete an hourly rate that applies to existing timesheets.");
+        }
+
         _context.HourlyRates.Remove(rate);
+
         await _context.SaveChangesAsync();
 
         return true;
+    }
+
+    // Kiểm tra dữ liệu đơn giá
+    private static void ValidateHourlyRate(HourlyRate input)
+    {
+        if (input.ProjectMemberId == Guid.Empty)
+        {
+            throw new ArgumentException(
+                "ProjectMemberId is required.");
+        }
+
+        if (input.Rate <= 0)
+        {
+            throw new ArgumentException(
+                "Hourly rate must be greater than 0.");
+        }
+
+        if (input.EffectiveTo.HasValue &&
+            input.EffectiveTo.Value < input.EffectiveFrom)
+        {
+            throw new ArgumentException(
+                "EffectiveTo must be greater than or equal to EffectiveFrom.");
+        }
+    }
+
+    // Kiểm tra khoảng thời gian hiệu lực có bị chồng lấn không
+    private async Task<bool> HasOverlappingRateAsync(
+        Guid projectMemberId,
+        DateTime effectiveFrom,
+        DateTime? effectiveTo,
+        Guid? excludeRateId = null)
+    {
+        var query = _context.HourlyRates
+            .Where(r => r.ProjectMemberId == projectMemberId);
+
+        if (excludeRateId.HasValue)
+        {
+            query = query.Where(r =>
+                r.HourlyRateId != excludeRateId.Value);
+        }
+
+        return await query.AnyAsync(r =>
+            (effectiveTo == null ||
+             r.EffectiveFrom <= effectiveTo.Value) &&
+            (r.EffectiveTo == null ||
+             r.EffectiveTo >= effectiveFrom));
     }
 }

@@ -6,7 +6,7 @@ public class ProjectRole
     public string RoleName { get; set; } = string.Empty;
 
     public string? Description { get; set; }
-
+public decimal RoleCoefficient { get; set; }
     public ICollection<ProjectMember> Members { get; set; }
         = new List<ProjectMember>();
 }

@@ -1,8 +1,6 @@
+
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Project.API.Data;
 using Project.API.DTOs;
-using Project.API.Entities;
 using Project.API.Services;
 
 namespace Project.API.Controllers;
@@ -11,158 +9,164 @@ namespace Project.API.Controllers;
 [Route("api/[controller]")]
 public class ProjectMembersController : ControllerBase
 {
-    private readonly ProjectManagementDbContext _context;
+    private readonly IProjectMemberService _memberService;
     private readonly IHrEmployeeDirectoryClient _employees;
 
-    public ProjectMembersController(ProjectManagementDbContext context, IHrEmployeeDirectoryClient employees)
+    public ProjectMembersController(
+        IProjectMemberService memberService,
+        IHrEmployeeDirectoryClient employees)
     {
-        _context = context;
+        _memberService = memberService;
         _employees = employees;
     }
 
+    // GET: api/ProjectMembers?projectId={projectId}
     [HttpGet]
-    public async Task<IActionResult> GetProjectMembers()
+    public async Task<IActionResult> GetProjectMembers(
+        [FromQuery] Guid? projectId = null)
     {
-        var members = await _context.ProjectMembers
-            .Select(m => new
-            {
-                m.ProjectMemberId,
-                m.ProjectId,
-                m.EmployeeId,
-                m.ProjectRoleId,
-                RoleName = m.ProjectRole.RoleName,
-                m.JoinDate,
-                m.LeaveDate,
-                m.Status
-            })
-            .ToListAsync();
+        var members = await _memberService.GetProjectMembersAsync(projectId);
 
-        return Ok(members);
+        var result = members.Select(m => new
+        {
+            m.ProjectMemberId,
+            m.ProjectId,
+            m.EmployeeId,
+            m.ProjectRoleId,
+            RoleName = m.ProjectRole.RoleName,
+            m.JoinDate,
+            m.LeaveDate,
+            m.Status
+        });
+
+        return Ok(result);
     }
 
+    // GET: api/ProjectMembers/{id}
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetProjectMember(Guid id)
     {
-        var member = await _context.ProjectMembers
-            .Where(m => m.ProjectMemberId == id)
-            .Select(m => new
-            {
-                m.ProjectMemberId,
-                m.ProjectId,
-                m.EmployeeId,
-                m.ProjectRoleId,
-                RoleName = m.ProjectRole.RoleName,
-                m.JoinDate,
-                m.LeaveDate,
-                m.Status
-            })
-            .FirstOrDefaultAsync();
+        var member = await _memberService.GetProjectMemberAsync(id);
 
         if (member == null)
             return NotFound();
 
-        return Ok(member);
+        return Ok(new
+        {
+            member.ProjectMemberId,
+            member.ProjectId,
+            member.EmployeeId,
+            member.ProjectRoleId,
+            RoleName = member.ProjectRole.RoleName,
+            member.JoinDate,
+            member.LeaveDate,
+            member.Status
+        });
     }
 
+    // POST: api/ProjectMembers
     [HttpPost]
     public async Task<IActionResult> CreateProjectMember(
-        CreateProjectMemberDto dto,
+        [FromBody] CreateProjectMemberDto dto,
         CancellationToken cancellationToken)
     {
         try
         {
-            if (await _employees.GetActiveEmployeeAsync(dto.EmployeeId, cancellationToken) is null)
-                return BadRequest("Employee does not exist or is not active in HR.");
+            var employee = await _employees.GetActiveEmployeeAsync(
+                dto.EmployeeId,
+                cancellationToken);
+
+            if (employee is null)
+                return BadRequest(
+                    "Employee does not exist or is not active in HR.");
+
+            var member = await _memberService.CreateProjectMemberAsync(dto);
+
+            return CreatedAtAction(
+                nameof(GetProjectMember),
+                new { id = member.ProjectMemberId },
+                new { member.ProjectMemberId });
         }
         catch (HttpRequestException)
         {
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, "HR employee directory is unavailable.");
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                "HR employee directory is unavailable.");
         }
-
-        var projectExists = await _context.Projects
-            .AnyAsync(p => p.ProjectId == dto.ProjectId);
-
-        if (!projectExists)
-            return BadRequest("Project does not exist.");
-
-        var roleExists = await _context.ProjectRoles
-            .AnyAsync(r => r.ProjectRoleId == dto.ProjectRoleId);
-
-        if (!roleExists)
-            return BadRequest("Project role does not exist.");
-
-        var member = new ProjectMember
+        catch (ArgumentException ex)
         {
-            ProjectMemberId = Guid.NewGuid(),
-            ProjectId = dto.ProjectId,
-            EmployeeId = dto.EmployeeId,
-            ProjectRoleId = dto.ProjectRoleId,
-            JoinDate = dto.JoinDate,
-            LeaveDate = dto.LeaveDate,
-            Status = dto.Status
-        };
-
-        _context.ProjectMembers.Add(member);
-        await _context.SaveChangesAsync();
-
-        return CreatedAtAction(
-            nameof(GetProjectMember),
-            new { id = member.ProjectMemberId },
-            member.ProjectMemberId);
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
     }
 
+    // PUT: api/ProjectMembers/{id}
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> UpdateProjectMember(
-        Guid id, CreateProjectMemberDto dto,
+        Guid id,
+        [FromBody] CreateProjectMemberDto dto,
         CancellationToken cancellationToken)
     {
         try
         {
-            if (await _employees.GetActiveEmployeeAsync(dto.EmployeeId, cancellationToken) is null)
-                return BadRequest("Employee does not exist or is not active in HR.");
+            var existing = await _memberService.GetProjectMemberAsync(id);
+
+            if (existing == null)
+                return NotFound();
+
+            if (existing.EmployeeId != dto.EmployeeId)
+            {
+                var employee = await _employees.GetActiveEmployeeAsync(
+                    dto.EmployeeId,
+                    cancellationToken);
+
+                if (employee is null)
+                    return BadRequest(
+                        "Employee does not exist or is not active in HR.");
+            }
+
+            var result = await _memberService.UpdateProjectMemberAsync(id, dto);
+
+            if (!result)
+                return NotFound();
+
+            return NoContent();
         }
         catch (HttpRequestException)
         {
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, "HR employee directory is unavailable.");
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                "HR employee directory is unavailable.");
         }
-
-        var member = await _context.ProjectMembers.FindAsync(id);
-
-        if (member == null)
-            return NotFound();
-
-        var projectExists = await _context.Projects
-            .AnyAsync(p => p.ProjectId == dto.ProjectId);
-
-        var roleExists = await _context.ProjectRoles
-            .AnyAsync(r => r.ProjectRoleId == dto.ProjectRoleId);
-
-        if (!projectExists || !roleExists)
-            return BadRequest("Project or project role does not exist.");
-
-        member.ProjectId = dto.ProjectId;
-        member.EmployeeId = dto.EmployeeId;
-        member.ProjectRoleId = dto.ProjectRoleId;
-        member.JoinDate = dto.JoinDate;
-        member.LeaveDate = dto.LeaveDate;
-        member.Status = dto.Status;
-
-        await _context.SaveChangesAsync();
-
-        return NoContent();
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
     }
 
+    // DELETE: api/ProjectMembers/{id}
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteProjectMember(Guid id)
     {
-        var member = await _context.ProjectMembers.FindAsync(id);
+        try
+        {
+            var result = await _memberService.DeleteProjectMemberAsync(id);
 
-        if (member == null)
-            return NotFound();
+            if (!result)
+                return NotFound();
 
-        _context.ProjectMembers.Remove(member);
-        await _context.SaveChangesAsync();
-
-        return NoContent();
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
     }
 }

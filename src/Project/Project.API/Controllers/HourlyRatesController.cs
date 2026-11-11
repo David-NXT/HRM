@@ -1,7 +1,7 @@
+
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Project.API.Data;
 using Project.API.Entities;
+using Project.API.Services;
 
 namespace Project.API.Controllers;
 
@@ -9,44 +9,30 @@ namespace Project.API.Controllers;
 [Route("api/[controller]")]
 public class HourlyRatesController : ControllerBase
 {
-    private readonly ProjectManagementDbContext _context;
+    private readonly IHourlyRateService _hourlyRateService;
 
-    public HourlyRatesController(ProjectManagementDbContext context)
+    public HourlyRatesController(
+        IHourlyRateService hourlyRateService)
     {
-        _context = context;
+        _hourlyRateService = hourlyRateService;
     }
 
+    // GET: api/HourlyRates?projectMemberId={guid}
     [HttpGet]
-    public async Task<IActionResult> GetHourlyRates()
+    public async Task<IActionResult> GetHourlyRates(
+        [FromQuery] Guid? projectMemberId = null)
     {
-        var rates = await _context.HourlyRates
-            .Select(r => new
-            {
-                r.HourlyRateId,
-                r.ProjectMemberId,
-                r.Rate,
-                r.EffectiveFrom,
-                r.EffectiveTo
-            })
-            .ToListAsync();
+        var rates = await _hourlyRateService.GetHourlyRatesAsync(
+            projectMemberId);
 
         return Ok(rates);
     }
 
+    // GET: api/HourlyRates/{id}
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetHourlyRate(Guid id)
     {
-        var rate = await _context.HourlyRates
-            .Where(r => r.HourlyRateId == id)
-            .Select(r => new
-            {
-                r.HourlyRateId,
-                r.ProjectMemberId,
-                r.Rate,
-                r.EffectiveFrom,
-                r.EffectiveTo
-            })
-            .FirstOrDefaultAsync();
+        var rate = await _hourlyRateService.GetHourlyRateAsync(id);
 
         if (rate == null)
             return NotFound();
@@ -54,83 +40,72 @@ public class HourlyRatesController : ControllerBase
         return Ok(rate);
     }
 
+    // POST: api/HourlyRates
     [HttpPost]
     public async Task<IActionResult> CreateHourlyRate(
         [FromBody] HourlyRate dto)
     {
-        var memberExists = await _context.ProjectMembers
-            .AnyAsync(m => m.ProjectMemberId == dto.ProjectMemberId);
-
-        if (!memberExists)
-            return BadRequest("Project member does not exist.");
-
-        if (dto.Rate < 0)
-            return BadRequest("Rate cannot be negative.");
-
-        var rate = new HourlyRate
+        try
         {
-            HourlyRateId = Guid.NewGuid(),
-            ProjectMemberId = dto.ProjectMemberId,
-            Rate = dto.Rate,
-            EffectiveFrom = dto.EffectiveFrom,
-            EffectiveTo = dto.EffectiveTo
-        };
+            var rate = await _hourlyRateService.CreateHourlyRateAsync(dto);
 
-        _context.HourlyRates.Add(rate);
-        await _context.SaveChangesAsync();
-
-        return CreatedAtAction(
-            nameof(GetHourlyRate),
-            new { id = rate.HourlyRateId },
-            new
-            {
-                rate.HourlyRateId,
-                rate.ProjectMemberId,
-                rate.Rate,
-                rate.EffectiveFrom,
-                rate.EffectiveTo
-            });
+            return CreatedAtAction(
+                nameof(GetHourlyRate),
+                new { id = rate.HourlyRateId },
+                rate);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
     }
 
+    // PUT: api/HourlyRates/{id}
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> UpdateHourlyRate(
-        Guid id, [FromBody] HourlyRate dto)
+        Guid id,
+        [FromBody] HourlyRate dto)
     {
-        var rate = await _context.HourlyRates.FindAsync(id);
+        try
+        {
+            var result = await _hourlyRateService.UpdateHourlyRateAsync(
+                id, dto);
 
-        if (rate == null)
-            return NotFound();
+            if (!result)
+                return NotFound();
 
-        var memberExists = await _context.ProjectMembers
-            .AnyAsync(m => m.ProjectMemberId == dto.ProjectMemberId);
-
-        if (!memberExists)
-            return BadRequest("Project member does not exist.");
-
-        if (dto.Rate < 0)
-            return BadRequest("Rate cannot be negative.");
-
-        rate.ProjectMemberId = dto.ProjectMemberId;
-        rate.Rate = dto.Rate;
-        rate.EffectiveFrom = dto.EffectiveFrom;
-        rate.EffectiveTo = dto.EffectiveTo;
-
-        await _context.SaveChangesAsync();
-
-        return NoContent();
+            return NoContent();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
     }
 
+    // DELETE: api/HourlyRates/{id}
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteHourlyRate(Guid id)
     {
-        var rate = await _context.HourlyRates.FindAsync(id);
+        try
+        {
+            var result = await _hourlyRateService.DeleteHourlyRateAsync(id);
 
-        if (rate == null)
-            return NotFound();
+            if (!result)
+                return NotFound();
 
-        _context.HourlyRates.Remove(rate);
-        await _context.SaveChangesAsync();
-
-        return NoContent();
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
     }
 }

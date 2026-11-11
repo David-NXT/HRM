@@ -26,8 +26,10 @@ public class PayrollDataController : ControllerBase
             [FromQuery] DateOnly? toDate)
     {
         if (!TryBuildPeriod(
-            fromDate, toDate,
-            out var fromUtc, out var toExclusiveUtc))
+            fromDate,
+            toDate,
+            out var fromUtc,
+            out var toExclusiveUtc))
         {
             return BadRequest(
                 "Please provide valid fromDate and toDate.");
@@ -37,7 +39,8 @@ public class PayrollDataController : ControllerBase
         {
             var result =
                 await _payrollDataService.GetApprovedPayrollDataAsync(
-                    fromUtc, toExclusiveUtc);
+                    fromUtc,
+                    toExclusiveUtc);
 
             return Ok(result);
         }
@@ -56,8 +59,10 @@ public class PayrollDataController : ControllerBase
             [FromQuery] DateOnly? toDate)
     {
         if (!TryBuildPeriod(
-            fromDate, toDate,
-            out var fromUtc, out var toExclusiveUtc))
+            fromDate,
+            toDate,
+            out var fromUtc,
+            out var toExclusiveUtc))
         {
             return BadRequest(
                 "Please provide valid fromDate and toDate.");
@@ -69,8 +74,8 @@ public class PayrollDataController : ControllerBase
                 await _payrollDataService.GetProjectAllowanceSummaryAsync(
                     fromUtc,
                     toExclusiveUtc,
-                    fromUtc,
-                    toExclusiveUtc.AddDays(-1));
+                    fromDate!.Value.ToDateTime(TimeOnly.MinValue),
+                    toDate!.Value.ToDateTime(TimeOnly.MinValue));
 
             return Ok(result);
         }
@@ -90,8 +95,10 @@ public class PayrollDataController : ControllerBase
             [FromQuery] DateOnly? toDate)
     {
         if (!TryBuildPeriod(
-            fromDate, toDate,
-            out var fromUtc, out var toExclusiveUtc))
+            fromDate,
+            toDate,
+            out var fromUtc,
+            out var toExclusiveUtc))
         {
             return BadRequest(
                 "Please provide valid fromDate and toDate.");
@@ -101,7 +108,9 @@ public class PayrollDataController : ControllerBase
         {
             var result =
                 await _payrollDataService.GetApprovedPayrollDataAsync(
-                    fromUtc, toExclusiveUtc, employeeId);
+                    fromUtc,
+                    toExclusiveUtc,
+                    employeeId);
 
             return Ok(result);
         }
@@ -121,8 +130,10 @@ public class PayrollDataController : ControllerBase
             [FromQuery] DateOnly? toDate)
     {
         if (!TryBuildPeriod(
-            fromDate, toDate,
-            out var fromUtc, out var toExclusiveUtc))
+            fromDate,
+            toDate,
+            out var fromUtc,
+            out var toExclusiveUtc))
         {
             return BadRequest(
                 "Please provide valid fromDate and toDate.");
@@ -134,8 +145,8 @@ public class PayrollDataController : ControllerBase
                 await _payrollDataService.GetProjectAllowanceSummaryAsync(
                     fromUtc,
                     toExclusiveUtc,
-                    fromUtc,
-                    toExclusiveUtc.AddDays(-1),
+                    fromDate!.Value.ToDateTime(TimeOnly.MinValue),
+                    toDate!.Value.ToDateTime(TimeOnly.MinValue),
                     employeeId);
 
             return Ok(result);
@@ -146,36 +157,37 @@ public class PayrollDataController : ControllerBase
         }
     }
 
+    // Chuyển đổi ngày Việt Nam (UTC+7) sang UTC
     private static bool TryBuildPeriod(
-    DateOnly? fromDate,
-    DateOnly? toDate,
-    out DateTime fromUtc,
-    out DateTime toExclusiveUtc)
-{
-    fromUtc = default;
-    toExclusiveUtc = default;
+        DateOnly? fromDate,
+        DateOnly? toDate,
+        out DateTime fromUtc,
+        out DateTime toExclusiveUtc)
+    {
+        fromUtc = default;
+        toExclusiveUtc = default;
 
-    if (!fromDate.HasValue || !toDate.HasValue)
-        return false;
+        if (!fromDate.HasValue || !toDate.HasValue)
+            return false;
 
-    if (fromDate.Value > toDate.Value)
-        return false;
+        if (fromDate.Value > toDate.Value)
+            return false;
 
-    // 00:00 giờ Việt Nam (UTC+7) = 17:00 UTC ngày hôm trước
-    fromUtc = DateTime.SpecifyKind(
-        fromDate.Value
-            .ToDateTime(TimeOnly.MinValue)
-            .AddHours(-7),
-        DateTimeKind.Utc);
+        // 00:00 giờ Việt Nam (UTC+7) = 17:00 UTC ngày hôm trước
+        fromUtc = DateTime.SpecifyKind(
+            fromDate.Value
+                .ToDateTime(TimeOnly.MinValue)
+                .AddHours(-7),
+            DateTimeKind.Utc);
 
-    // Mốc kết thúc độc quyền: 00:00 ngày tiếp theo theo giờ Việt Nam
-    toExclusiveUtc = DateTime.SpecifyKind(
-        toDate.Value
-            .AddDays(1)
-            .ToDateTime(TimeOnly.MinValue)
-            .AddHours(-7),
-        DateTimeKind.Utc);
+        // Mốc kết thúc độc quyền: 00:00 ngày tiếp theo theo giờ Việt Nam
+        toExclusiveUtc = DateTime.SpecifyKind(
+            toDate.Value
+                .AddDays(1)
+                .ToDateTime(TimeOnly.MinValue)
+                .AddHours(-7),
+            DateTimeKind.Utc);
 
-    return true;
-}
+        return true;
+    }
 }
