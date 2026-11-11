@@ -2,18 +2,21 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Payroll.Infrastructure.Persistence;
 
 #nullable disable
 
-namespace Payroll.Infrastructure.Persistence.Migrations
+namespace Payroll.Infrastructure.Migrations
 {
     [DbContext(typeof(PayrollDbContext))]
-    partial class PayrollDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261110202331_InitialPayrollGuid")]
+    partial class InitialPayrollGuid
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -24,14 +27,12 @@ namespace Payroll.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Payroll.Domain.Entities.Allowance", b =>
                 {
-                    b.Property<int>("AllowanceID")
+                    b.Property<Guid>("AllowanceID")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("uuid");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("AllowanceID"));
-
-                    b.Property<int>("PayrollID")
-                        .HasColumnType("integer");
+                    b.Property<Guid>("PayrollID")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -46,17 +47,15 @@ namespace Payroll.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Payroll.Domain.Entities.AllowanceDetail", b =>
                 {
-                    b.Property<int>("AllowanceDetailID")
+                    b.Property<Guid>("AllowanceDetailID")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("uuid");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("AllowanceDetailID"));
+                    b.Property<Guid>("AllowanceID")
+                        .HasColumnType("uuid");
 
-                    b.Property<int>("AllowanceID")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("AllowanceTypeID")
-                        .HasColumnType("integer");
+                    b.Property<Guid>("AllowanceTypeID")
+                        .HasColumnType("uuid");
 
                     b.Property<decimal>("Amount")
                         .HasPrecision(18, 2)
@@ -81,11 +80,9 @@ namespace Payroll.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Payroll.Domain.Entities.AllowanceType", b =>
                 {
-                    b.Property<int>("AllowanceTypeID")
+                    b.Property<Guid>("AllowanceTypeID")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("AllowanceTypeID"));
+                        .HasColumnType("uuid");
 
                     b.Property<string>("CalculationType")
                         .IsRequired()
@@ -114,14 +111,12 @@ namespace Payroll.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Payroll.Domain.Entities.PayCut", b =>
                 {
-                    b.Property<int>("PayCutID")
+                    b.Property<Guid>("PayCutID")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("uuid");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("PayCutID"));
-
-                    b.Property<int>("PayrollID")
-                        .HasColumnType("integer");
+                    b.Property<Guid>("PayrollID")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -136,11 +131,9 @@ namespace Payroll.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Payroll.Domain.Entities.PayCutDetail", b =>
                 {
-                    b.Property<int>("PayCutDetailID")
+                    b.Property<Guid>("PayCutDetailID")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("PayCutDetailID"));
+                        .HasColumnType("uuid");
 
                     b.Property<decimal>("Amount")
                         .HasPrecision(18, 2)
@@ -153,11 +146,11 @@ namespace Payroll.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int>("PayCutID")
-                        .HasColumnType("integer");
+                    b.Property<Guid>("PayCutID")
+                        .HasColumnType("uuid");
 
-                    b.Property<int>("PayCutReasonID")
-                        .HasColumnType("integer");
+                    b.Property<Guid>("PayCutReasonID")
+                        .HasColumnType("uuid");
 
                     b.Property<decimal>("RateApplied")
                         .HasPrecision(18, 4)
@@ -174,11 +167,9 @@ namespace Payroll.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Payroll.Domain.Entities.PayCutReason", b =>
                 {
-                    b.Property<int>("PayCutReasonID")
+                    b.Property<Guid>("PayCutReasonID")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("PayCutReasonID"));
+                        .HasColumnType("uuid");
 
                     b.Property<string>("CalculationType")
                         .IsRequired()
@@ -203,11 +194,9 @@ namespace Payroll.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Payroll.Domain.Entities.Payroll", b =>
                 {
-                    b.Property<int>("PayrollID")
+                    b.Property<Guid>("PayrollID")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("PayrollID"));
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime?>("ApprovedAt")
                         .HasColumnType("timestamp with time zone");
@@ -219,8 +208,8 @@ namespace Payroll.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("CalculatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("EmployeeID")
-                        .HasColumnType("integer");
+                    b.Property<Guid>("EmployeeID")
+                        .HasColumnType("uuid");
 
                     b.Property<decimal>("GrossSalary")
                         .HasPrecision(18, 2)
@@ -233,8 +222,8 @@ namespace Payroll.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("PaidAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("PayrollPeriodID")
-                        .HasColumnType("integer");
+                    b.Property<Guid>("PayrollPeriodID")
+                        .HasColumnType("uuid");
 
                     b.Property<decimal>("StandardWorkingDay")
                         .HasPrecision(5, 2)
@@ -266,11 +255,9 @@ namespace Payroll.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Payroll.Domain.Entities.PayrollPeriod", b =>
                 {
-                    b.Property<int>("PayrollPeriodID")
+                    b.Property<Guid>("PayrollPeriodID")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("PayrollPeriodID"));
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
