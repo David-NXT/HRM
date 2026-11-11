@@ -3,7 +3,6 @@
 **/obj/
 
 # Visual Studio
-.vs/
 *.suo
 *.user
 *.userosscache

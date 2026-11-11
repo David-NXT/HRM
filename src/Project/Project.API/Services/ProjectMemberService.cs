@@ -9,10 +9,12 @@ namespace Project.API.Services;
 public class ProjectMemberService : IProjectMemberService
 {
     private readonly ProjectManagementDbContext _context;
+    private readonly IHrEmployeeDirectoryClient _employees;
 
-    public ProjectMemberService(ProjectManagementDbContext context)
+    public ProjectMemberService(ProjectManagementDbContext context, IHrEmployeeDirectoryClient employees)
     {
         _context = context;
+        _employees = employees;
     }
 
     public async Task<IEnumerable<ProjectMember>> GetProjectMembersAsync(

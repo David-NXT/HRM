@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Payroll.Application.DTOs.PayrollCalculation;
 using Payroll.Application.Interfaces;
 using PayrollEntity = global::Payroll.Domain.Entities.Payroll;
@@ -19,7 +19,7 @@ public class PayrollCalculationService
     }
 
     public async Task<CalculatePayrollResponse> CalculateAsync(
-        int payrollID,
+        Guid payrollID,
         CancellationToken cancellationToken = default)
     {
         // 1. Find payroll and load its allowances and pay cuts

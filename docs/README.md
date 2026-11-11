@@ -1,3 +1,11 @@
+# Tài liệu HR
+
+- [Nhân viên full-time/part-time](HR_part_time.md): kế thừa, migration TPH, thao tác và hợp đồng API.
+- [Chạy HR lần đầu bằng .env](../src/HR/README.md): tự tạo database và áp dụng migration khi khởi động.
+- [Hướng dẫn hiểu và kiểm soát HR Service](HR_service_guide.md): folder/file, nghiệp vụ HR01–HR06 và giải thích code cốt lõi.
+- [Theo dõi tiến độ và phần cần cải thiện](HR_work_tracker.md).
+- [Sequence diagrams và baseline nghiệp vụ](HR_Sequence_Diagrams_improvement.md).
+
 # PACKAGES
 
 1. dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL

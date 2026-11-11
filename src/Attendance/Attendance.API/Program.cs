@@ -78,7 +78,12 @@ var hrBaseUrl = builder.Configuration["Services:HR:BaseUrl"] ?? "http://localhos
 builder.Services.AddHttpClient<IHrEmployeeDirectoryClient, HrEmployeeDirectoryClient>(client =>
 {
     client.BaseAddress = new Uri(hrBaseUrl);
-    client.DefaultRequestHeaders.Add("X-Role", "HR");
+    client.Timeout = TimeSpan.FromSeconds(10);
+    var directoryKey = builder.Configuration["Services:HR:ApiKey"];
+    if (!string.IsNullOrWhiteSpace(directoryKey))
+        client.DefaultRequestHeaders.Add("X-HR-Directory-Key", directoryKey);
+    else
+        client.DefaultRequestHeaders.Add("X-Role", "HR");
 });
 
 var app = builder.Build();
