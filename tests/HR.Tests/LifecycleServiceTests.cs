@@ -14,6 +14,21 @@ public sealed class LifecycleServiceTests
     private static readonly DateOnly Today = new(2026, 11, 10);
 
     [Fact]
+    public async Task Onboarding_PartTimeCreatesSubtypeAndWorkHistoryInTheSameTransaction()
+    {
+        var store = new FakeHrStore();
+        var request = Onboarding();
+        request = request with { Employee = request.Employee with { EmploymentType = EmploymentTypes.PartTime } };
+        var result = await Service(store).StartOnboardingAsync(request, CancellationToken.None);
+
+        var employee = Assert.IsType<PartTimeEmployee>(Assert.Single(store.Employees));
+        Assert.Equal(EmploymentTypes.PartTime, result.EmploymentType);
+        Assert.Equal(employee.EmployeeId, result.EmployeeId);
+        Assert.Equal(employee.EmployeeId, Assert.Single(store.History).EmployeeId);
+        Assert.Equal(1, store.TransactionSaves);
+    }
+
+    [Fact]
     public async Task Onboarding_CreatesNormalizedActiveEmployeeAndFirstAssignmentTogether()
     {
         var store = new FakeHrStore();
@@ -279,7 +294,7 @@ public sealed class LifecycleServiceTests
     private static StartOffboardingRequest StartOffboarding() =>
         new(Id(1), Today, "Nghỉ việc", [new("Hạng mục do HR nhập", true)]);
 
-    private static Employee Employee() => new()
+    private static Employee Employee() => new FullTimeEmployee()
     {
         EmployeeId = Id(1), EmployeeCode = "NV001", FullName = "Nguyễn Văn A", DateOfBirth = new(1998, 5, 12),
         Status = EmployeeStatuses.Active, DepartmentId = Id(1), PositionId = Id(1)

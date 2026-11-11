@@ -1,4 +1,5 @@
 using HR.Domain.Entities;
+using HR.Domain.Constants;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -8,7 +9,13 @@ public sealed class EmployeeConfiguration : IEntityTypeConfiguration<Employee>
 {
     public void Configure(EntityTypeBuilder<Employee> builder)
     {
-        builder.ToTable("employee");
+        builder.ToTable("employee", table => table.HasCheckConstraint(
+            "CK_employee_employment_type", "employment_type IN ('FULL_TIME', 'PART_TIME')"));
+        builder.Property(employee => employee.EmploymentType).HasColumnName("employment_type")
+            .HasMaxLength(20).HasDefaultValue(EmploymentTypes.FullTime).IsRequired();
+        builder.HasDiscriminator(employee => employee.EmploymentType)
+            .HasValue<FullTimeEmployee>(EmploymentTypes.FullTime)
+            .HasValue<PartTimeEmployee>(EmploymentTypes.PartTime);
         builder.HasKey(employee => employee.EmployeeId);
         builder.Property(employee => employee.EmployeeId).HasColumnName("employee_id").HasDefaultValueSql("gen_random_uuid()").ValueGeneratedOnAdd();
         builder.Property(employee => employee.EmployeeCode).HasColumnName("employee_code").HasMaxLength(20).IsRequired();

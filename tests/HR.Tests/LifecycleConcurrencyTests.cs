@@ -10,10 +10,23 @@ namespace HR.Tests;
 public sealed class LifecycleConcurrencyTests
 {
     [Fact]
+    public async Task SaveChanges_PartTimeUsesTheInheritedConcurrencyVersion()
+    {
+        await using var db = Context();
+        var employee = new PartTimeEmployee { EmployeeId = Id(31), Version = 7 };
+        db.Attach(employee);
+        employee.Status = EmployeeStatuses.Resigned;
+        await db.SaveChangesAsync();
+
+        Assert.Equal(8, employee.Version);
+        Assert.Equal(EmploymentTypes.PartTime, employee.EmploymentType);
+    }
+
+    [Fact]
     public async Task SaveChanges_EmployeeVersionAdvancesForResignation()
     {
         await using var db = Context();
-        var employee = new Employee { EmployeeId = Id(1), Version = 4 };
+        var employee = new FullTimeEmployee { EmployeeId = Id(1), Version = 4 };
         db.Attach(employee);
         employee.Status = EmployeeStatuses.Resigned;
 

@@ -180,7 +180,7 @@ public sealed class ContractAlertServiceTests
     {
         ContractId = Id(seed), EmployeeId = Id(1), ContractNumber = "HD" + seed, ContractType = "Fixed term",
         StartDate = Today.AddYears(-1), EndDate = Today.AddDays(days), Status = ContractStatuses.Active,
-        Employee = new Employee { EmployeeId = Id(1), EmployeeCode = "NV001", FullName = "Nguyễn Văn A", Status = EmployeeStatuses.Active }
+        Employee = new FullTimeEmployee { EmployeeId = Id(1), EmployeeCode = "NV001", FullName = "Nguyễn Văn A", Status = EmployeeStatuses.Active }
     };
 
     private static FakeRepository WithAlert()

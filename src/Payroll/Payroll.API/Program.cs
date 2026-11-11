@@ -31,10 +31,8 @@ static string FindEnvFile()
             directory = directory.Parent;
         }
     }
-
     throw new FileNotFoundException("Cannot find .env in the current directory or its parent directories.");
 }
-
 var envPath = FindEnvFile();
 
 Env.Load(envPath);
@@ -66,11 +64,8 @@ if (app.Environment.IsDevelopment())
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<PayrollDbContext>();
+
+
+
     await PayrollDataSeeder.SeedAsync(context);
 }
-
-app.UseHttpsRedirection();
-
-app.MapControllers();
-
-app.Run();

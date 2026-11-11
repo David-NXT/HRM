@@ -16,7 +16,7 @@ public sealed class HrProjectContractTests
     public async Task HrPayload_IsReadByRealProjectClientWithGuidAndOrganization()
     {
         var guid = Guid.NewGuid();
-        var payload = new HR.Application.DTOs.Employees.EmployeeDirectoryEntry(guid, "NV001", "Nguyễn Văn A", "ACTIVE", "Nhân sự", "Chuyên viên");
+        var payload = new HR.Application.DTOs.Employees.EmployeeDirectoryEntry(guid, "NV001", "Nguyễn Văn A", "ACTIVE", "Nhân sự", "Chuyên viên", "PART_TIME");
         var client = Client(_ => Task.FromResult(JsonResponse(JsonSerializer.Serialize(payload, new JsonSerializerOptions(JsonSerializerDefaults.Web)))));
         var employee = await client.GetActiveEmployeeAsync(guid, CancellationToken.None);
 

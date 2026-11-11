@@ -24,7 +24,7 @@ public sealed class ResignedAssignmentTests
     private sealed class ResignedEmployeeRepository : IEmploymentRepository
     {
         public Task<Employee?> GetEmployeeAsync(Guid id, CancellationToken ct) =>
-            Task.FromResult<Employee?>(new Employee { EmployeeId = id, Status = EmployeeStatuses.Resigned });
+            Task.FromResult<Employee?>(new FullTimeEmployee { EmployeeId = id, Status = EmployeeStatuses.Resigned });
         public Task<EmploymentContract?> GetContractAsync(Guid id, CancellationToken ct) => throw new NotSupportedException();
         public Task<IReadOnlyList<EmploymentContract>> GetContractsAsync(Guid id, CancellationToken ct) => throw new NotSupportedException();
         public Task<IReadOnlyList<WorkHistory>> GetWorkHistoryAsync(Guid id, CancellationToken ct) => throw new NotSupportedException();

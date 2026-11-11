@@ -92,21 +92,24 @@ public sealed class EmployeeService : IEmployeeService
             requireCode: true);
 
         var now = DateTime.UtcNow;
-        return new Employee
+        Employee employee = (request.EmploymentType ?? string.Empty).Trim().ToUpperInvariant() switch
         {
-            EmployeeCode = profile.EmployeeCode,
-            FullName = profile.FullName,
-            DateOfBirth = profile.DateOfBirth,
-            Gender = profile.Gender,
-            Email = profile.Email,
-            Phone = profile.Phone,
-            CitizenId = profile.CitizenId,
-            Address = profile.Address,
-            Status = EmployeeStatuses.Active,
-            CreatedAt = now,
-            UpdatedAt = now
+            EmploymentTypes.FullTime => new FullTimeEmployee(),
+            EmploymentTypes.PartTime => new PartTimeEmployee(),
+            _ => throw new HrException(400, "InvalidEmploymentType", "Loại nhân viên phải là FULL_TIME hoặc PART_TIME.")
         };
-
+        employee.EmployeeCode = profile.EmployeeCode;
+        employee.FullName = profile.FullName;
+        employee.DateOfBirth = profile.DateOfBirth;
+        employee.Gender = profile.Gender;
+        employee.Email = profile.Email;
+        employee.Phone = profile.Phone;
+        employee.CitizenId = profile.CitizenId;
+        employee.Address = profile.Address;
+        employee.Status = EmployeeStatuses.Active;
+        employee.CreatedAt = now;
+        employee.UpdatedAt = now;
+        return employee;
     }
 
     public async Task<EmployeeDto> UpdateAsync(Guid id, UpdateEmployeeRequest request, CancellationToken cancellationToken)
@@ -261,11 +264,12 @@ public sealed class EmployeeService : IEmployeeService
             employee.DepartmentId,
             employee.PositionId,
             employee.Department?.Name,
-            employee.Position?.Name);
+            employee.Position?.Name,
+            employee.EmploymentType);
 
     private static EmployeeDirectoryEntry ToDirectoryEntry(Employee employee) =>
         new(employee.EmployeeId, employee.EmployeeCode, employee.FullName, employee.Status,
-            employee.Department?.Name, employee.Position?.Name);
+            employee.Department?.Name, employee.Position?.Name, employee.EmploymentType);
 
     private static void ValidatePage(int page, int pageSize)
     {

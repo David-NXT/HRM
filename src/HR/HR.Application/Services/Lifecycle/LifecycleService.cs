@@ -74,7 +74,7 @@ public sealed class LifecycleService(
         await lifecycle.SaveChangesInTransactionAsync(cancellationToken);
         return new OnboardingResultDto(employee.EmployeeId, employee.EmployeeCode,
             employee.Status, firstAssignment.WorkHistoryId, firstAssignment.StartDate,
-            firstAssignment.DepartmentId, firstAssignment.PositionId);
+            firstAssignment.DepartmentId, firstAssignment.PositionId, employee.EmploymentType);
     }
 
     public async Task<OffboardingDto> StartOffboardingAsync(StartOffboardingRequest request, CancellationToken cancellationToken)
