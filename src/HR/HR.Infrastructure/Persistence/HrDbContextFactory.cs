@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using DotNetEnv;
 using Microsoft.Extensions.Configuration;
 
 namespace HR.Infrastructure.Persistence;
@@ -8,6 +9,9 @@ public sealed class HrDbContextFactory : IDesignTimeDbContextFactory<HrDbContext
 {
     public HrDbContext CreateDbContext(string[] args)
     {
+        // EF tooling must read the same local connection settings as the API host.
+        Env.NoClobber().TraversePath().Load();
+
         var configuration = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", optional: false)

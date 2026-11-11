@@ -1,7 +1,11 @@
 ﻿using HR.API.Auth;
 using HR.API.Middleware;
+using DotNetEnv;
 using HR.Application;
 using HR.Infrastructure;
+
+// Find the nearest .env in this directory or its parents; explicit environment settings win.
+Env.NoClobber().TraversePath().Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
