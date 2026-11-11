@@ -1,7 +1,7 @@
+
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Project.API.Data;
 using Project.API.DTOs;
+using Project.API.Services;
 
 namespace Project.API.Controllers;
 
@@ -9,128 +9,173 @@ namespace Project.API.Controllers;
 [Route("api/[controller]")]
 public class PayrollDataController : ControllerBase
 {
-    private readonly ProjectManagementDbContext _context;
+    private readonly IPayrollDataService _payrollDataService;
 
-    public PayrollDataController(ProjectManagementDbContext context)
+    public PayrollDataController(
+        IPayrollDataService payrollDataService)
     {
-        _context = context;
+        _payrollDataService = payrollDataService;
     }
 
-    // Lấy toàn bộ dữ liệu timesheet đã duyệt
+    // GET: api/PayrollData?fromDate=2026-11-01&toDate=2026-11-30
+    // Lấy chi tiết các Timesheet đã duyệt
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<PayrollDataDto>>> GetPayrollData(
-        [FromQuery] DateTime? fromDate,
-        [FromQuery] DateTime? toDate)
+    public async Task<ActionResult<IEnumerable<PayrollDataDto>>>
+        GetPayrollData(
+            [FromQuery] DateOnly? fromDate,
+            [FromQuery] DateOnly? toDate)
     {
-        var query = _context.Timesheets
-            .AsNoTracking()
-            .Include(t => t.ProjectMember)
-            .Where(t => t.Status == "Approved");
-
-        if (fromDate.HasValue)
+        if (!TryBuildPeriod(
+            fromDate, toDate,
+            out var fromUtc, out var toExclusiveUtc))
         {
-            query = query.Where(t => t.WorkDate >= fromDate.Value);
+            return BadRequest(
+                "Please provide valid fromDate and toDate.");
         }
 
-        if (toDate.HasValue)
+        try
         {
-            query = query.Where(t => t.WorkDate <= toDate.Value);
+            var result =
+                await _payrollDataService.GetApprovedPayrollDataAsync(
+                    fromUtc, toExclusiveUtc);
+
+            return Ok(result);
         }
-
-        var timesheets = await query.ToListAsync();
-
-        var result = new List<PayrollDataDto>();
-
-        foreach (var timesheet in timesheets)
+        catch (InvalidOperationException ex)
         {
-            var hourlyRate = await _context.HourlyRates
-                .Where(r =>
-                    r.ProjectMemberId == timesheet.ProjectMemberId &&
-                    r.EffectiveFrom <= timesheet.WorkDate &&
-                    (r.EffectiveTo == null ||
-                     r.EffectiveTo >= timesheet.WorkDate))
-                .OrderByDescending(r => r.EffectiveFrom)
-                .Select(r => (decimal?)r.Rate)
-                .FirstOrDefaultAsync();
-
-            // Không có mức lương áp dụng thì bỏ qua bản ghi
-            if (!hourlyRate.HasValue)
-            {
-                continue;
-            }
-
-            result.Add(new PayrollDataDto
-            {
-                TimesheetId = timesheet.TimesheetId,
-                EmployeeId = timesheet.ProjectMember.EmployeeId,
-                ProjectId = timesheet.ProjectMember.ProjectId,
-                TaskId = timesheet.TaskId,
-                WorkDate = timesheet.WorkDate,
-                HoursWorked = timesheet.HoursWorked,
-                HourlyRate = hourlyRate.Value
-            });
+            return Conflict(new { message = ex.Message });
         }
-
-        return Ok(result);
     }
 
-    // Lấy dữ liệu tính lương theo nhân viên
+    // GET: api/PayrollData/summary?fromDate=2026-11-01&toDate=2026-11-30
+    // Tổng hợp phụ cấp theo nhân viên và dự án
+    [HttpGet("summary")]
+    public async Task<ActionResult<IEnumerable<PayrollProjectSummaryDto>>>
+        GetPayrollSummary(
+            [FromQuery] DateOnly? fromDate,
+            [FromQuery] DateOnly? toDate)
+    {
+        if (!TryBuildPeriod(
+            fromDate, toDate,
+            out var fromUtc, out var toExclusiveUtc))
+        {
+            return BadRequest(
+                "Please provide valid fromDate and toDate.");
+        }
+
+        try
+        {
+            var result =
+                await _payrollDataService.GetProjectAllowanceSummaryAsync(
+                    fromUtc,
+                    toExclusiveUtc,
+                    fromUtc,
+                    toExclusiveUtc.AddDays(-1));
+
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+    }
+
+    // GET: api/PayrollData/employee/{employeeId}?fromDate=...&toDate=...
+    // Lấy dữ liệu chi tiết theo nhân viên
     [HttpGet("employee/{employeeId:guid}")]
-    public async Task<ActionResult<IEnumerable<PayrollDataDto>>> GetPayrollDataByEmployee(
-        Guid employeeId,
-        [FromQuery] DateTime? fromDate,
-        [FromQuery] DateTime? toDate)
+    public async Task<ActionResult<IEnumerable<PayrollDataDto>>>
+        GetPayrollDataByEmployee(
+            Guid employeeId,
+            [FromQuery] DateOnly? fromDate,
+            [FromQuery] DateOnly? toDate)
     {
-        var query = _context.Timesheets
-            .AsNoTracking()
-            .Include(t => t.ProjectMember)
-            .Where(t =>
-                t.Status == "Approved" &&
-                t.ProjectMember.EmployeeId == employeeId);
-
-        if (fromDate.HasValue)
+        if (!TryBuildPeriod(
+            fromDate, toDate,
+            out var fromUtc, out var toExclusiveUtc))
         {
-            query = query.Where(t => t.WorkDate >= fromDate.Value);
+            return BadRequest(
+                "Please provide valid fromDate and toDate.");
         }
 
-        if (toDate.HasValue)
+        try
         {
-            query = query.Where(t => t.WorkDate <= toDate.Value);
+            var result =
+                await _payrollDataService.GetApprovedPayrollDataAsync(
+                    fromUtc, toExclusiveUtc, employeeId);
+
+            return Ok(result);
         }
-
-        var timesheets = await query.ToListAsync();
-
-        var result = new List<PayrollDataDto>();
-
-        foreach (var timesheet in timesheets)
+        catch (InvalidOperationException ex)
         {
-            var hourlyRate = await _context.HourlyRates
-                .Where(r =>
-                    r.ProjectMemberId == timesheet.ProjectMemberId &&
-                    r.EffectiveFrom <= timesheet.WorkDate &&
-                    (r.EffectiveTo == null ||
-                     r.EffectiveTo >= timesheet.WorkDate))
-                .OrderByDescending(r => r.EffectiveFrom)
-                .Select(r => (decimal?)r.Rate)
-                .FirstOrDefaultAsync();
-
-            if (!hourlyRate.HasValue)
-            {
-                continue;
-            }
-
-            result.Add(new PayrollDataDto
-            {
-                TimesheetId = timesheet.TimesheetId,
-                EmployeeId = timesheet.ProjectMember.EmployeeId,
-                ProjectId = timesheet.ProjectMember.ProjectId,
-                TaskId = timesheet.TaskId,
-                WorkDate = timesheet.WorkDate,
-                HoursWorked = timesheet.HoursWorked,
-                HourlyRate = hourlyRate.Value
-            });
+            return Conflict(new { message = ex.Message });
         }
-
-        return Ok(result);
     }
+
+    // GET: api/PayrollData/employee/{employeeId}/summary?fromDate=...&toDate=...
+    // Tổng hợp phụ cấp theo nhân viên
+    [HttpGet("employee/{employeeId:guid}/summary")]
+    public async Task<ActionResult<IEnumerable<PayrollProjectSummaryDto>>>
+        GetPayrollSummaryByEmployee(
+            Guid employeeId,
+            [FromQuery] DateOnly? fromDate,
+            [FromQuery] DateOnly? toDate)
+    {
+        if (!TryBuildPeriod(
+            fromDate, toDate,
+            out var fromUtc, out var toExclusiveUtc))
+        {
+            return BadRequest(
+                "Please provide valid fromDate and toDate.");
+        }
+
+        try
+        {
+            var result =
+                await _payrollDataService.GetProjectAllowanceSummaryAsync(
+                    fromUtc,
+                    toExclusiveUtc,
+                    fromUtc,
+                    toExclusiveUtc.AddDays(-1),
+                    employeeId);
+
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+    }
+
+    private static bool TryBuildPeriod(
+    DateOnly? fromDate,
+    DateOnly? toDate,
+    out DateTime fromUtc,
+    out DateTime toExclusiveUtc)
+{
+    fromUtc = default;
+    toExclusiveUtc = default;
+
+    if (!fromDate.HasValue || !toDate.HasValue)
+        return false;
+
+    if (fromDate.Value > toDate.Value)
+        return false;
+
+    // 00:00 giờ Việt Nam (UTC+7) = 17:00 UTC ngày hôm trước
+    fromUtc = DateTime.SpecifyKind(
+        fromDate.Value
+            .ToDateTime(TimeOnly.MinValue)
+            .AddHours(-7),
+        DateTimeKind.Utc);
+
+    // Mốc kết thúc độc quyền: 00:00 ngày tiếp theo theo giờ Việt Nam
+    toExclusiveUtc = DateTime.SpecifyKind(
+        toDate.Value
+            .AddDays(1)
+            .ToDateTime(TimeOnly.MinValue)
+            .AddHours(-7),
+        DateTimeKind.Utc);
+
+    return true;
+}
 }
