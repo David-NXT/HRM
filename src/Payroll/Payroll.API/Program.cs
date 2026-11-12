@@ -69,3 +69,9 @@ using (var scope = app.Services.CreateScope())
 
     await PayrollDataSeeder.SeedAsync(context);
 }
+
+app.UseHttpsRedirection();
+
+app.MapControllers();
+
+app.Run();
