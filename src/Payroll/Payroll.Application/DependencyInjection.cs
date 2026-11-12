@@ -4,6 +4,11 @@ using Payroll.Application.Services.PayrollManagement;
 using Payroll.Application.Services.PayrollAdjustment;
 using Payroll.Application.Services.PayrollCalculation;
 using Payroll.Application.Services.PayrollAttendance;
+using Payroll.Application.Services.PayrollQuery;
+using Payroll.Application.Services.PayrollApproval;
+using Payroll.Application.Services.PayrollPayment;
+using Payroll.Application.Services.PayrollPeriodManagement;
+using Payroll.Application.Services.Payslip;
 
 namespace Payroll.Application;
 
@@ -21,6 +26,16 @@ public static class DependencyInjection
         services.AddScoped<PayrollCalculationService>();
 
         services.AddScoped<PayrollAttendanceService>();
+
+        services.AddScoped<PayrollQueryService>();
+
+        services.AddScoped<PayrollApprovalService>();
+
+        services.AddScoped<PayrollPaymentService>();
+
+        services.AddScoped<PayrollPeriodManagementService>();
+
+        services.AddScoped<PayslipService>();
 
         return services;
     }
