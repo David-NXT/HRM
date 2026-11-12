@@ -6,6 +6,7 @@ using Payroll.Application.Services.PayrollCalculation;
 using Payroll.Application.Services.PayrollAttendance;
 using Payroll.Application.Services.PayrollQuery;
 using Payroll.Application.Services.PayrollApproval;
+using Payroll.Application.Services.PayrollPayment;
 
 namespace Payroll.Application;
 
@@ -27,6 +28,8 @@ public static class DependencyInjection
         services.AddScoped<PayrollQueryService>();
 
         services.AddScoped<PayrollApprovalService>();
+
+        services.AddScoped<PayrollPaymentService>();
 
         return services;
     }
