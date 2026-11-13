@@ -20,9 +20,9 @@ public sealed class EmployeeManagementControl : HrPageControl
         Toolbar.Controls.Add(_search);
         _grid.Columns.Insert(3, new DataGridViewTextBoxColumn
         {
-            HeaderText = "Lương cơ bản",
-            DataPropertyName = "BaseSalaryLabel",
-            Name = "BaseSalaryLabel",
+            HeaderText = "Lương",
+            DataPropertyName = "SalaryLabel",
+            Name = "SalaryLabel",
             MinimumWidth = 120,
             SortMode = DataGridViewColumnSortMode.NotSortable
         });
@@ -80,7 +80,8 @@ public sealed class EmployeeManagementControl : HrPageControl
 
         if (creating)
         {
-            form.AmountField("salary", "Lương cơ bản (VND/tháng)");
+            form.AmountField("baseSalary", "Lương cơ bản full-time (VND/tháng)")
+                .AmountField("partTimeSalary", "Lương part-time (VND)");
             var departments = await Api.GetAsync<List<DepartmentRow>>("departments", Token);
             var positions = await Api.GetAsync<List<PositionRow>>("positions", Token);
             Token.ThrowIfCancellationRequested();
@@ -101,7 +102,9 @@ public sealed class EmployeeManagementControl : HrPageControl
             {
                 var request = new CreateEmployee(f.TextValue("code"), personal.FullName, personal.DateOfBirth,
                     personal.Gender, personal.Email, personal.Phone, personal.CitizenId, personal.Address,
-                    (string)f.ChoiceValue("type")!, f.AmountValue("salary"));
+                    (string)f.ChoiceValue("type")!,
+                    Equals(f.ChoiceValue("type"), "FULL_TIME") ? f.AmountValue("baseSalary") : null,
+                    Equals(f.ChoiceValue("type"), "PART_TIME") ? f.AmountValue("partTimeSalary") : null);
                 await Api.SendAsync<OnboardingResult>(HttpMethod.Post, "onboarding",
                     new OnboardEmployee(request, f.DateValue("start"), f.GuidValue("department"), f.GuidValue("position"), f.OptionalText("notes")), token);
             }
@@ -123,10 +126,13 @@ public sealed class EmployeeManagementControl : HrPageControl
     {
         var employee = await Api.GetAsync<EmployeeRow>($"employees/{Selected<EmployeeRow>(_grid).EmployeeId}", Token);
         Token.ThrowIfCancellationRequested();
-        using var form = new HrEditorForm($"Lương cơ bản · {employee.DisplayName}");
-        form.AmountField("salary", "Lương cơ bản (VND/tháng)", employee.BaseSalary)
+        var isPartTime = employee.EmploymentType == "PART_TIME";
+        using var form = new HrEditorForm($"Cập nhật lương · {employee.DisplayName}");
+        form.AmountField("salary", isPartTime ? "Lương part-time (VND)" : "Lương cơ bản full-time (VND/tháng)",
+                isPartTime ? employee.PartTimeSalary.GetValueOrDefault() : employee.BaseSalary.GetValueOrDefault())
             .OnSave(async (f, token) => await Api.SendAsync<EmployeeRow>(HttpMethod.Put,
-                $"employees/{employee.EmployeeId}/salary", new SalaryInput(f.AmountValue("salary")), token));
+                $"employees/{employee.EmployeeId}/salary",
+                new SalaryInput(isPartTime ? null : f.AmountValue("salary"), isPartTime ? f.AmountValue("salary") : null), token));
         if (form.ShowDialog(this) == DialogResult.OK) await ReloadAsync();
     }
 
@@ -137,6 +143,9 @@ public sealed class EmployeeManagementControl : HrPageControl
         using var form = new HrEditorForm(employee.DisplayName);
         form.TextField("profile", "Thông tin hồ sơ", string.Join(Environment.NewLine,
             $"GUID: {employee.EmployeeId}", $"Loại: {employee.EmploymentTypeLabel}",
+            employee.EmploymentType == "PART_TIME"
+                ? $"Lương part-time: {employee.PartTimeSalary.GetValueOrDefault():N2} ₫"
+                : $"Lương cơ bản: {employee.BaseSalary.GetValueOrDefault():N2} ₫",
             $"Phòng ban: {employee.DepartmentName ?? "Chưa phân công"}", $"Chức vụ: {employee.PositionName ?? "Chưa phân công"}",
             $"Trạng thái: {employee.Status}", $"Ngày sinh: {employee.DateOfBirth:dd/MM/yyyy}", $"Giới tính: {employee.Gender}",
             $"Email: {employee.Email}", $"Điện thoại: {employee.Phone}", $"CCCD: {employee.CitizenId}", $"Địa chỉ: {employee.Address}"),

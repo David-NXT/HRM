@@ -27,9 +27,6 @@ public abstract class Employee
 
     public string? Address { get; set; }
 
-    // Current contractual base salary; payroll periods keep their own salary snapshot.
-    public decimal BaseSalary { get; set; }
-
     public Guid? DepartmentId { get; set; }
 
     public Guid? PositionId { get; set; }

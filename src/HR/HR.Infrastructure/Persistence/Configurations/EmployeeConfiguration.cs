@@ -27,8 +27,6 @@ public sealed class EmployeeConfiguration : IEntityTypeConfiguration<Employee>
         builder.Property(employee => employee.Phone).HasColumnName("phone").HasMaxLength(20).IsRequired();
         builder.Property(employee => employee.CitizenId).HasColumnName("citizen_id").HasMaxLength(12).IsRequired();
         builder.Property(employee => employee.Address).HasColumnName("address").HasMaxLength(500);
-        builder.Property(employee => employee.BaseSalary).HasColumnName("base_salary")
-            .HasPrecision(18, 2).HasDefaultValue(0m).IsRequired();
         builder.Property(employee => employee.Status).HasColumnName("status").HasMaxLength(20).IsRequired();
         builder.Property(employee => employee.Version).HasColumnName("version").HasDefaultValue(1).IsConcurrencyToken();
         builder.Property(employee => employee.CreatedAt).HasColumnName("created_at").IsRequired();
