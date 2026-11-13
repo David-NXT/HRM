@@ -1,3 +1,4 @@
+
 namespace Project.API.DTOs;
 
 public class TimesheetResponseDto
@@ -15,6 +16,8 @@ public class TimesheetResponseDto
     public string? Description { get; set; }
 
     public string Status { get; set; } = string.Empty;
+
+    public string? RejectReason { get; set; }
 
     public DateTime? ApprovedAt { get; set; }
 

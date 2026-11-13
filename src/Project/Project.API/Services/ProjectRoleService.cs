@@ -45,7 +45,8 @@ public class ProjectRoleService : IProjectRoleService
             return false;
 
         role.RoleName = input.RoleName;
-        role.Description = input.Description;
+role.Description = input.Description;
+role.RoleCoefficient = input.RoleCoefficient;
 
         await _context.SaveChangesAsync();
         return true;

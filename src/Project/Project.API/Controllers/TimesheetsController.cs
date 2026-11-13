@@ -1,8 +1,7 @@
+
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Project.API.Data;
 using Project.API.DTOs;
-using Project.API.Entities;
+using Project.API.Services;
 
 namespace Project.API.Controllers;
 
@@ -10,31 +9,19 @@ namespace Project.API.Controllers;
 [Route("api/[controller]")]
 public class TimesheetsController : ControllerBase
 {
-    private readonly ProjectManagementDbContext _context;
+    private readonly ITimesheetService _timesheetService;
 
-    public TimesheetsController(ProjectManagementDbContext context)
+    public TimesheetsController(ITimesheetService timesheetService)
     {
-        _context = context;
+        _timesheetService = timesheetService;
     }
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<TimesheetResponseDto>>>
-        GetTimesheets()
+        GetTimesheets([FromQuery] Guid? projectMemberId = null)
     {
-        var timesheets = await _context.Timesheets
-            .Select(t => new TimesheetResponseDto
-            {
-                TimesheetId = t.TimesheetId,
-                ProjectMemberId = t.ProjectMemberId,
-                TaskId = t.TaskId,
-                WorkDate = t.WorkDate,
-                HoursWorked = t.HoursWorked,
-                Description = t.Description,
-                Status = t.Status,
-                ApprovedAt = t.ApprovedAt,
-                ApprovedBy = t.ApprovedBy
-            })
-            .ToListAsync();
+        var timesheets =
+            await _timesheetService.GetTimesheetsAsync(projectMemberId);
 
         return Ok(timesheets);
     }
@@ -43,21 +30,8 @@ public class TimesheetsController : ControllerBase
     public async Task<ActionResult<TimesheetResponseDto>>
         GetTimesheet(Guid id)
     {
-        var timesheet = await _context.Timesheets
-            .Where(t => t.TimesheetId == id)
-            .Select(t => new TimesheetResponseDto
-            {
-                TimesheetId = t.TimesheetId,
-                ProjectMemberId = t.ProjectMemberId,
-                TaskId = t.TaskId,
-                WorkDate = t.WorkDate,
-                HoursWorked = t.HoursWorked,
-                Description = t.Description,
-                Status = t.Status,
-                ApprovedAt = t.ApprovedAt,
-                ApprovedBy = t.ApprovedBy
-            })
-            .FirstOrDefaultAsync();
+        var timesheet =
+            await _timesheetService.GetTimesheetAsync(id);
 
         if (timesheet == null)
             return NotFound();
@@ -67,95 +41,115 @@ public class TimesheetsController : ControllerBase
 
     [HttpPost]
     public async Task<ActionResult<TimesheetResponseDto>>
-        CreateTimesheet(CreateTimesheetDto dto)
+        CreateTimesheet([FromBody] CreateTimesheetDto dto)
     {
-        var member = await _context.ProjectMembers
-            .FirstOrDefaultAsync(m =>
-                m.ProjectMemberId == dto.ProjectMemberId);
-
-        if (member == null)
-            return BadRequest("Project member does not exist.");
-
-        var task = await _context.Tasks
-            .FirstOrDefaultAsync(t => t.TaskId == dto.TaskId);
-
-        if (task == null)
-            return BadRequest("Task does not exist.");
-
-        if (task.ProjectId != member.ProjectId)
-            return BadRequest(
-                "Task and project member must belong to the same project.");
-
-        var timesheet = new Timesheet
+        
+        try
         {
-            TimesheetId = Guid.NewGuid(),
-            ProjectMemberId = dto.ProjectMemberId,
-            TaskId = dto.TaskId,
-            WorkDate = dto.WorkDate,
-            HoursWorked = dto.HoursWorked,
-            Description = dto.Description,
-            Status = "Pending"
-        };
+            
+            var result =
+                await _timesheetService.CreateTimesheetAsync(dto);
 
-        _context.Timesheets.Add(timesheet);
-        await _context.SaveChangesAsync();
-
-        var response = new TimesheetResponseDto
+            return CreatedAtAction(
+                nameof(GetTimesheet),
+                new { id = result.TimesheetId },
+                result);
+        }
+        catch (ArgumentException ex)
         {
-            TimesheetId = timesheet.TimesheetId,
-            ProjectMemberId = timesheet.ProjectMemberId,
-            TaskId = timesheet.TaskId,
-            WorkDate = timesheet.WorkDate,
-            HoursWorked = timesheet.HoursWorked,
-            Description = timesheet.Description,
-            Status = timesheet.Status
-        };
-
-        return CreatedAtAction(
-            nameof(GetTimesheet),
-            new { id = timesheet.TimesheetId },
-            response);
+            return BadRequest(ex.Message);
+        }
     }
 
-    // Duyệt hoặc từ chối timesheet
+    // Duyệt hoặc từ chối Timesheet
     [HttpPut("{id:guid}/review")]
     public async Task<IActionResult> ReviewTimesheet(
         Guid id,
         [FromQuery] bool approved,
-        [FromQuery] Guid approvedBy)
+        [FromQuery] Guid approvedBy,
+        [FromQuery] string? reason = null)
     {
-        var timesheet = await _context.Timesheets.FindAsync(id);
+        if (approvedBy == Guid.Empty)
+            return BadRequest("Invalid approver ID.");
+        try
+        {
+            bool result;
 
-        if (timesheet == null)
-            return NotFound();
+            if (approved)
+            {
+                result = await _timesheetService
+                    .ApproveTimesheetAsync(id, approvedBy);
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(reason))
+                    return BadRequest(
+                        "Rejection reason is required.");
 
-        if (timesheet.Status != "Pending")
-            return BadRequest("Timesheet has already been reviewed.");
+                result = await _timesheetService
+                    .RejectTimesheetAsync(id, approvedBy, reason);
+            }
 
-        timesheet.Status = approved ? "Approved" : "Rejected";
-        timesheet.ApprovedAt = DateTime.UtcNow;
-        timesheet.ApprovedBy = approved ? approvedBy : null;
+            if (!result)
+                return NotFound();
 
-        await _context.SaveChangesAsync();
+            return NoContent();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
 
-        return NoContent();
+    // Gửi lại Timesheet sau khi bị từ chối
+    [HttpPut("{id:guid}/resubmit")]
+    public async Task<IActionResult> ResubmitTimesheet(
+        Guid id,
+        [FromBody] UpdateTimesheetDto dto)
+    {
+        try
+        {
+            var result = await _timesheetService
+                .ResubmitTimesheetAsync(
+                    id,
+                    dto.HoursWorked,
+                    dto.Description);
+
+            if (!result)
+                return NotFound();
+
+            return NoContent();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteTimesheet(Guid id)
     {
-        var timesheet = await _context.Timesheets.FindAsync(id);
+        try
+        {
+            var result =
+                await _timesheetService.DeleteTimesheetAsync(id);
 
-        if (timesheet == null)
-            return NotFound();
+            if (!result)
+                return NotFound();
 
-        if (timesheet.Status == "Approved")
-            return BadRequest(
-                "Cannot delete an approved timesheet.");
-
-        _context.Timesheets.Remove(timesheet);
-        await _context.SaveChangesAsync();
-
-        return NoContent();
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 }

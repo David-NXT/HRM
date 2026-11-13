@@ -1,3 +1,4 @@
+
 using Microsoft.EntityFrameworkCore;
 using Project.API.Data;
 using Project.API.DTOs;
@@ -16,7 +17,8 @@ public class ProjectMemberService : IProjectMemberService
         _employees = employees;
     }
 
-    public async Task<IEnumerable<ProjectMember>> GetProjectMembersAsync(Guid? projectId = null)
+    public async Task<IEnumerable<ProjectMember>> GetProjectMembersAsync(
+        Guid? projectId = null)
     {
         var query = _context.ProjectMembers
             .AsNoTracking()
@@ -26,7 +28,9 @@ public class ProjectMemberService : IProjectMemberService
         if (projectId.HasValue)
             query = query.Where(m => m.ProjectId == projectId.Value);
 
-        return await query.ToListAsync();
+        return await query
+            .OrderBy(m => m.JoinDate)
+            .ToListAsync();
     }
 
     public async Task<ProjectMember?> GetProjectMemberAsync(Guid id)
@@ -37,9 +41,49 @@ public class ProjectMemberService : IProjectMemberService
             .FirstOrDefaultAsync(m => m.ProjectMemberId == id);
     }
 
-    public async Task<ProjectMember> CreateProjectMemberAsync(CreateProjectMemberDto dto)
+    public async Task<ProjectMember> CreateProjectMemberAsync(
+        CreateProjectMemberDto dto)
     {
-        await EnsureAssignableEmployeeAsync(dto.EmployeeId);
+        // 1. Kiểm tra nhân viên từ HR Service trước
+        var employee = await _employees.GetActiveEmployeeAsync(
+            dto.EmployeeId,
+            CancellationToken.None);
+
+        if (employee == null)
+        {
+            throw new ArgumentException(
+                "Employee does not exist or is not active.");
+        }
+
+        // 2. Kiểm tra ngày tham gia
+        ValidateMemberDates(dto.JoinDate, dto.LeaveDate);
+
+        // 3. Kiểm tra Project
+        var projectExists = await _context.Projects
+            .AnyAsync(p => p.ProjectId == dto.ProjectId);
+
+        if (!projectExists)
+            throw new ArgumentException("Project does not exist.");
+
+        // 4. Kiểm tra ProjectRole
+        var roleExists = await _context.ProjectRoles
+            .AnyAsync(r => r.ProjectRoleId == dto.ProjectRoleId);
+
+        if (!roleExists)
+            throw new ArgumentException("Project role does not exist.");
+
+        // 5. Kiểm tra thành viên bị trùng thời gian
+        var hasOverlap = await HasOverlappingMembershipAsync(
+            dto.ProjectId,
+            dto.EmployeeId,
+            dto.JoinDate,
+            dto.LeaveDate);
+
+        if (hasOverlap)
+            throw new InvalidOperationException(
+                "Employee already has an overlapping membership in this project.");
+
+        // 6. Tạo ProjectMember
         var member = new ProjectMember
         {
             ProjectMemberId = Guid.NewGuid(),
@@ -57,14 +101,73 @@ public class ProjectMemberService : IProjectMemberService
         return member;
     }
 
-    public async Task<bool> UpdateProjectMemberAsync(Guid id, CreateProjectMemberDto dto)
+    public async Task<bool> UpdateProjectMemberAsync(
+        Guid id,
+        CreateProjectMemberDto dto)
     {
         var member = await _context.ProjectMembers.FindAsync(id);
 
         if (member == null)
             return false;
 
-        await EnsureAssignableEmployeeAsync(dto.EmployeeId);
+        ValidateMemberDates(dto.JoinDate, dto.LeaveDate);
+
+        var projectExists = await _context.Projects
+            .AnyAsync(p => p.ProjectId == dto.ProjectId);
+
+        var roleExists = await _context.ProjectRoles
+            .AnyAsync(r => r.ProjectRoleId == dto.ProjectRoleId);
+
+        if (!projectExists)
+            throw new ArgumentException("Project does not exist.");
+
+        if (!roleExists)
+            throw new ArgumentException("Project role does not exist.");
+
+        var hasTimesheets = await _context.Timesheets
+            .AnyAsync(t => t.ProjectMemberId == id);
+
+        var hasHourlyRates = await _context.HourlyRates
+            .AnyAsync(r => r.ProjectMemberId == id);
+
+        // Không thay đổi thông tin định danh nếu đã có dữ liệu liên quan.
+        if (hasTimesheets || hasHourlyRates)
+        {
+            if (member.ProjectId != dto.ProjectId ||
+                member.EmployeeId != dto.EmployeeId ||
+                member.ProjectRoleId != dto.ProjectRoleId ||
+                member.JoinDate != dto.JoinDate)
+            {
+                throw new InvalidOperationException(
+                    "Cannot change project, employee, role or join date because this member already has related records.");
+            }
+        }
+
+        var hasOverlap = await HasOverlappingMembershipAsync(
+            dto.ProjectId,
+            dto.EmployeeId,
+            dto.JoinDate,
+            dto.LeaveDate,
+            id);
+
+        if (hasOverlap)
+            throw new InvalidOperationException(
+                "Employee already has an overlapping membership in this project.");
+
+        if (dto.LeaveDate.HasValue)
+        {
+            var hasWorkAfterLeaveDate = await _context.Timesheets
+                .AnyAsync(t =>
+                    t.ProjectMemberId == id &&
+                    t.WorkDate.Date > dto.LeaveDate.Value.Date);
+
+            if (hasWorkAfterLeaveDate)
+            {
+                throw new InvalidOperationException(
+                    "LeaveDate cannot be earlier than an existing timesheet work date.");
+            }
+        }
+
         member.ProjectId = dto.ProjectId;
         member.EmployeeId = dto.EmployeeId;
         member.ProjectRoleId = dto.ProjectRoleId;
@@ -73,6 +176,7 @@ public class ProjectMemberService : IProjectMemberService
         member.Status = dto.Status;
 
         await _context.SaveChangesAsync();
+
         return true;
     }
 
@@ -83,15 +187,57 @@ public class ProjectMemberService : IProjectMemberService
         if (member == null)
             return false;
 
+        var hasTimesheets = await _context.Timesheets
+            .AnyAsync(t => t.ProjectMemberId == id);
+
+        var hasHourlyRates = await _context.HourlyRates
+            .AnyAsync(r => r.ProjectMemberId == id);
+
+        if (hasTimesheets || hasHourlyRates)
+        {
+            throw new InvalidOperationException(
+                "Cannot delete a project member that has timesheets or hourly rates.");
+        }
+
         _context.ProjectMembers.Remove(member);
         await _context.SaveChangesAsync();
 
         return true;
     }
 
-    private async System.Threading.Tasks.Task EnsureAssignableEmployeeAsync(Guid employeeId)
+    private static void ValidateMemberDates(
+        DateTime joinDate,
+        DateTime? leaveDate)
     {
-        if (await _employees.GetActiveEmployeeAsync(employeeId, CancellationToken.None) is null)
-            throw new ArgumentException("Employee does not exist or is not active in HR.", nameof(employeeId));
+        if (leaveDate.HasValue &&
+            leaveDate.Value.Date < joinDate.Date)
+        {
+            throw new ArgumentException(
+                "LeaveDate cannot be earlier than JoinDate.");
+        }
+    }
+
+    private async Task<bool> HasOverlappingMembershipAsync(
+        Guid projectId,
+        Guid employeeId,
+        DateTime joinDate,
+        DateTime? leaveDate,
+        Guid? excludeMemberId = null)
+    {
+        var query = _context.ProjectMembers.Where(m =>
+            m.ProjectId == projectId &&
+            m.EmployeeId == employeeId);
+
+        if (excludeMemberId.HasValue)
+        {
+            query = query.Where(m =>
+                m.ProjectMemberId != excludeMemberId.Value);
+        }
+
+        return await query.AnyAsync(m =>
+            (!leaveDate.HasValue ||
+             m.JoinDate.Date <= leaveDate.Value.Date) &&
+            (!m.LeaveDate.HasValue ||
+             m.LeaveDate.Value.Date >= joinDate.Date));
     }
 }

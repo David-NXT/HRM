@@ -38,7 +38,8 @@ namespace Project.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<decimal>("Rate")
-                        .HasColumnType("numeric");
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
 
                     b.HasKey("HourlyRateId");
 
@@ -121,6 +122,10 @@ namespace Project.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
+                    b.Property<decimal>("RoleCoefficient")
+                        .HasPrecision(5, 4)
+                        .HasColumnType("numeric(5,4)");
+
                     b.Property<string>("RoleName")
                         .IsRequired()
                         .HasColumnType("text");
@@ -180,19 +185,29 @@ namespace Project.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("Description")
-                        .HasColumnType("text");
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
 
                     b.Property<decimal>("HoursWorked")
-                        .HasColumnType("numeric");
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
 
                     b.Property<Guid>("ProjectMemberId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("RejectReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("TaskId1")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("WorkDate")
@@ -204,6 +219,8 @@ namespace Project.Migrations
 
                     b.HasIndex("TaskId");
 
+                    b.HasIndex("TaskId1");
+
                     b.ToTable("Timesheets");
                 });
 
@@ -212,7 +229,7 @@ namespace Project.Migrations
                     b.HasOne("Project.API.Entities.ProjectMember", "ProjectMember")
                         .WithMany("HourlyRates")
                         .HasForeignKey("ProjectMemberId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("ProjectMember");
@@ -253,14 +270,18 @@ namespace Project.Migrations
                     b.HasOne("Project.API.Entities.ProjectMember", "ProjectMember")
                         .WithMany("Timesheets")
                         .HasForeignKey("ProjectMemberId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("Project.API.Entities.Task", "Task")
-                        .WithMany("Timesheets")
+                        .WithMany()
                         .HasForeignKey("TaskId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("Project.API.Entities.Task", null)
+                        .WithMany("Timesheets")
+                        .HasForeignKey("TaskId1");
 
                     b.Navigation("ProjectMember");
 

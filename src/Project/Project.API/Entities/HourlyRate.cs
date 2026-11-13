@@ -12,4 +12,10 @@ public class HourlyRate
     public DateTime? EffectiveTo { get; set; }
 
     public ProjectMember ProjectMember { get; set; } = null!;
+    // Kiểm tra mức lương theo giờ có hiệu lực tại ngày làm việc không
+    public bool IsEffectiveAt(DateTime workDate)
+    {
+        return workDate >= EffectiveFrom &&
+               (EffectiveTo == null || workDate <= EffectiveTo.Value);
+    }
 }

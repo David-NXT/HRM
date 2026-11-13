@@ -1,3 +1,4 @@
+
 namespace Project.API.DTOs;
 
 public class PayrollDataDto
@@ -16,5 +17,9 @@ public class PayrollDataDto
 
     public decimal HourlyRate { get; set; }
 
-    public decimal TotalAmount => HoursWorked * HourlyRate;
+    public decimal RoleCoefficient { get; set; }
+
+    // Phụ cấp dự án
+  public decimal TotalProjectIncome =>
+    HoursWorked * HourlyRate * RoleCoefficient;
 }
