@@ -34,16 +34,30 @@ public class OvertimeRulesController : ControllerBase
         return Ok(result);
     }
 
-    [HttpGet("by-day-type/{dayType}")]
-    public async Task<ActionResult<OvertimeRuleDto>> GetByDayType(string dayType, CancellationToken cancellationToken)
-    {
-        var result = await _overtimeRuleService.GetByDayTypeAsync(dayType, cancellationToken);
-        if (result == null)
-        {
-            return NotFound();
-        }
 
-        return Ok(result);
+    [HttpGet("multiplier")]
+    public async Task<IActionResult> GetOvertimeMultiplier(
+        [FromQuery] DateOnly workDate,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var multiplier = await _overtimeRuleService
+                .GetOvertimeMultiplierAsync(workDate);
+
+            return Ok(new
+            {
+                workDate,
+                multiplier
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new
+            {
+                message = ex.Message
+            });
+        }
     }
 
     [HttpPost]

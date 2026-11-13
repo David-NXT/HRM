@@ -1,3 +1,4 @@
+
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Attendance.Models;
@@ -10,6 +11,10 @@ public class AttendanceRecord
 
     [ForeignKey(nameof(WorkShift))]
     public Guid ShiftId { get; set; }
+
+    // Khóa ngoại liên kết với lần phân ca của nhân viên
+    [ForeignKey(nameof(ShiftAssignment))]
+    public Guid ShiftAssignmentId { get; set; }
 
     public DateOnly Date { get; set; }
 
@@ -76,6 +81,9 @@ public class AttendanceRecord
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     public WorkShift? WorkShift { get; set; }
+
+    // Navigation property liên kết với lần phân ca
+    public ShiftAssignment? ShiftAssignment { get; set; }
 
     public ICollection<AttendanceExplanation>? AttendanceExplanations { get; set; }
 }
