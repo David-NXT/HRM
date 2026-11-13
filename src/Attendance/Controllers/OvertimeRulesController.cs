@@ -37,17 +37,15 @@ public class OvertimeRulesController : ControllerBase
 
     [HttpGet("multiplier")]
     public async Task<IActionResult> GetOvertimeMultiplier(
-        [FromQuery] DateOnly workDate,
         CancellationToken cancellationToken)
     {
         try
         {
             var multiplier = await _overtimeRuleService
-                .GetOvertimeMultiplierAsync(workDate);
-
+                .GetOvertimeMultiplierAsync(cancellationToken);
+    
             return Ok(new
             {
-                workDate,
                 multiplier
             });
         }

@@ -49,7 +49,7 @@ public class PayrollAttendanceService
                 "No payroll records found for this period.");
         }
 
-        // 3. Validate payroll statuses before calling Attendance API.
+        // 3. Validate payroll statuses.
         foreach (var payroll in payrolls)
         {
             if (payroll.Status != "draft")
@@ -59,9 +59,24 @@ public class PayrollAttendanceService
             }
         }
 
-        // 4. Retrieve and validate attendance summaries.
+        // 4. Retrieve overtime multiplier once per payroll period.
+        var overtimeMultiplier =
+            await _attendanceClient.GetOvertimeMultiplierAsync(
+                cancellationToken);
+
+        if (overtimeMultiplier <= 0)
+        {
+            throw new InvalidOperationException(
+                "Invalid overtime multiplier.");
+        }
+
+        // 5. Retrieve and validate attendance summaries.
         var attendanceByEmployee =
-            new Dictionary<Guid, (decimal WorkingDays, decimal StandardWorkingDays)>();
+            new Dictionary<Guid, (
+                decimal WorkingDays,
+                decimal StandardWorkingDays,
+                decimal TotalWorkingHours,
+                decimal OTHours)>();
 
         foreach (var payroll in payrolls)
         {
@@ -103,7 +118,9 @@ public class PayrollAttendanceService
             }
 
             if (attendance.ActualWorkingDays < 0 ||
-                attendance.StandardWorkingDays <= 0)
+                attendance.StandardWorkingDays <= 0 ||
+                attendance.TotalWorkingHours < 0 ||
+                attendance.OTHours < 0)
             {
                 throw new InvalidOperationException(
                     $"Invalid attendance data for employee {payroll.EmployeeID}.");
@@ -113,20 +130,26 @@ public class PayrollAttendanceService
                 payroll.EmployeeID,
                 (
                     attendance.ActualWorkingDays,
-                    attendance.StandardWorkingDays
+                    attendance.StandardWorkingDays,
+                    attendance.TotalWorkingHours,
+                    attendance.OTHours
                 ));
         }
 
-        // 5. Update payroll records only after all summaries are valid.
+        // 6. Update payroll records after all summaries are valid.
         foreach (var payroll in payrolls)
         {
             var attendance = attendanceByEmployee[payroll.EmployeeID];
 
             payroll.WorkingDays = attendance.WorkingDays;
             payroll.StandardWorkingDay = attendance.StandardWorkingDays;
+            payroll.TotalWorkingHours = attendance.TotalWorkingHours;
+
+            payroll.OTHours = attendance.OTHours;
+            payroll.OTMultiplier = overtimeMultiplier;
         }
 
-        // 6. Save changes.
+        // 7. Save changes once.
         await _context.SaveChangesAsync(cancellationToken);
 
         return payrolls.Count;
