@@ -27,7 +27,8 @@ X-Role: {{HR_Role}}
   "phone": "0901234567",
   "citizenId": "079198001234",
   "address": "Quận 1, TP.HCM",
-  "employmentType": "FULL_TIME"
+  "employmentType": "FULL_TIME",
+  "baseSalary": 15000000.00
 }
 
 ### Thêm nhân viên part-time: cùng endpoint, employmentType được kiểm tra ở HR
@@ -44,7 +45,8 @@ X-Role: {{HR_Role}}
   "phone": "0901234568",
   "citizenId": "079200001234",
   "address": null,
-  "employmentType": "PART_TIME"
+  "employmentType": "PART_TIME",
+  "partTimeSalary": 35000.00
 }
 
 ### Cập nhật hồ sơ
@@ -84,11 +86,11 @@ X-Role: {{HR_Role}}
   "expectedVersion": 1
 }
 
-### Cập nhật lương cơ bản của nhân viên
+### Cập nhật lương nhân viên: gửi đúng trường theo employmentType
 PUT {{HR_HostAddress}}/employees/{{EmployeeId}}/salary
 Content-Type: application/json
 X-Role: {{HR_Role}}
 
 {
-  "baseSalary": 15000000
+  "baseSalary": 15000000.00
 }

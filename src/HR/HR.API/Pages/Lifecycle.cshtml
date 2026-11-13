@@ -36,6 +36,8 @@
                     <label>Mã nhân viên<input name="employeeCode" maxlength="20" required></label>
                     <label>Họ tên<input name="fullName" maxlength="150" required></label>
                     <label>Loại nhân viên<select name="employmentType"><option value="FULL_TIME">Full-time</option><option value="PART_TIME">Part-time</option></select></label>
+                    <label>Lương cơ bản full-time (VND/tháng)<input name="baseSalary" type="number" min="0" max="9999999999999999.99" step="0.01" value="0" required></label>
+                    <label>Lương part-time (VND)<input name="partTimeSalary" type="number" min="0" max="9999999999999999.99" step="0.01" value="0" required></label>
                     <label>Ngày sinh<input name="dateOfBirth" type="date" min="1900-01-01" required></label>
                     <label>Giới tính<select name="gender"><option value="Male">Nam</option><option value="Female">Nữ</option><option value="Other">Khác</option></select></label>
                     <label>Email<input name="email" type="email" maxlength="200" required></label>
@@ -164,7 +166,8 @@ onboardingForm.onsubmit = event => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(onboardingForm));
     const payload = {
-        employee: {employeeCode: data.employeeCode, fullName: data.fullName, dateOfBirth: data.dateOfBirth, gender: data.gender, email: data.email, phone: data.phone, citizenId: data.citizenId, address: nullable(data.address), employmentType: data.employmentType},
+        employee: {employeeCode: data.employeeCode, fullName: data.fullName, dateOfBirth: data.dateOfBirth, gender: data.gender, email: data.email, phone: data.phone, citizenId: data.citizenId, address: nullable(data.address), employmentType: data.employmentType,
+            ...(data.employmentType === 'PART_TIME' ? {partTimeSalary: Number(data.partTimeSalary)} : {baseSalary: Number(data.baseSalary)})},
         startDate: data.startDate, departmentId: data.departmentId, positionId: data.positionId, notes: nullable(data.notes)
     };
     perform(async () => {

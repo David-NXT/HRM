@@ -106,8 +106,7 @@ public sealed class EmployeeService : IEmployeeService
         employee.Phone = profile.Phone;
         employee.CitizenId = profile.CitizenId;
         employee.Address = profile.Address;
-        ValidateSalary(request.BaseSalary);
-        employee.BaseSalary = request.BaseSalary;
+        ApplySalary(employee, request.BaseSalary, request.PartTimeSalary, allowMissingSalary: true);
         employee.Status = EmployeeStatuses.Active;
         employee.CreatedAt = now;
         employee.UpdatedAt = now;
@@ -131,14 +130,13 @@ public sealed class EmployeeService : IEmployeeService
         UpdateEmployeeSalaryRequest request,
         CancellationToken cancellationToken)
     {
-        ValidateSalary(request.BaseSalary);
         var employee = await _employees.GetByIdAsync(id, cancellationToken);
         if (employee is null)
         {
             throw new HrException(404, "EmployeeNotFound", "Không tìm thấy hồ sơ.");
         }
 
-        employee.BaseSalary = request.BaseSalary;
+        ApplySalary(employee, request.BaseSalary, request.PartTimeSalary, allowMissingSalary: false);
         employee.UpdatedAt = DateTime.UtcNow;
         await _employees.SaveChangesAsync(cancellationToken);
         return ToDto(employee);
@@ -149,6 +147,45 @@ public sealed class EmployeeService : IEmployeeService
         if (baseSalary < 0m || baseSalary > 9_999_999_999_999_999.99m || decimal.Round(baseSalary, 2) != baseSalary)
         {
             throw new HrException(400, "ValidationError", "Lương cơ bản phải từ 0 đến 9.999.999.999.999.999,99 và có tối đa 2 chữ số thập phân.");
+        }
+    }
+
+    private static void ApplySalary(
+        Employee employee,
+        decimal? baseSalary,
+        decimal? partTimeSalary,
+        bool allowMissingSalary)
+    {
+        switch (employee)
+        {
+            case FullTimeEmployee fullTime:
+                if (partTimeSalary.HasValue)
+                {
+                    throw new HrException(400, "InvalidSalaryForEmploymentType", "Nhân viên full-time chỉ nhận lương cơ bản.");
+                }
+                if (!baseSalary.HasValue && !allowMissingSalary)
+                {
+                    throw new HrException(400, "ValidationError", "Cần cung cấp lương cơ bản cho nhân viên full-time.");
+                }
+                fullTime.BaseSalary = baseSalary ?? 0m;
+                ValidateSalary(fullTime.BaseSalary);
+                break;
+
+            case PartTimeEmployee partTime:
+                if (baseSalary is > 0m)
+                {
+                    throw new HrException(400, "InvalidSalaryForEmploymentType", "Nhân viên part-time dùng trường partTimeSalary.");
+                }
+                if (!partTimeSalary.HasValue && !allowMissingSalary)
+                {
+                    throw new HrException(400, "ValidationError", "Cần cung cấp lương part-time.");
+                }
+                partTime.PartTimeSalary = partTimeSalary ?? 0m;
+                ValidateSalary(partTime.PartTimeSalary);
+                break;
+
+            default:
+                throw new HrException(400, "InvalidEmploymentType", "Loại nhân viên không được hỗ trợ.");
         }
     }
 
@@ -294,7 +331,8 @@ public sealed class EmployeeService : IEmployeeService
             employee.Department?.Name,
             employee.Position?.Name,
             employee.EmploymentType,
-            employee.BaseSalary);
+            employee is FullTimeEmployee fullTime ? fullTime.BaseSalary : null,
+            employee is PartTimeEmployee partTime ? partTime.PartTimeSalary : null);
 
     private static EmployeeDirectoryEntry ToDirectoryEntry(Employee employee) =>
         new(employee.EmployeeId, employee.EmployeeCode, employee.FullName, employee.Status,
