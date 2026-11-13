@@ -55,21 +55,8 @@ public class TimesheetSummary
     /// Số lần về sớm
     /// </summary>
     public int EarlyLeaveOccurrences { get; set; }
-
-    /// <summary>
-    /// Số giờ làm thêm ngày thường (hệ số 1.5)
-    /// </summary>
-    public decimal NormalOTHours { get; set; }
-
-    /// <summary>
-    /// Số giờ làm thêm ngày nghỉ cuối tuần (hệ số 2.0)
-    /// </summary>
-    public decimal WeekendOTHours { get; set; }
-
-    /// <summary>
-    /// Số giờ làm thêm ngày lễ (hệ số 3.0)
-    /// </summary>
-    public decimal HolidayOTHours { get; set; }
+    
+    public decimal OTHours { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
