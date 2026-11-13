@@ -38,11 +38,7 @@ public class EmployeeMonthlyTimesheetDto
 
     public int EarlyLeaveOccurrences { get; set; }
 
-    public decimal NormalOTHours { get; set; }
-
-    public decimal WeekendOTHours { get; set; }
-
-    public decimal HolidayOTHours { get; set; }
+    public decimal OTHours { get; set; }
 
     public DateTime CreatedAt { get; set; }
 

@@ -180,34 +180,13 @@ public class TimesheetService : ITimesheetService
         // 3. Quét đơn làm thêm đã duyệt (OTRequests)
         var ots = await _dbContext.OTRequests
             .AsNoTracking()
-            .Where(o => o.EmployeeId == employeeId 
-                        && o.Status == "Approved" 
-                        && o.Date >= period.StartDate 
+            .Where(o => o.EmployeeId == employeeId
+                        && o.Status == "Approved"
+                        && o.Date >= period.StartDate
                         && o.Date <= period.EndDate)
             .ToListAsync(cancellationToken);
 
-        decimal normalOTHours = 0;
-        decimal weekendOTHours = 0;
-        decimal holidayOTHours = 0;
-
-        foreach (var ot in ots)
-        {
-            var hours = ot.ActualHours ?? ot.PlannedHours;
-            var dayType = ot.DayType?.ToLowerInvariant() ?? string.Empty;
-
-            if (dayType.Contains("holiday") || dayType.Contains("lễ") || ot.Multiplier >= 3.0m)
-            {
-                holidayOTHours += hours;
-            }
-            else if (dayType.Contains("weekend") || dayType.Contains("nghỉ") || ot.Multiplier >= 2.0m)
-            {
-                weekendOTHours += hours;
-            }
-            else
-            {
-                normalOTHours += hours;
-            }
-        }
+        decimal totalOTHours = ots.Sum(o => o.ActualHours ?? o.PlannedHours);
 
         // 4. Tính số ngày công chuẩn trong tháng (loại trừ Thứ 7, Chủ Nhật)
         decimal standardWorkingDays = 0;
@@ -249,9 +228,7 @@ public class TimesheetService : ITimesheetService
         summary.TotalLateMinutes = totalLateMinutes;
         summary.EarlyLeaveOccurrences = earlyLeaveOccurrences;
         summary.TotalEarlyLeaveMinutes = totalEarlyLeaveMinutes;
-        summary.NormalOTHours = normalOTHours;
-        summary.WeekendOTHours = weekendOTHours;
-        summary.HolidayOTHours = holidayOTHours;
+        summary.OTHours = totalOTHours;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
@@ -287,9 +264,7 @@ public class TimesheetService : ITimesheetService
         LateOccurrences = summary.LateOccurrences,
         TotalEarlyLeaveMinutes = summary.TotalEarlyLeaveMinutes,
         EarlyLeaveOccurrences = summary.EarlyLeaveOccurrences,
-        NormalOTHours = summary.NormalOTHours,
-        WeekendOTHours = summary.WeekendOTHours,
-        HolidayOTHours = summary.HolidayOTHours,
+        OTHours = summary.OTHours,
         CreatedAt = summary.CreatedAt,
         UpdatedAt = summary.UpdatedAt
     };
@@ -314,9 +289,7 @@ public class TimesheetService : ITimesheetService
         LateOccurrences = summary.LateOccurrences,
         TotalEarlyLeaveMinutes = summary.TotalEarlyLeaveMinutes,
         EarlyLeaveOccurrences = summary.EarlyLeaveOccurrences,
-        NormalOTHours = summary.NormalOTHours,
-        WeekendOTHours = summary.WeekendOTHours,
-        HolidayOTHours = summary.HolidayOTHours,
+        OTHours = summary.OTHours,
         CreatedAt = summary.CreatedAt,
         UpdatedAt = summary.UpdatedAt
     };
