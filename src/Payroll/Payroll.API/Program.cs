@@ -65,7 +65,7 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<PayrollDbContext>();
 
-
+    await context.Database.MigrateAsync();
 
     await PayrollDataSeeder.SeedAsync(context);
 }
