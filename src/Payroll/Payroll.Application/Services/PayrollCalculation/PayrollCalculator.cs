@@ -2,22 +2,32 @@
 
 public class PayrollCalculator
 {
+    private const decimal StandardWorkingHoursPerDay = 8m;
+
     public PayrollCalculationResult Calculate(
+        string employmentType,
         decimal baseSalary,
+        decimal? hourlyRate,
         decimal workingDays,
         decimal standardWorkingDay,
+        decimal totalWorkingHours,
+        decimal otHours,
+        decimal otMultiplier,
         decimal totalAllowance,
         decimal totalPayCut)
     {
-        // 1. Validate input
-        if (baseSalary < 0)
-            throw new ArgumentException("Base salary cannot be negative.");
-
+        // 1. Validate common inputs
         if (workingDays < 0)
             throw new ArgumentException("Working days cannot be negative.");
 
-        if (standardWorkingDay <= 0)
-            throw new ArgumentException("Standard working days must be greater than zero.");
+        if (totalWorkingHours < 0)
+            throw new ArgumentException("Total working hours cannot be negative.");
+
+        if (otHours < 0)
+            throw new ArgumentException("OT hours cannot be negative.");
+
+        if (otMultiplier <= 0)
+            throw new ArgumentException("OT multiplier must be greater than zero.");
 
         if (totalAllowance < 0)
             throw new ArgumentException("Total allowance cannot be negative.");
@@ -25,31 +35,78 @@ public class PayrollCalculator
         if (totalPayCut < 0)
             throw new ArgumentException("Total pay cut cannot be negative.");
 
-        // 2. Calculate salary based on working days
-        var proratedSalary = baseSalary
-            * workingDays
-            / standardWorkingDay;
+        decimal regularSalary;
+        decimal otHourlyRate;
 
-        // 3. Calculate gross salary
-        var grossSalary = proratedSalary + totalAllowance;
+        // 2. Calculate regular salary based on employment type
+        if (string.Equals(
+            employmentType,
+            "FULL_TIME",
+            StringComparison.OrdinalIgnoreCase))
+        {
+            if (baseSalary < 0)
+                throw new ArgumentException("Base salary cannot be negative.");
 
-        // 4. Calculate net salary
-        var netSalary = grossSalary - totalPayCut;
+            if (standardWorkingDay <= 0)
+                throw new ArgumentException(
+                    "Standard working days must be greater than zero.");
 
-        // 5. Round monetary values to 2 decimal places
-        proratedSalary = Math.Round(
-            proratedSalary, 2, MidpointRounding.AwayFromZero);
+            regularSalary = baseSalary
+                * workingDays
+                / standardWorkingDay;
 
-        grossSalary = Math.Round(
-            grossSalary, 2, MidpointRounding.AwayFromZero);
+            otHourlyRate = baseSalary
+                / (standardWorkingDay * StandardWorkingHoursPerDay);
+        }
+        else if (string.Equals(
+            employmentType,
+            "PART_TIME",
+            StringComparison.OrdinalIgnoreCase))
+        {
+            if (!hourlyRate.HasValue || hourlyRate.Value < 0)
+                throw new ArgumentException("A valid hourly rate is required.");
 
-        netSalary = Math.Round(
-            netSalary, 2, MidpointRounding.AwayFromZero);
+            regularSalary = hourlyRate.Value * totalWorkingHours;
 
-        // 6. Return result
+            otHourlyRate = hourlyRate.Value;
+        }
+        else
+        {
+            throw new ArgumentException(
+                $"Unsupported employment type: {employmentType}");
+        }
+
+        // 3. Calculate overtime pay
+        var otPay = otHourlyRate * otHours * otMultiplier;
+
+        // 4. Round monetary values
+        regularSalary = Math.Round(
+            regularSalary, 2, MidpointRounding.AwayFromZero);
+
+        otPay = Math.Round(
+            otPay, 2, MidpointRounding.AwayFromZero);
+
+        totalAllowance = Math.Round(
+            totalAllowance, 2, MidpointRounding.AwayFromZero);
+
+        totalPayCut = Math.Round(
+            totalPayCut, 2, MidpointRounding.AwayFromZero);
+
+        // 5. Calculate gross and net salary
+        var grossSalary = Math.Round(
+            regularSalary + totalAllowance + otPay,
+            2,
+            MidpointRounding.AwayFromZero);
+
+        var netSalary = Math.Round(
+            grossSalary - totalPayCut,
+            2,
+            MidpointRounding.AwayFromZero);
+
         return new PayrollCalculationResult
         {
-            ProratedSalary = proratedSalary,
+            ProratedSalary = regularSalary,
+            OTPay = otPay,
             TotalAllowance = totalAllowance,
             TotalPayCut = totalPayCut,
             GrossSalary = grossSalary,

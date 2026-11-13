@@ -56,6 +56,31 @@ public static class DependencyInjection
             client.Timeout = TimeSpan.FromSeconds(30);
         });
 
+        // Register HR HTTP client.
+        var hrBaseUrl = configuration["HRService:BaseUrl"];
+
+        if (string.IsNullOrWhiteSpace(hrBaseUrl))
+        {
+            throw new InvalidOperationException(
+                "HRService:BaseUrl is missing.");
+        }
+
+        if (!Uri.TryCreate(
+                hrBaseUrl,
+                UriKind.Absolute,
+                out var hrUri))
+        {
+            throw new InvalidOperationException(
+                "HRService:BaseUrl is not a valid absolute URL.");
+        }
+
+        services.AddHttpClient<IHRServiceClient, HRServiceClient>(client =>
+        {
+            client.BaseAddress = hrUri;
+            client.Timeout = TimeSpan.FromSeconds(30);
+            client.DefaultRequestHeaders.Add("X-Role", "HR");
+        });
+
         return services;
     }
 }

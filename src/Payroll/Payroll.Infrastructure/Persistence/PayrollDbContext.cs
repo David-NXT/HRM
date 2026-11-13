@@ -79,16 +79,47 @@ public class PayrollDbContext : DbContext, IApplicationDbContext
         
 
         // Payroll monetary values
+        // Payroll monetary values and properties
         modelBuilder.Entity<PayrollEntity>(entity =>
         {
-            entity.Property(p => p.BaseSalary).HasPrecision(18, 2);
-            entity.Property(p => p.TotalAllowance).HasPrecision(18, 2);
-            entity.Property(p => p.TotalPayCut).HasPrecision(18, 2);
-            entity.Property(p => p.GrossSalary).HasPrecision(18, 2);
-            entity.Property(p => p.NetSalary).HasPrecision(18, 2);
+            entity.Property(p => p.EmploymentType)
+                .HasMaxLength(20);
 
-            entity.Property(p => p.WorkingDays).HasPrecision(5, 2);
-            entity.Property(p => p.StandardWorkingDay).HasPrecision(5, 2);
+            entity.Property(p => p.BaseSalary)
+                .HasPrecision(18, 2);
+
+            entity.Property(p => p.HourlyRate)
+                .HasPrecision(18, 2);
+
+            entity.Property(p => p.TotalAllowance)
+                .HasPrecision(18, 2);
+
+            entity.Property(p => p.TotalPayCut)
+                .HasPrecision(18, 2);
+
+            entity.Property(p => p.GrossSalary)
+                .HasPrecision(18, 2);
+
+            entity.Property(p => p.NetSalary)
+                .HasPrecision(18, 2);
+
+            entity.Property(p => p.WorkingDays)
+                .HasPrecision(5, 2);
+
+            entity.Property(p => p.StandardWorkingDay)
+                .HasPrecision(5, 2);
+
+            entity.Property(p => p.TotalWorkingHours)
+                .HasPrecision(10, 2);
+                
+            entity.Property(p => p.OTHours)
+                .HasPrecision(10, 2);
+
+            entity.Property(p => p.OTMultiplier)
+               .HasPrecision(5, 2);
+
+            entity.Property(p => p.OTPay)
+               .HasPrecision(18, 2);
         });
 
         // Allowance monetary values
