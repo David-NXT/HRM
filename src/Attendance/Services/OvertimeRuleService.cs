@@ -102,28 +102,25 @@ public class OvertimeRuleService : IOvertimeRuleService
         await _dbContext.SaveChangesAsync(cancellationToken);
         return true;
     }
-    public async Task<decimal> GetOvertimeMultiplierAsync(
-        string dayType,
-        DateOnly workDate)
+    public async Task<decimal> GetOvertimeMultiplierAsync(DateOnly workDate)
     {
         var rule = await _dbContext.OvertimeRules
             .Where(x =>
-                x.DayType == dayType &&
                 x.IsActive &&
                 x.EffectiveDate <= workDate)
             .OrderByDescending(x => x.EffectiveDate)
             .FirstOrDefaultAsync();
-
+    
         if (rule == null)
         {
             throw new InvalidOperationException(
-                $"Không tìm thấy cấu hình hệ số OT cho loại ngày '{dayType}' " +
-                $"tại ngày {workDate:dd/MM/yyyy}.");
+                $"Không tìm thấy hệ số OT áp dụng cho ngày {workDate}."
+            );
         }
-
+    
         return rule.Multiplier;
     }
-    
+
     private static OvertimeRuleDto MapToDto(OvertimeRule model) => new()
     {
         Id = model.Id,
