@@ -1,4 +1,5 @@
 using Admin.WinForms.Controls.Attendance;
+using Admin.WinForms.Controls.HR;
 using System;
 using System.Drawing;
 using System.Windows.Forms;
@@ -13,14 +14,55 @@ namespace Admin.WinForms
         public MainForm()
         {
             InitializeComponent();
+            ConfigureLayout();
+        }
+
+        private void ConfigureLayout()
+        {
+            // Preserve the shared navigation, but let content follow window size.
+            var shell = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 2, Margin = Padding.Empty };
+            shell.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 220));
+            shell.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            shell.RowStyles.Add(new RowStyle(SizeType.Absolute, 105));
+            shell.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            Controls.Clear();
+            shell.Controls.Add(panel_Sidebar, 0, 0);
+            shell.SetRowSpan(panel_Sidebar, 2);
+            shell.Controls.Add(panel_header, 1, 0);
+            shell.Controls.Add(panel_Content, 1, 1);
+            Controls.Add(shell);
+            panel_Sidebar.Dock = panel_header.Dock = panel_Content.Dock = DockStyle.Fill;
+            panel_Sidebar.Margin = panel_header.Margin = panel_Content.Margin = Padding.Empty;
+            panel_Sidebar.AutoScroll = true;
+            flowLayoutPanel1.Visible = flowLayoutPanel2.Visible = false;
+            label_HRM.Location = new Point(22, 20);
+            label_HRM.Font = new Font("Segoe UI", 24F, FontStyle.Bold);
+            label_Title.Location = new Point(20, 16);
+            label_Title.Font = new Font("Segoe UI", 16F, FontStyle.Bold);
+            label_Description.Location = new Point(20, 59);
+            label_Description.Font = new Font("Segoe UI", 10F);
+            label_Admin.Visible = false;
+            var navigation = new[] { button_Dashboard, button_Employee, button_Organization,
+                button_Contract_Work, button_Attendance, button_Payroll, button_Project, button_System, button_LogOut };
+            for (var i = 0; i < navigation.Length; i++)
+            {
+                navigation[i].Location = new Point(10, 105 + i * 51);
+                navigation[i].Size = new Size(200, 43);
+                navigation[i].Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            }
+            button_Employee.Text = "Nhân sự";
+            button_Organization.Text = "Phòng ban / Chức vụ";
+            button_Contract_Work.Text = "Hợp đồng / Công tác";
+            MinimumSize = new Size(1080, 680);
+            ClientSize = new Size(1440, 850);
+            StartPosition = FormStartPosition.CenterScreen;
+            Text = "HRM - Quản trị nhân sự";
         }
 
         private void MainForm_Load(object sender, EventArgs e)
         {
             // Mặc định khi mở app sẽ chọn sẵn nút Dashboard
-            ActivateButton(button_Dashboard);
-            label_Title.Text = "Dashboard"; // Cập nhật tiêu đề khi mở app
-            label_Description.Text = "Overview of HR activities and key statistics."; // Cập nhật mô tả khi mở app
+            button_Employee_Click(button_Employee, EventArgs.Empty);
         }
 
         // Hàm xử lý đổi màu Active cho nút được chọn
@@ -47,15 +89,15 @@ namespace Admin.WinForms
             ActivateButton((Button)sender);
             label_Title.Text = "Dashboard";
             label_Description.Text = "Overview of HR activities and key statistics.";
-            // TODO: Code gọi Load UserControl Dashboard ở đây
+            LoadPlaceholder("Dashboard", "Chọn Nhân sự, Phòng ban / Chức vụ hoặc Hợp đồng / Công tác để làm việc với HR.");
         }
 
         private void button_Employee_Click(object sender, EventArgs e)
         {
             ActivateButton((Button)sender);
-            label_Title.Text = "Employee Management";
-            label_Description.Text = "Manage employee records, profiles, and related information.";
-            // TODO: Code gọi Load UserControl Employee ở đây
+            label_Title.Text = "Quản lý nhân sự";
+            label_Description.Text = "Hồ sơ, tiếp nhận, bàn giao nghỉ việc, duyệt cập nhật và cảnh báo hợp đồng.";
+            LoadControl(new HrWorkspaceControl());
         }
 
         private void button_Contract_Work_Click(object sender, EventArgs e)
@@ -63,7 +105,7 @@ namespace Admin.WinForms
             ActivateButton((Button)sender);
             label_Title.Text = "Contract & Work Management";
             label_Description.Text = "Manage employee contracts, work assignments, and related information.";
-            // TODO: Code gọi Load UserControl Contracts ở đây
+            LoadControl(new ContractWorkControl());
         }
 
         private void button_Organization_Click(object sender, EventArgs e)
@@ -71,7 +113,7 @@ namespace Admin.WinForms
             ActivateButton((Button)sender);
             label_Title.Text = "Organization Management";
             label_Description.Text = "Manage organizational structure, departments, and related information.";
-            // TODO: Code gọi Load UserControl Organization ở đây
+            LoadControl(new OrganizationManagementControl());
         }
 
         private void button_Attendance_Click(object sender, EventArgs e)
@@ -87,7 +129,7 @@ namespace Admin.WinForms
             ActivateButton((Button)sender);
             label_Title.Text = "Payroll Management";
             label_Description.Text = "Manage employee payroll, salary calculations, and related information.";
-            // TODO: Code gọi Load UserControl Payroll ở đây
+            LoadPlaceholder("Payroll", "Màn hình Payroll do nhóm Payroll tích hợp.");
         }
 
         private void button_Project_Click(object sender, EventArgs e)
@@ -95,7 +137,7 @@ namespace Admin.WinForms
             ActivateButton((Button)sender);
             label_Title.Text = "Project Management";
             label_Description.Text = "Manage projects, tasks, and related information.";
-            // TODO: Code gọi Load UserControl Project ở đây
+            LoadPlaceholder("Project", "Màn hình Project do nhóm Project tích hợp.");
         }
 
         private void button_System_Click(object sender, EventArgs e)
@@ -103,15 +145,32 @@ namespace Admin.WinForms
             ActivateButton((Button)sender);
             label_Title.Text = "System Management";
             label_Description.Text = "Manage system settings, configurations, and related information.";
-            // TODO: Code gọi Load UserControl System ở đây
+            LoadPlaceholder("System", "Màn hình quản trị hệ thống chưa được tích hợp.");
         }
+        private void LoadPlaceholder(string title, string description)
+        {
+            var page = new UserControl();
+            page.Controls.Add(new Label { Text = title + Environment.NewLine + Environment.NewLine + description,
+                Dock = DockStyle.Fill, Padding = new Padding(30), Font = new Font("Segoe UI", 12F) });
+            LoadControl(page);
+        }
+
         private void LoadControl(UserControl control)
         {
-            panel_Content.Controls.Clear();
-
-            control.Dock = DockStyle.Fill;
-
-            panel_Content.Controls.Add(control);
+            panel_Content.SuspendLayout();
+            try
+            {
+                // Disposing the previous page cancels its pending API requests.
+                foreach (Control previous in panel_Content.Controls.Cast<Control>().ToArray())
+                    previous.Dispose();
+                panel_Content.Controls.Clear();
+                control.Dock = DockStyle.Fill;
+                panel_Content.Controls.Add(control);
+            }
+            finally
+            {
+                panel_Content.ResumeLayout();
+            }
         }
     }
 }

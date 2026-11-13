@@ -106,6 +106,8 @@ public sealed class EmployeeService : IEmployeeService
         employee.Phone = profile.Phone;
         employee.CitizenId = profile.CitizenId;
         employee.Address = profile.Address;
+        ValidateSalary(request.BaseSalary);
+        employee.BaseSalary = request.BaseSalary;
         employee.Status = EmployeeStatuses.Active;
         employee.CreatedAt = now;
         employee.UpdatedAt = now;
@@ -122,6 +124,32 @@ public sealed class EmployeeService : IEmployeeService
         ApplyPersonalInfoUpdate(employee, request);
         await _employees.SaveChangesAsync(cancellationToken);
         return ToDto(employee);
+    }
+
+    public async Task<EmployeeDto> UpdateSalaryAsync(
+        Guid id,
+        UpdateEmployeeSalaryRequest request,
+        CancellationToken cancellationToken)
+    {
+        ValidateSalary(request.BaseSalary);
+        var employee = await _employees.GetByIdAsync(id, cancellationToken);
+        if (employee is null)
+        {
+            throw new HrException(404, "EmployeeNotFound", "Không tìm thấy hồ sơ.");
+        }
+
+        employee.BaseSalary = request.BaseSalary;
+        employee.UpdatedAt = DateTime.UtcNow;
+        await _employees.SaveChangesAsync(cancellationToken);
+        return ToDto(employee);
+    }
+
+    private static void ValidateSalary(decimal baseSalary)
+    {
+        if (baseSalary < 0m || baseSalary > 9_999_999_999_999_999.99m || decimal.Round(baseSalary, 2) != baseSalary)
+        {
+            throw new HrException(400, "ValidationError", "Lương cơ bản phải từ 0 đến 9.999.999.999.999.999,99 và có tối đa 2 chữ số thập phân.");
+        }
     }
 
     public void ValidatePersonalInfoUpdate(UpdateEmployeeRequest request) =>
@@ -265,7 +293,8 @@ public sealed class EmployeeService : IEmployeeService
             employee.PositionId,
             employee.Department?.Name,
             employee.Position?.Name,
-            employee.EmploymentType);
+            employee.EmploymentType,
+            employee.BaseSalary);
 
     private static EmployeeDirectoryEntry ToDirectoryEntry(Employee employee) =>
         new(employee.EmployeeId, employee.EmployeeCode, employee.FullName, employee.Status,

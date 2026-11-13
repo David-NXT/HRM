@@ -18,6 +18,8 @@ public interface IEmployeeService
 
     Task<EmployeeDto> UpdateAsync(Guid id, UpdateEmployeeRequest request, CancellationToken cancellationToken);
 
+    Task<EmployeeDto> UpdateSalaryAsync(Guid id, UpdateEmployeeSalaryRequest request, CancellationToken cancellationToken);
+
     void ValidatePersonalInfoUpdate(UpdateEmployeeRequest request);
 
     void ApplyPersonalInfoUpdate(HR.Domain.Entities.Employee employee, UpdateEmployeeRequest request);

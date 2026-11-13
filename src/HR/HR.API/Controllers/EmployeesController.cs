@@ -51,6 +51,15 @@ public sealed class EmployeesController : ControllerBase
         return Ok(await _employees.UpdateAsync(id, request, cancellationToken));
     }
 
+    [HttpPut("{id:guid}/salary")]
+    public async Task<ActionResult<EmployeeDto>> UpdateSalary(
+        Guid id,
+        [FromBody] UpdateEmployeeSalaryRequest request,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _employees.UpdateSalaryAsync(id, request, cancellationToken));
+    }
+
     [HttpPost("{id:guid}/lock")]
     public async Task<ActionResult<EmployeeDto>> Lock(Guid id, CancellationToken cancellationToken)
     {

@@ -83,3 +83,12 @@ X-Role: {{HR_Role}}
   "status": "IN_PROGRESS",
   "expectedVersion": 1
 }
+
+### Cập nhật lương cơ bản của nhân viên
+PUT {{HR_HostAddress}}/employees/{{EmployeeId}}/salary
+Content-Type: application/json
+X-Role: {{HR_Role}}
+
+{
+  "baseSalary": 15000000
+}

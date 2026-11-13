@@ -136,6 +136,13 @@ namespace HR.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("address");
 
+                    b.Property<decimal>("BaseSalary")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("base_salary");
+
                     b.Property<string>("CitizenId")
                         .IsRequired()
                         .HasMaxLength(12)

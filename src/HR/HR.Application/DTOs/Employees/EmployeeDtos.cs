@@ -11,7 +11,10 @@ public sealed record CreateEmployeeRequest(
     string Phone,
     string CitizenId,
     string? Address,
-    string EmploymentType = EmploymentTypes.FullTime);
+    string EmploymentType = EmploymentTypes.FullTime,
+    decimal BaseSalary = 0m);
+
+public sealed record UpdateEmployeeSalaryRequest(decimal BaseSalary);
 
 public sealed record UpdateEmployeeRequest(
     string FullName,
@@ -39,7 +42,8 @@ public sealed record EmployeeDto(
     Guid? PositionId,
     string? DepartmentName,
     string? PositionName,
-    string EmploymentType);
+    string EmploymentType,
+    decimal BaseSalary);
 
 public sealed record EmployeeDirectoryEntry(
     Guid EmployeeId,
