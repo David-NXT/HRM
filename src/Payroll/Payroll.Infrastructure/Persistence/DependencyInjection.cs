@@ -1,8 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Payroll.Infrastructure.Persistence;
 using Payroll.Application.Interfaces;
+using Payroll.Infrastructure.Persistence;
+using Payroll.Infrastructure.Services;
 
 namespace Payroll.Infrastructure;
 
@@ -10,19 +11,50 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
-        IConfiguration configuration
-    )
+        IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("PayrollConnection");
+        // Register Payroll database.
+        var connectionString =
+            configuration.GetConnectionString("PayrollConnection");
 
         if (string.IsNullOrWhiteSpace(connectionString))
         {
-            throw new InvalidOperationException("PayrollConnection connection string is missing.");
+            throw new InvalidOperationException(
+                "PayrollConnection connection string is missing.");
         }
 
-        services.AddDbContext<PayrollDbContext>(options => options.UseNpgsql(connectionString));
-        
-        services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<PayrollDbContext>());
+        services.AddDbContext<PayrollDbContext>(
+            options => options.UseNpgsql(connectionString));
+
+        services.AddScoped<IApplicationDbContext>(
+            provider => provider.GetRequiredService<PayrollDbContext>());
+
+        // Register Attendance HTTP client.
+        var attendanceBaseUrl =
+            configuration["AttendanceService:BaseUrl"];
+
+        if (string.IsNullOrWhiteSpace(attendanceBaseUrl))
+        {
+            throw new InvalidOperationException(
+                "AttendanceService:BaseUrl is missing.");
+        }
+
+        if (!Uri.TryCreate(
+                attendanceBaseUrl,
+                UriKind.Absolute,
+                out var attendanceUri))
+        {
+            throw new InvalidOperationException(
+                "AttendanceService:BaseUrl is not a valid absolute URL.");
+        }
+
+        services.AddHttpClient<
+            IAttendanceServiceClient,
+            AttendanceServiceClient>(client =>
+        {
+            client.BaseAddress = attendanceUri;
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
 
         return services;
     }
