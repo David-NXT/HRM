@@ -3,49 +3,75 @@ using Admin.WinForms.Models.HR;
 
 namespace Admin.WinForms.Controls.HR;
 
-public sealed class EmployeeManagementControl : HrPageControl
+public sealed partial class EmployeeManagementControl : HrPageControl
 {
-    private readonly TextBox _search = new() { Width = 300, PlaceholderText = "Mã, tên, email, điện thoại, CCCD", Margin = new Padding(3, 8, 8, 3) };
-    private readonly DataGridView _grid = Table(("Mã NV", "EmployeeCode"), ("Họ tên", "FullName"),
-        ("Loại", "EmploymentTypeLabel"), ("Phòng ban", "DepartmentName"), ("Chức vụ", "PositionName"),
-        ("Email", "Email"), ("Trạng thái", "Status"));
-    private readonly Label _summary = new() { AutoSize = true, Margin = new Padding(12, 12, 8, 3) };
-    private readonly Button _previous = new() { Text = "Trang trước", AutoSize = true, Height = 34 };
-    private readonly Button _next = new() { Text = "Trang sau", AutoSize = true, Height = 34 };
     private int _page = 1;
     private string _keyword = "";
 
     public EmployeeManagementControl()
     {
-        Toolbar.Controls.Add(_search);
-        _grid.Columns.Insert(3, new DataGridViewTextBoxColumn
+        InitializeComponent();
+        WireEvents();
+    }
+
+    private void WireEvents()
+    {
+        _searchButton.Click += async (_, _) => await RunAsync(async () =>
         {
-            HeaderText = "Lương",
-            DataPropertyName = "SalaryLabel",
-            Name = "SalaryLabel",
-            MinimumWidth = 120,
-            SortMode = DataGridViewColumnSortMode.NotSortable
+            _page = 1;
+            _keyword = _search.Text.Trim();
+            await ReloadAsync();
         });
-        ActionButton("Tìm kiếm", async () => { _page = 1; _keyword = _search.Text.Trim(); await ReloadAsync(); }, true);
-        ActionButton("Làm mới", async () => { _search.Clear(); _keyword = ""; _page = 1; await ReloadAsync(); });
-        ActionButton("Thêm / Tiếp nhận", () => EditAsync(null));
-        ActionButton("Sửa hồ sơ", async () => await EditAsync(await Api.GetAsync<EmployeeRow>($"employees/{Selected<EmployeeRow>(_grid).EmployeeId}", Token)));
-        ActionButton("Khóa hồ sơ", LockAsync);
-        ActionButton("Xem chi tiết", DetailsAsync);
-        ActionButton("Cập nhật lương", UpdateSalaryAsync);
-        Body.Controls.Add(_grid);
-        Footer.Controls.Add(_previous);
-        Footer.Controls.Add(_summary);
-        Footer.Controls.Add(_next);
-        _previous.Click += async (_, _) => await RunAsync(async () => { _page--; await ReloadAsync(); });
-        _next.Click += async (_, _) => await RunAsync(async () => { _page++; await ReloadAsync(); });
+
+        _refreshButton.Click += async (_, _) => await RunAsync(async () =>
+        {
+            _search.Clear();
+            _keyword = "";
+            _page = 1;
+            await ReloadAsync();
+        });
+
+        _addButton.Click += async (_, _) => await RunAsync(() => EditAsync(null));
+
+        _editButton.Click += async (_, _) => await RunAsync(async () =>
+        {
+            var selected = Selected<EmployeeRow>(_grid);
+            var employee = await Api.GetAsync<EmployeeRow>($"employees/{selected.EmployeeId}", Token);
+            await EditAsync(employee);
+        });
+
+        _lockButton.Click += async (_, _) => await RunAsync(LockAsync);
+        _detailsButton.Click += async (_, _) => await RunAsync(DetailsAsync);
+        _salaryButton.Click += async (_, _) => await RunAsync(UpdateSalaryAsync);
+
+        _previous.Click += async (_, _) => await RunAsync(async () =>
+        {
+            _page--;
+            await ReloadAsync();
+        });
+
+        _next.Click += async (_, _) => await RunAsync(async () =>
+        {
+            _page++;
+            await ReloadAsync();
+        });
+
         _search.KeyDown += async (_, e) =>
         {
             if (e.KeyCode != Keys.Enter) return;
             e.SuppressKeyPress = true;
-            await RunAsync(async () => { _page = 1; _keyword = _search.Text.Trim(); await ReloadAsync(); });
+            await RunAsync(async () =>
+            {
+                _page = 1;
+                _keyword = _search.Text.Trim();
+                await ReloadAsync();
+            });
         };
-        _grid.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0) await RunAsync(DetailsAsync); };
+
+        _grid.CellDoubleClick += async (_, e) =>
+        {
+            if (e.RowIndex >= 0) await RunAsync(DetailsAsync);
+        };
     }
 
     protected override async Task ReloadAsync()
@@ -56,13 +82,16 @@ public sealed class EmployeeManagementControl : HrPageControl
             _page = Math.Max(1, (int)Math.Ceiling(result.Total / 20d));
             result = await Api.EmployeesAsync(_keyword, _page, 20, Token);
         }
+
         Token.ThrowIfCancellationRequested();
         _page = result.Page;
         _grid.DataSource = result.Items;
         _previous.Enabled = _page > 1;
         _next.Enabled = (long)_page * 20 < result.Total;
         _summary.Text = $"Trang {_page}/{Math.Max(1, (int)Math.Ceiling(result.Total / 20d))} · Tổng {result.Total} nhân viên";
-        Status.Text = result.Total == 0 ? "Không tìm thấy nhân viên phù hợp." : "Chọn một dòng để sửa, xem hoặc khóa hồ sơ.";
+        Status.Text = result.Total == 0
+            ? "Không tìm thấy nhân viên phù hợp."
+            : "Chọn một dòng để sửa, xem hoặc khóa hồ sơ.";
     }
 
     private async Task EditAsync(EmployeeRow? employee)
@@ -110,8 +139,12 @@ public sealed class EmployeeManagementControl : HrPageControl
                 await Api.SendAsync<OnboardingResult>(HttpMethod.Post, "onboarding",
                     new OnboardEmployee(request, f.DateValue("start"), f.GuidValue("department"), f.GuidValue("position"), f.OptionalText("notes")), token);
             }
-            else await Api.SendAsync<EmployeeRow>(HttpMethod.Put, $"employees/{employee!.EmployeeId}", personal, token);
+            else
+            {
+                await Api.SendAsync<EmployeeRow>(HttpMethod.Put, $"employees/{employee!.EmployeeId}", personal, token);
+            }
         });
+
         if (form.ShowDialog(this) == DialogResult.OK) await ReloadAsync();
     }
 
@@ -119,7 +152,12 @@ public sealed class EmployeeManagementControl : HrPageControl
     {
         var employee = Selected<EmployeeRow>(_grid);
         Ensure(employee.Status == "ACTIVE", "Chỉ khóa hồ sơ đang ACTIVE; nghỉ việc dùng quy trình bàn giao.");
-        if (!Confirm($"Khóa hồ sơ {employee.EmployeeCode} — {employee.FullName}?")) { Status.Text = "Đã hủy thao tác."; return; }
+        if (!Confirm($"Khóa hồ sơ {employee.EmployeeCode} — {employee.FullName}?"))
+        {
+            Status.Text = "Đã hủy thao tác.";
+            return;
+        }
+
         await Api.SendAsync<EmployeeRow>(HttpMethod.Post, $"employees/{employee.EmployeeId}/lock", null, Token);
         await ReloadAsync();
     }

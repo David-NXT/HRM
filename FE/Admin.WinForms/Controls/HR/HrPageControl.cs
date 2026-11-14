@@ -6,7 +6,7 @@ using System.Text.Json;
 namespace Admin.WinForms.Controls.HR;
 
 // Shared page chrome. Business rules remain in HR API.
-public class HrPageControl : UserControl
+public partial class HrPageControl : UserControl
 {
     private HrApiClient? _api;
     private readonly CancellationTokenSource _lifetime = new();
@@ -14,29 +14,7 @@ public class HrPageControl : UserControl
     private bool _loaded;
     protected HrApiClient Api => _api ??= new HrApiClient();
     protected CancellationToken Token => _lifetime.Token;
-    protected FlowLayoutPanel Toolbar { get; } = new() { Dock = DockStyle.Fill, AutoSize = true, WrapContents = true };
-    protected Panel Body { get; } = new() { Dock = DockStyle.Fill };
-    protected FlowLayoutPanel Footer { get; } = new() { Dock = DockStyle.Fill, AutoSize = true };
-    protected Label Status { get; } = new() { AutoSize = true, Dock = DockStyle.Fill, ForeColor = Color.FromArgb(80, 96, 115) };
-
-    public HrPageControl()
-    {
-        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(16), ColumnCount = 1, RowCount = 4 };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        Status.Margin = new Padding(3, 8, 3, 12);
-        layout.Controls.Add(Toolbar, 0, 0);
-        layout.Controls.Add(Status, 0, 1);
-        layout.Controls.Add(Body, 0, 2);
-        layout.Controls.Add(Footer, 0, 3);
-        Controls.Add(layout);
-        BackColor = Color.FromArgb(244, 246, 249);
-        Font = new Font("Segoe UI", 9F);
-        Size = new Size(1100, 650);
-    }
+    public HrPageControl() => InitializeComponent();
 
     protected override async void OnLoad(EventArgs e)
     {
