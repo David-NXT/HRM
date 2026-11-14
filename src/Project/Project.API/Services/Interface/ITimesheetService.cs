@@ -12,6 +12,9 @@ public interface ITimesheetService
 
     Task<TimesheetResponseDto> CreateTimesheetAsync(
         CreateTimesheetDto dto);
+    Task<bool> UpdateTimesheetAsync(
+    Guid id,
+    UpdateTimesheetDto dto);
 
     Task<bool> ApproveTimesheetAsync(
         Guid id,

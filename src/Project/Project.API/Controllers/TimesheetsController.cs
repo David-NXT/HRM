@@ -60,7 +60,30 @@ public class TimesheetsController : ControllerBase
             return BadRequest(ex.Message);
         }
     }
+[HttpPut("{id:guid}")]
+public async Task<IActionResult> UpdateTimesheet(
+    Guid id,
+    [FromBody] UpdateTimesheetDto dto)
+{
+    try
+    {
+        var result = await _timesheetService
+            .UpdateTimesheetAsync(id, dto);
 
+        if (!result)
+            return NotFound("Timesheet not found.");
+
+        return NoContent();
+    }
+    catch (ArgumentException ex)
+    {
+        return BadRequest(ex.Message);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return BadRequest(ex.Message);
+    }
+}
     // Duyệt hoặc từ chối Timesheet
     [HttpPut("{id:guid}/review")]
     public async Task<IActionResult> ReviewTimesheet(

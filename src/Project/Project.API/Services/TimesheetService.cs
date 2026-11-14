@@ -120,7 +120,33 @@ public class TimesheetService : ITimesheetService
             ApprovedBy = timesheet.ApprovedBy
         };
     }
+public async Task<bool> UpdateTimesheetAsync(
+    Guid id,
+    UpdateTimesheetDto dto)
+{
+    var timesheet = await _context.Timesheets.FindAsync(id);
 
+    if (timesheet == null)
+        return false;
+
+    // Chỉ cho phép chỉnh sửa Timesheet Pending
+    if (timesheet.Status != "Pending")
+        throw new InvalidOperationException(
+            "Only pending timesheets can be updated.");
+
+    // Kiểm tra số giờ
+    if (dto.HoursWorked <= 0 || dto.HoursWorked > 24)
+        throw new ArgumentException(
+            "Hours worked must be greater than 0 and not exceed 24.");
+
+    // Cập nhật thông tin
+    timesheet.HoursWorked = dto.HoursWorked;
+    timesheet.Description = dto.Description;
+
+    await _context.SaveChangesAsync();
+
+    return true;
+}
     public async Task<bool> ApproveTimesheetAsync(
         Guid id,
         Guid approvedBy)
