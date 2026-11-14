@@ -21,6 +21,16 @@ namespace Admin.WinForms.Controls.Attendance
             ShowPage(new AttendanceOverviewPageControl(), (Button)sender);
         }
 
+        private void btnCheckIn_Click(object sender, EventArgs e)
+        {
+            ShowPage(new AttendanceCheckInControl(), (Button)sender);
+        }
+
+        private void btnRequests_Click(object sender, EventArgs e)
+        {
+            ShowPage(new AttendanceRequestsControl(), (Button)sender);
+        }
+
         private void btnApprovals_Click(object sender, EventArgs e)
         {
             ShowPage(new AttendanceApprovalControl(), (Button)sender);
@@ -29,6 +39,11 @@ namespace Admin.WinForms.Controls.Attendance
         private void btnReports_Click(object sender, EventArgs e)
         {
             ShowPage(new AttendanceReportControl(), (Button)sender);
+        }
+
+        private void btnConfig_Click(object sender, EventArgs e)
+        {
+            ShowPage(new AttendanceConfigControl(), (Button)sender);
         }
 
         private void ShowPage(UserControl page, Button selectedButton)

@@ -1,3 +1,4 @@
+using HR.Application.DTOs.Employees;
 using HR.Application.DTOs.Lifecycle;
 using HR.Application.Interfaces.Repositories;
 using HR.Application.Services.Employees;
@@ -45,6 +46,28 @@ public sealed class LifecycleServiceTests
         Assert.Equal(store.Position.PositionId, history.PositionId);
         Assert.Null(history.EndDate);
         Assert.Equal(1, store.TransactionSaves);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(PositionSeniorityLevels.Manager)]
+    [InlineData(PositionSeniorityLevels.Director)]
+    [InlineData(PositionSeniorityLevels.Executive)]
+    public async Task Onboarding_PartTimeRequiresStaffSeniorityBeforeSaving(string? seniorityLevel)
+    {
+        var store = new FakeHrStore();
+        store.Position.SeniorityLevel = seniorityLevel;
+        var request = Onboarding();
+        request = request with { Employee = request.Employee with { EmploymentType = EmploymentTypes.PartTime } };
+
+        var error = await Assert.ThrowsAsync<HrException>(() =>
+            Service(store).StartOnboardingAsync(request, CancellationToken.None));
+
+        Assert.Equal(400, error.StatusCode);
+        Assert.Equal("PartTimePositionNotAllowed", error.Code);
+        Assert.Empty(store.Employees);
+        Assert.Empty(store.History);
+        Assert.Equal(0, store.TransactionSaves);
     }
 
     [Fact]
@@ -328,7 +351,11 @@ public sealed class LifecycleServiceTests
         public List<WorkHistory> History { get; } = [];
         public List<OffboardingRecord> Offboardings { get; } = [];
         public Department Department { get; } = new() { DepartmentId = Id(1), Code = "HR", Name = "Nhân sự" };
-        public Position Position { get; } = new() { PositionId = Id(1), Code = "STAFF", Name = "Nhân viên" };
+        public Position Position { get; } = new()
+        {
+            PositionId = Id(1), Code = "STAFF", Name = "Nhân viên",
+            SeniorityLevel = PositionSeniorityLevels.Staff
+        };
         public int TransactionSaves { get; private set; }
 
         public Task<Employee?> GetEmployeeAsync(Guid id, CancellationToken ct) => Task.FromResult(Employees.FirstOrDefault(item => item.EmployeeId == id));
@@ -362,7 +389,22 @@ public sealed class LifecycleServiceTests
 
         public Task<(IReadOnlyList<Employee> Items, int Total)> SearchAsync(string? keyword, int page, int pageSize, CancellationToken ct) => throw new NotSupportedException();
         public Task<(IReadOnlyList<Employee> Items, int Total)> SearchActiveAsync(string? keyword, int page, int pageSize, CancellationToken ct) => throw new NotSupportedException();
+        public Task<EmployeeStatisticsDto> GetStatisticsAsync(CancellationToken ct)
+        {
+            var stats = new EmployeeStatisticsDto(
+                Employees.Count,
+                Employees.Count(item => item.Status == EmployeeStatuses.Active),
+                Employees.Count(item => item.Status == EmployeeStatuses.Locked),
+                Employees.Count(item => item.Status == EmployeeStatuses.Resigned),
+                Employees.Count(item => item.EmploymentType == EmploymentTypes.FullTime),
+                Employees.Count(item => item.EmploymentType == EmploymentTypes.PartTime));
+            return Task.FromResult(stats);
+        }
+        public Task<bool> HasRelatedRecordsAsync(Guid employeeId, CancellationToken ct) =>
+            Task.FromResult(History.Any(item => item.EmployeeId == employeeId)
+                || Offboardings.Any(item => item.EmployeeId == employeeId));
         public Task AddAsync(Employee employee, CancellationToken ct) => throw new NotSupportedException();
+        public void Remove(Employee employee) => Employees.Remove(employee);
         public Task SaveChangesAsync(CancellationToken ct) => throw new NotSupportedException();
         public Task AddDepartmentAsync(Department department, CancellationToken ct) => throw new NotSupportedException();
         public Task AddPositionAsync(Position position, CancellationToken ct) => throw new NotSupportedException();

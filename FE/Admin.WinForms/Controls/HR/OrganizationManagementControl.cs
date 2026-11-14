@@ -3,23 +3,22 @@ using Admin.WinForms.Models.HR;
 
 namespace Admin.WinForms.Controls.HR;
 
-public sealed class OrganizationManagementControl : HrPageControl
+public sealed partial class OrganizationManagementControl : HrPageControl
 {
-    private readonly TabControl _tabs = new() { Dock = DockStyle.Fill };
-    private readonly DataGridView _departments = Table(("Mã", "Code"), ("Phòng ban", "Name"), ("Mô tả", "Description"), ("Trạng thái", "Status"));
-    private readonly DataGridView _positions = Table(("Mã", "Code"), ("Chức vụ", "Name"), ("Mô tả", "Description"), ("Trạng thái", "Status"));
     private List<DepartmentRow> _departmentRows = [];
 
     public OrganizationManagementControl()
     {
-        ActionButton("Làm mới", ReloadAsync);
-        ActionButton("Thêm", () => EditAsync(false), true);
-        ActionButton("Sửa", () => EditAsync(true));
-        ActionButton("Ngừng hoạt động", DeactivateAsync);
-        var departments = new TabPage("Phòng ban"); departments.Controls.Add(_departments);
-        var positions = new TabPage("Chức vụ"); positions.Controls.Add(_positions);
-        _tabs.TabPages.AddRange([departments, positions]);
-        Body.Controls.Add(_tabs);
+        InitializeComponent();
+        WireEvents();
+    }
+
+    private void WireEvents()
+    {
+        _refreshButton.Click += async (_, _) => await RunAsync(ReloadAsync);
+        _addButton.Click += async (_, _) => await RunAsync(() => EditAsync(false));
+        _editButton.Click += async (_, _) => await RunAsync(() => EditAsync(true));
+        _deactivateButton.Click += async (_, _) => await RunAsync(DeactivateAsync);
     }
 
     protected override async Task ReloadAsync()
@@ -29,9 +28,11 @@ public sealed class OrganizationManagementControl : HrPageControl
         await Task.WhenAll(departments, positions);
         Token.ThrowIfCancellationRequested();
         _departmentRows = await departments;
+        var positionRows = await positions;
         _departments.DataSource = _departmentRows;
-        _positions.DataSource = await positions;
-        Status.Text = $"{_departmentRows.Count} phòng ban · {(await positions).Count} chức vụ. Chức vụ là vị trí công tác, không phải quyền đăng nhập.";
+        _positions.DataSource = positionRows;
+        Status.Text = $"{_departmentRows.Count} phòng ban · {positionRows.Count} chức vụ. "
+            + "Chức vụ là vị trí công tác, không phải quyền đăng nhập.";
     }
 
     private async Task EditAsync(bool editing)
@@ -44,19 +45,39 @@ public sealed class OrganizationManagementControl : HrPageControl
             .TextField("name", "Tên *", department?.Name ?? position?.Name, true, 150)
             .TextField("description", "Mô tả", department?.Description ?? position?.Description, maxLength: 500, multiline: true);
         if (isDepartment)
+        {
             form.ChoiceField("parent", "Phòng ban cha", new[] { new Choice(null, "Không có (cấp gốc)") }
                 .Concat(_departmentRows.Where(x => x.DepartmentId != department?.DepartmentId)
                     .Select(x => new Choice(x.DepartmentId, x.DisplayName))), department?.ParentDepartmentId);
+        }
+        else
+        {
+            form.ChoiceField("seniority", "Cấp bậc *", new[]
+            {
+                new Choice(null, "Chọn cấp bậc *"),
+                new Choice("STAFF", HrChoiceOptions.SeniorityLevelLabel("STAFF")),
+                new Choice("MANAGER", HrChoiceOptions.SeniorityLevelLabel("MANAGER")),
+                new Choice("DIRECTOR", HrChoiceOptions.SeniorityLevelLabel("DIRECTOR")),
+                new Choice("EXECUTIVE", HrChoiceOptions.SeniorityLevelLabel("EXECUTIVE"))
+            }, position?.SeniorityLevel);
+        }
+
         form.OnSave(async (f, token) =>
         {
             if (isDepartment)
+            {
                 await Api.SendAsync<DepartmentRow>(editing ? HttpMethod.Put : HttpMethod.Post,
                     editing ? $"departments/{department!.DepartmentId}" : "departments",
-                    new DepartmentInput(f.TextValue("code"), f.TextValue("name"), f.OptionalText("description"), f.ChoiceValue("parent") as Guid?), token);
+                    new DepartmentInput(f.TextValue("code"), f.TextValue("name"), f.OptionalText("description"),
+                        f.ChoiceValue("parent") as Guid?), token);
+            }
             else
+            {
                 await Api.SendAsync<PositionRow>(editing ? HttpMethod.Put : HttpMethod.Post,
                     editing ? $"positions/{position!.PositionId}" : "positions",
-                    new PositionInput(f.TextValue("code"), f.TextValue("name"), f.OptionalText("description")), token);
+                    new PositionInput(f.TextValue("code"), f.TextValue("name"), f.OptionalText("description"),
+                        f.ChoiceStringValue("seniority")), token);
+            }
         });
         if (form.ShowDialog(this) == DialogResult.OK) await ReloadAsync();
     }

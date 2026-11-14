@@ -67,3 +67,11 @@ public sealed record EmployeeListDto(
     int Page,
     int PageSize,
     int Total);
+
+public sealed record EmployeeStatisticsDto(
+    int TotalEmployees,
+    int ActiveEmployees,
+    int LockedEmployees,
+    int ResignedEmployees,
+    int FullTimeEmployees,
+    int PartTimeEmployees);

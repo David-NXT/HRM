@@ -15,6 +15,7 @@ public sealed class PositionConfiguration : IEntityTypeConfiguration<Position>
         builder.HasIndex(position => position.Code).IsUnique();
         builder.Property(position => position.Name).HasColumnName("name").HasMaxLength(150).IsRequired();
         builder.Property(position => position.Description).HasColumnName("description").HasMaxLength(500);
+        builder.Property(position => position.SeniorityLevel).HasColumnName("seniority_level").HasMaxLength(20);
         builder.Property(position => position.Status).HasColumnName("status").HasMaxLength(20).IsRequired();
         builder.Property(position => position.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(position => position.UpdatedAt).HasColumnName("updated_at").IsRequired();

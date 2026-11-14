@@ -9,10 +9,19 @@ namespace Attendance.Controllers;
 public class AttendanceController : ControllerBase
 {
     private readonly IAttendanceService _attendanceService;
+    private readonly IHrEmployeeDirectoryClient _employees;
 
-    public AttendanceController(IAttendanceService attendanceService)
+    public AttendanceController(IAttendanceService attendanceService, IHrEmployeeDirectoryClient employees)
     {
         _attendanceService = attendanceService;
+        _employees = employees;
+    }
+
+    [HttpGet("departments")]
+    public async Task<ActionResult<IReadOnlyList<HrDepartmentDto>>> GetDepartments(CancellationToken cancellationToken)
+    {
+        var departments = await _employees.GetDepartmentsAsync(cancellationToken);
+        return Ok(departments);
     }
 
     [HttpGet]
@@ -31,6 +40,32 @@ public class AttendanceController : ControllerBase
             return NotFound();
         }
 
+        return Ok(result);
+    }
+
+    [HttpPost("search")]
+    public async Task<ActionResult<List<AttendanceRecordDto>>> Search([FromBody] AttendanceSearchRequestDto request, CancellationToken cancellationToken)
+    {
+        var result = await _attendanceService.SearchAsync(request, cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpGet("search")]
+    public async Task<ActionResult<List<AttendanceRecordDto>>> SearchGet(
+        [FromQuery] DateOnly? date,
+        [FromQuery] Guid? departmentId,
+        [FromQuery] string? status,
+        [FromQuery] string? keyword,
+        CancellationToken cancellationToken)
+    {
+        var request = new AttendanceSearchRequestDto
+        {
+            Date = date,
+            DepartmentId = departmentId,
+            Status = status,
+            Keyword = keyword
+        };
+        var result = await _attendanceService.SearchAsync(request, cancellationToken);
         return Ok(result);
     }
 

@@ -29,12 +29,13 @@ public sealed record DepartmentRow(Guid DepartmentId, string Code, string Name, 
     public string DisplayName => $"{Code} — {Name} ({Status})";
 }
 public sealed record PositionRow(Guid PositionId, string Code, string Name, string? Description,
-    string Status, DateTime CreatedAt, DateTime UpdatedAt)
+    string Status, DateTime CreatedAt, DateTime UpdatedAt, string? SeniorityLevel = null)
 {
     public string DisplayName => $"{Code} — {Name} ({Status})";
+    public string SeniorityLevelLabel => HrChoiceOptions.SeniorityLevelLabel(SeniorityLevel);
 }
 public sealed record DepartmentInput(string Code, string Name, string? Description, Guid? ParentDepartmentId);
-public sealed record PositionInput(string Code, string Name, string? Description);
+public sealed record PositionInput(string Code, string Name, string? Description, string? SeniorityLevel = null);
 public sealed record ContractRow(Guid ContractId, Guid EmployeeId, string ContractNumber,
     string ContractType, DateOnly StartDate, DateOnly? EndDate, string Status, string? Notes,
     Guid? RenewalOfContractId, DateTime CreatedAt, DateTime UpdatedAt);
@@ -70,4 +71,56 @@ public sealed record AlertPage(List<AlertRow> Items, int Page, int PageSize, int
 public sealed record Choice(object? Value, string Text)
 {
     public override string ToString() => Text;
+}
+
+public static class HrChoiceOptions
+{
+    public const string DefaultStaffPositionCode = "SYS_STAFF";
+
+    public static IReadOnlyList<Choice> PositionChoices(
+        IEnumerable<PositionRow> positions,
+        string? employmentType,
+        bool defaultStaffOnlyForPartTime = false)
+    {
+        var activePositions = positions.Where(position => position.Status == "ACTIVE");
+        var isPartTime = employmentType == "PART_TIME";
+        if (isPartTime)
+        {
+            activePositions = activePositions.Where(position => position.SeniorityLevel == "STAFF");
+            if (defaultStaffOnlyForPartTime)
+            {
+                activePositions = activePositions.Where(position => position.Code == DefaultStaffPositionCode);
+            }
+        }
+
+        var options = activePositions
+            .OrderByDescending(position => isPartTime && position.Code == DefaultStaffPositionCode)
+            .ThenBy(position => position.Code)
+            .Select(position => new Choice(position.PositionId,
+                position.Code == DefaultStaffPositionCode ? position.Name : position.DisplayName))
+            .ToArray();
+
+        if (isPartTime && defaultStaffOnlyForPartTime && options.Length > 0)
+        {
+            return options;
+        }
+
+        var prompt = options.Length == 0
+            ? isPartTime && defaultStaffOnlyForPartTime
+                ? "Thiếu chức vụ Nhân viên mặc định; hãy cập nhật database HR"
+                : isPartTime
+                    ? "Chưa có chức vụ STAFF đã phân loại"
+                : "Chưa có chức vụ đang hoạt động"
+            : "Chọn chức vụ *";
+        return new[] { new Choice(null, prompt) }.Concat(options).ToArray();
+    }
+
+    public static string SeniorityLevelLabel(string? value) => value switch
+    {
+        "STAFF" => "Nhân viên / Chuyên viên",
+        "MANAGER" => "Quản lý",
+        "DIRECTOR" => "Giám đốc",
+        "EXECUTIVE" => "Ban điều hành / cấp cao hơn",
+        _ => "Chưa phân loại"
+    };
 }

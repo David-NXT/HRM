@@ -1,16 +1,35 @@
+
+using Admin.WinForms.Config;
+using Admin.WinForms.Services.Attendance;
+using Admin.WinForms.Services.Payroll;
+
 namespace Admin.WinForms
 {
     internal static class Program
     {
-        /// <summary>
-        ///  The main entry point for the application.
-        /// </summary>
+        public static AttendanceApiService AttendanceApi { get; private set; } = null!;
+        public static PayrollApiService PayrollApi { get; private set; } = null!;
+
         [STAThread]
         static void Main()
         {
-            // To customize application configuration such as set high DPI settings or default font,
-            // see https://aka.ms/applicationconfiguration.
             ApplicationConfiguration.Initialize();
+
+            var attendanceClient = new HttpClient
+            {
+                BaseAddress = new Uri(ApiConfig.AttendanceServiceUrl),
+                Timeout = TimeSpan.FromSeconds(30)
+            };
+
+            var payrollClient = new HttpClient
+            {
+                BaseAddress = new Uri(ApiConfig.PayrollServiceUrl),
+                Timeout = TimeSpan.FromSeconds(30)
+            };
+
+            AttendanceApi = new AttendanceApiService(attendanceClient);
+            PayrollApi = new PayrollApiService(payrollClient);
+
             Application.Run(new MainForm());
         }
     }

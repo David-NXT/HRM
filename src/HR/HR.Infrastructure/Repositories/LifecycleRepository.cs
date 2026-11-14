@@ -79,6 +79,13 @@ public sealed class LifecycleRepository(HrDbContext db, ILogger<LifecycleReposit
             throw new HrException(409, "DuplicateEmployeeCode", "Mã nhân viên đã tồn tại.");
         }
         catch (DbUpdateException exception) when (exception.InnerException is PostgresException postgres
+            && postgres.SqlState == PostgresErrorCodes.UniqueViolation
+            && postgres.ConstraintName == "IX_work_history_director_department_open")
+        {
+            throw new HrException(409, "DepartmentDirectorAlreadyAssigned",
+                "Phòng ban đã có Giám đốc được phân công.");
+        }
+        catch (DbUpdateException exception) when (exception.InnerException is PostgresException postgres
             && postgres.SqlState == PostgresErrorCodes.UniqueViolation)
         {
             logger.LogWarning(exception, "Trùng hồ sơ nghỉ việc hoặc công tác đang mở.");

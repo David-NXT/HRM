@@ -57,6 +57,22 @@ public sealed class EmploymentRepository : IEmploymentRepository
             position => position.PositionId == positionId && position.Status == OrgStatuses.Active,
             cancellationToken);
 
+    public Task<bool> HasDirectorAssignmentInDepartmentAsync(
+        Guid departmentId,
+        DateOnly effectiveDate,
+        Guid? excludingEmployeeId,
+        CancellationToken cancellationToken)
+    {
+        var query = _db.WorkHistories.Where(history => history.DepartmentId == departmentId
+            && history.IsDirector
+            && (history.EndDate == null || history.EndDate >= effectiveDate));
+        if (excludingEmployeeId.HasValue)
+        {
+            query = query.Where(history => history.EmployeeId != excludingEmployeeId.Value);
+        }
+        return query.AnyAsync(cancellationToken);
+    }
+
     public Task<bool> ContractNumberExistsAsync(string contractNumber, Guid? excludingId, CancellationToken cancellationToken)
     {
         var query = _db.EmploymentContracts.Where(contract => contract.ContractNumber == contractNumber);
@@ -109,6 +125,14 @@ public sealed class EmploymentRepository : IEmploymentRepository
         {
             _logger.LogWarning(exception, "Trùng số hợp đồng khi lưu.");
             throw new HrException(409, "DuplicateContractNumber", "Số hợp đồng đã tồn tại.");
+        }
+        catch (DbUpdateException exception) when (exception.InnerException is PostgresException postgres
+            && postgres.SqlState == PostgresErrorCodes.UniqueViolation
+            && postgres.ConstraintName == "IX_work_history_director_department_open")
+        {
+            _logger.LogWarning(exception, "Trùng vị trí Giám đốc trong một phòng ban khi lưu.");
+            throw new HrException(409, "DepartmentDirectorAlreadyAssigned",
+                "Phòng ban đã có Giám đốc được phân công.");
         }
         catch (DbUpdateException exception) when (exception.InnerException is PostgresException postgres
             && postgres.SqlState == PostgresErrorCodes.UniqueViolation)

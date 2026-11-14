@@ -36,8 +36,9 @@ public sealed record PositionDto(
     string? Description,
     string Status,
     DateTime CreatedAt,
-    DateTime UpdatedAt);
+    DateTime UpdatedAt,
+    string? SeniorityLevel = null);
 
-public sealed record CreatePositionRequest(string Code, string Name, string? Description);
+public sealed record CreatePositionRequest(string Code, string Name, string? Description, string? SeniorityLevel = null);
 
-public sealed record UpdatePositionRequest(string Code, string Name, string? Description);
+public sealed record UpdatePositionRequest(string Code, string Name, string? Description, string? SeniorityLevel = null);

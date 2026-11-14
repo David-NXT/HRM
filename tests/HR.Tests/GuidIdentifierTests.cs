@@ -53,11 +53,11 @@ public sealed class GuidIdentifierTests
     }
 
     [Fact]
-    public void Conversion_RecreatesAllAffectedConstraintsAndIndexesFromTheModel()
+    public void Conversion_RecreatesAllAffectedConstraintsAndIndexesFromTheMigrationTargetModel()
     {
-        using var db = Context();
-        var model = db.GetService<IDesignTimeModel>().Model;
         var migration = new UnifyHrIdentifiersAsGuid();
+        // Later migrations may change indexes; validate this conversion against its own schema.
+        var model = migration.TargetModel;
         foreach (var operations in new[] { migration.UpOperations, migration.DownOperations })
         {
             var droppedKeys = operations.OfType<DropPrimaryKeyOperation>().ToArray();

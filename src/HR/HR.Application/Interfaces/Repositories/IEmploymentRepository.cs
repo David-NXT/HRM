@@ -11,6 +11,8 @@ public interface IEmploymentRepository
     Task<WorkHistory?> GetOpenWorkHistoryAsync(Guid employeeId, CancellationToken cancellationToken);
     Task<Department?> GetActiveDepartmentAsync(Guid departmentId, CancellationToken cancellationToken);
     Task<Position?> GetActivePositionAsync(Guid positionId, CancellationToken cancellationToken);
+    Task<bool> HasDirectorAssignmentInDepartmentAsync(Guid departmentId, DateOnly effectiveDate, Guid? excludingEmployeeId, CancellationToken cancellationToken) =>
+        Task.FromResult(false);
     Task<bool> ContractNumberExistsAsync(string contractNumber, Guid? excludingId, CancellationToken cancellationToken);
     Task<bool> RenewalAlreadyExistsAsync(Guid contractId, CancellationToken cancellationToken);
     Task AddContractAsync(EmploymentContract contract, CancellationToken cancellationToken);
