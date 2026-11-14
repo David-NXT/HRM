@@ -8,6 +8,10 @@ public class TimesheetSummaryDto
 
     public Guid EmployeeId { get; set; }
 
+    public string? EmployeeCode { get; set; }
+
+    public string? EmployeeName { get; set; }
+
     public decimal StandardWorkingDays { get; set; }
 
     public decimal ActualWorkingDays { get; set; }
