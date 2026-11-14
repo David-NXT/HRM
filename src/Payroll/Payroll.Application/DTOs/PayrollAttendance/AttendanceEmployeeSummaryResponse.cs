@@ -13,4 +13,6 @@ public class AttendanceEmployeeSummaryResponse
 
     public decimal StandardWorkingDays { get; set; }
     public decimal ActualWorkingDays { get; set; }
+    public decimal TotalWorkingHours { get; set; }
+    public decimal OTHours { get; set; }
 }

@@ -130,9 +130,7 @@ public class AttendanceDbContext : DbContext
             b.Property(x => x.TotalWorkingHours).HasPrecision(6, 2);
             b.Property(x => x.PaidLeaveDays).HasPrecision(5, 2);
             b.Property(x => x.UnpaidLeaveDays).HasPrecision(5, 2);
-            b.Property(x => x.NormalOTHours).HasPrecision(6, 2);
-            b.Property(x => x.WeekendOTHours).HasPrecision(6, 2);
-            b.Property(x => x.HolidayOTHours).HasPrecision(6, 2);
+            b.Property(x => x.OTHours).HasPrecision(6, 2);
         });
     }
 }

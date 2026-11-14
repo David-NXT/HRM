@@ -34,4 +34,26 @@ public class AttendanceServiceClient : IAttendanceServiceClient //để định 
             .ReadFromJsonAsync<AttendanceEmployeeSummaryResponse>(
                 cancellationToken: cancellationToken);
     }
+
+    public async Task<decimal> GetOvertimeMultiplierAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _httpClient.GetAsync(
+            "api/OvertimeRules/multiplier",
+            cancellationToken);
+    
+        response.EnsureSuccessStatusCode();
+    
+        var result = await response.Content
+            .ReadFromJsonAsync<OvertimeMultiplierResponse>(
+                cancellationToken: cancellationToken);
+    
+        if (result == null || result.Multiplier <= 0)
+        {
+            throw new InvalidOperationException(
+                "Invalid overtime multiplier returned by Attendance Service.");
+        }
+    
+        return result.Multiplier;
+    }
 }

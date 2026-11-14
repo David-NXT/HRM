@@ -6,6 +6,13 @@ public class CalculatePayrollResponse
     public Guid EmployeeID { get; set; }
 
     public decimal BaseSalary { get; set; }
+    public string? EmploymentType { get; set; }
+    public decimal? HourlyRate { get; set; }
+    public decimal TotalWorkingHours { get; set; }
+
+    public decimal OTHours { get; set; }
+    public decimal OTMultiplier { get; set; }
+    public decimal OTPay { get; set; }
     public decimal WorkingDays { get; set; }
     public decimal StandardWorkingDay { get; set; }
 

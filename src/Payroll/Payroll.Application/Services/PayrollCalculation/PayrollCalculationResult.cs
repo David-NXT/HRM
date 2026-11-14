@@ -4,6 +4,8 @@ public class PayrollCalculationResult
 {
     public decimal ProratedSalary { get; set; }
 
+    public decimal OTPay { get; set; }
+
     public decimal TotalAllowance { get; set; }
 
     public decimal TotalPayCut { get; set; }

@@ -208,11 +208,31 @@ namespace Payroll.Infrastructure.Migrations
                     b.Property<Guid>("EmployeeID")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("EmploymentType")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
                     b.Property<decimal>("GrossSalary")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<decimal?>("HourlyRate")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<decimal>("NetSalary")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("OTHours")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<decimal?>("OTMultiplier")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal>("OTPay")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
@@ -237,6 +257,10 @@ namespace Payroll.Infrastructure.Migrations
                     b.Property<decimal>("TotalPayCut")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("TotalWorkingHours")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
 
                     b.Property<decimal>("WorkingDays")
                         .HasPrecision(5, 2)

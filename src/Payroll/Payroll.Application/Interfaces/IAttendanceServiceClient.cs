@@ -9,4 +9,7 @@ public interface IAttendanceServiceClient
         int month,
         int year,
         CancellationToken cancellationToken = default);
+
+    Task<decimal> GetOvertimeMultiplierAsync(
+        CancellationToken cancellationToken = default);
 }

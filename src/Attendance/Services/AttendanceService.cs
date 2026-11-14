@@ -265,6 +265,78 @@ public class AttendanceService : IAttendanceService
         return true;
     }
 
+    public async Task<List<AttendanceRecordDto>> SearchAsync(
+    AttendanceSearchRequestDto request,
+    CancellationToken cancellationToken = default)
+{
+    var query = _context.AttendanceRecords
+        .AsNoTracking()
+        .AsQueryable();
+
+    // 1. Lọc theo ngày
+    if (request.Date.HasValue)
+    {
+        query = query.Where(x => x.Date == request.Date.Value);
+    }
+
+    // 2. Lọc theo trạng thái
+    if (!string.IsNullOrWhiteSpace(request.Status))
+    {
+        query = query.Where(x => x.Status == request.Status);
+    }
+
+    // 3. Lọc theo phòng ban hoặc thông tin nhân viên
+    /*if (request.DepartmentId.HasValue ||
+        !string.IsNullOrWhiteSpace(request.Keyword))
+    {
+        var employees = await _employees.SearchEmployeesAsync(
+            request.DepartmentId,
+            request.Keyword,
+            cancellationToken);
+
+        var employeeIds = employees
+            .Select(x => x.EmployeeId)
+            .Distinct()
+            .ToList();
+
+        query = query.Where(x =>
+            employeeIds.Contains(x.EmployeeId));
+    } */
+
+    // 4. Trả về kết quả
+    return await query
+        .OrderByDescending(x => x.Date)
+        .Select(x => new AttendanceRecordDto
+        {
+            Id = x.Id,
+            EmployeeId = x.EmployeeId,
+            ShiftId = x.ShiftId,
+            Date = x.Date,
+            TimeIn = x.TimeIn,
+            TimeOut = x.TimeOut,
+            Status = x.Status,
+            WorkHour = x.WorkHour,
+            LateMins = x.LateMins,
+            EarlyLeaveMins = x.EarlyLeaveMins,
+            OTMins = x.OTMins,
+            ActualOTMins = x.ActualOTMins,
+            IsLate = x.IsLate,
+            IsEarlyLeave = x.IsEarlyLeave,
+            CheckInSource = x.CheckInSource,
+            CheckOutSource = x.CheckOutSource,
+            CheckInLatitude = x.CheckInLatitude,
+            CheckInLongitude = x.CheckInLongitude,
+            CheckInLocation = x.CheckInLocation,
+            CheckOutLatitude = x.CheckOutLatitude,
+            CheckOutLongitude = x.CheckOutLongitude,
+            CheckOutLocation = x.CheckOutLocation,
+            DeviceId = x.DeviceId,
+            Note = x.Note,
+            CreatedAt = x.CreatedAt,
+            UpdatedAt = x.UpdatedAt
+        })
+        .ToListAsync(cancellationToken);
+}
     private async Task EnsureActiveEmployeeAsync(Guid employeeId, CancellationToken cancellationToken)
     {
         if (await _employees.GetActiveEmployeeAsync(employeeId, cancellationToken) is null)

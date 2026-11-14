@@ -9,5 +9,7 @@ public interface IOvertimeRuleService
     Task<OvertimeRuleDto?> GetByDayTypeAsync(string dayType, CancellationToken cancellationToken = default);
     Task<OvertimeRuleDto> CreateAsync(CreateOvertimeRuleDto dto, CancellationToken cancellationToken = default);
     Task<OvertimeRuleDto?> UpdateAsync(Guid id, UpdateOvertimeRuleDto dto, CancellationToken cancellationToken = default);
+    Task<decimal> GetOvertimeMultiplierAsync(
+        CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }

@@ -102,6 +102,28 @@ public class OvertimeRuleService : IOvertimeRuleService
         await _dbContext.SaveChangesAsync(cancellationToken);
         return true;
     }
+    public async Task<decimal> GetOvertimeMultiplierAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var currentDate = DateOnly.FromDateTime(DateTime.UtcNow);
+    
+        var rule = await _dbContext.OvertimeRules
+            .AsNoTracking()
+            .Where(x =>
+                x.IsActive &&
+                x.EffectiveDate <= currentDate)
+            .OrderByDescending(x => x.EffectiveDate)
+            .ThenBy(x => x.DayType)
+            .FirstOrDefaultAsync(cancellationToken);
+    
+        if (rule == null)
+        {
+            throw new InvalidOperationException(
+                "Không tìm thấy hệ số OT đang có hiệu lực.");
+        }
+    
+        return rule.Multiplier;
+    }
 
     private static OvertimeRuleDto MapToDto(OvertimeRule model) => new()
     {
