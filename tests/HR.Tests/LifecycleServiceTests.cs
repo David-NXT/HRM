@@ -48,6 +48,28 @@ public sealed class LifecycleServiceTests
         Assert.Equal(1, store.TransactionSaves);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData(PositionSeniorityLevels.Manager)]
+    [InlineData(PositionSeniorityLevels.Director)]
+    [InlineData(PositionSeniorityLevels.Executive)]
+    public async Task Onboarding_PartTimeRequiresStaffSeniorityBeforeSaving(string? seniorityLevel)
+    {
+        var store = new FakeHrStore();
+        store.Position.SeniorityLevel = seniorityLevel;
+        var request = Onboarding();
+        request = request with { Employee = request.Employee with { EmploymentType = EmploymentTypes.PartTime } };
+
+        var error = await Assert.ThrowsAsync<HrException>(() =>
+            Service(store).StartOnboardingAsync(request, CancellationToken.None));
+
+        Assert.Equal(400, error.StatusCode);
+        Assert.Equal("PartTimePositionNotAllowed", error.Code);
+        Assert.Empty(store.Employees);
+        Assert.Empty(store.History);
+        Assert.Equal(0, store.TransactionSaves);
+    }
+
     [Fact]
     public async Task Onboarding_FutureStartKeepsCurrentOrganizationEmptyUntilEffectiveDate()
     {
@@ -329,7 +351,11 @@ public sealed class LifecycleServiceTests
         public List<WorkHistory> History { get; } = [];
         public List<OffboardingRecord> Offboardings { get; } = [];
         public Department Department { get; } = new() { DepartmentId = Id(1), Code = "HR", Name = "Nhân sự" };
-        public Position Position { get; } = new() { PositionId = Id(1), Code = "STAFF", Name = "Nhân viên" };
+        public Position Position { get; } = new()
+        {
+            PositionId = Id(1), Code = "STAFF", Name = "Nhân viên",
+            SeniorityLevel = PositionSeniorityLevels.Staff
+        };
         public int TransactionSaves { get; private set; }
 
         public Task<Employee?> GetEmployeeAsync(Guid id, CancellationToken ct) => Task.FromResult(Employees.FirstOrDefault(item => item.EmployeeId == id));
