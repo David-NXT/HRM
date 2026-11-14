@@ -14,6 +14,7 @@ public sealed class WorkHistoryConfiguration : IEntityTypeConfiguration<WorkHist
         builder.Property(history => history.EmployeeId).HasColumnName("employee_id").IsRequired();
         builder.Property(history => history.DepartmentId).HasColumnName("department_id").IsRequired();
         builder.Property(history => history.PositionId).HasColumnName("position_id").IsRequired();
+        builder.Property(history => history.IsDirector).HasColumnName("is_director").HasDefaultValue(false).IsRequired();
         builder.Property(history => history.StartDate).HasColumnName("start_date").IsRequired();
         builder.Property(history => history.EndDate).HasColumnName("end_date");
         builder.Property(history => history.Notes).HasColumnName("notes").HasMaxLength(1000);
@@ -22,6 +23,10 @@ public sealed class WorkHistoryConfiguration : IEntityTypeConfiguration<WorkHist
             .IsUnique()
             .HasFilter("end_date IS NULL");
         builder.HasIndex(history => new { history.EmployeeId, history.StartDate });
+        builder.HasIndex(history => history.DepartmentId)
+            .IsUnique()
+            .HasDatabaseName("IX_work_history_director_department_open")
+            .HasFilter("is_director = TRUE AND end_date IS NULL");
         builder.HasOne(history => history.Employee)
             .WithMany()
             .HasForeignKey(history => history.EmployeeId)

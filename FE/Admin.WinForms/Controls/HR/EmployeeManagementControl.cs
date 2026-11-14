@@ -89,7 +89,9 @@ public sealed class EmployeeManagementControl : HrPageControl
                 "Hãy tạo phòng ban và chức vụ đang hoạt động trong Organization trước khi tiếp nhận nhân viên.");
             form.ChoiceField("type", "Loại nhân viên", new[] { new Choice("FULL_TIME", "Full-time"), new Choice("PART_TIME", "Part-time") })
                 .ChoiceField("department", "Phòng ban *", departments.Where(x => x.Status == "ACTIVE").Select(x => new Choice(x.DepartmentId, x.DisplayName)))
-                .ChoiceField("position", "Chức vụ *", positions.Where(x => x.Status == "ACTIVE").Select(x => new Choice(x.PositionId, x.DisplayName)))
+                .ChoiceField("position", "Chức vụ *", HrChoiceOptions.PositionChoices(positions, "FULL_TIME"))
+                .OnChoiceChanged("type", value => form.SetChoices("position",
+                    HrChoiceOptions.PositionChoices(positions, value as string, defaultStaffOnlyForPartTime: true)))
                 .DateField("start", "Ngày bắt đầu *", DateOnly.FromDateTime(DateTime.Today))
                 .TextField("notes", "Ghi chú công tác", maxLength: 1000, multiline: true);
         }

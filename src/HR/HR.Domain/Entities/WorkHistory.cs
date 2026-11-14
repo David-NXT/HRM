@@ -6,6 +6,7 @@ public sealed class WorkHistory
     public Guid EmployeeId { get; set; }
     public Guid DepartmentId { get; set; }
     public Guid PositionId { get; set; }
+    public bool IsDirector { get; set; }
     public DateOnly StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
     public string? Notes { get; set; }

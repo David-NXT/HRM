@@ -88,12 +88,14 @@ public sealed class ContractWorkControl : HrPageControl
     private async Task AssignmentAsync()
     {
         var id = EmployeeId;
+        var employee = await Api.GetAsync<EmployeeRow>($"employees/{id}", Token);
         var departments = await Api.GetAsync<List<DepartmentRow>>("departments", Token);
         var positions = await Api.GetAsync<List<PositionRow>>("positions", Token);
         Token.ThrowIfCancellationRequested();
         using var form = new HrEditorForm("Phân công / Điều chuyển");
-        form.ChoiceField("department", "Phòng ban *", departments.Where(x => x.Status == "ACTIVE").Select(x => new Choice(x.DepartmentId, x.DisplayName)))
-            .ChoiceField("position", "Chức vụ *", positions.Where(x => x.Status == "ACTIVE").Select(x => new Choice(x.PositionId, x.DisplayName)))
+        form.ChoiceField("department", "Phòng ban *", new[] { new Choice(null, "Chọn phòng ban *") }
+                .Concat(departments.Where(x => x.Status == "ACTIVE").Select(x => new Choice(x.DepartmentId, x.DisplayName))))
+            .ChoiceField("position", "Chức vụ *", HrChoiceOptions.PositionChoices(positions, employee.EmploymentType))
             .DateField("effective", "Ngày hiệu lực *")
             .TextField("notes", "Ghi chú", maxLength: 1000, multiline: true)
             .OnSave(async (f, token) => await Api.SendAsync<AssignmentRow>(HttpMethod.Post, $"employees/{id}/work-history",

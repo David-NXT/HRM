@@ -24,7 +24,7 @@ public sealed class LifecycleService(
                 item.Status, item.CreatedAt, item.UpdatedAt)).ToArray(),
             positions.Where(item => item.Status == OrgStatuses.Active).Select(item => new PositionDto(
                 item.PositionId, item.Code, item.Name, item.Description, item.Status,
-                item.CreatedAt, item.UpdatedAt)).ToArray());
+                item.CreatedAt, item.UpdatedAt, item.SeniorityLevel)).ToArray());
     }
 
     public async Task<OnboardingResultDto> StartOnboardingAsync(StartOnboardingRequest request, CancellationToken cancellationToken)
@@ -48,6 +48,9 @@ public sealed class LifecycleService(
         {
             throw new HrException(400, "InvalidPosition", "Chức vụ không tồn tại hoặc đã ngừng hoạt động.");
         }
+        ValidateEmploymentTypePosition(employee, position);
+        await ValidateDirectorAvailabilityAsync(
+            department.DepartmentId, position, request.StartDate, employee.EmployeeId, cancellationToken);
         if (await employees.CodeExistsAsync(employee.EmployeeCode, cancellationToken))
         {
             throw new HrException(409, "DuplicateEmployeeCode", "Mã nhân viên đã tồn tại.");
@@ -66,6 +69,7 @@ public sealed class LifecycleService(
             Employee = employee,
             DepartmentId = department.DepartmentId,
             PositionId = position.PositionId,
+            IsDirector = position.SeniorityLevel == PositionSeniorityLevels.Director,
             StartDate = request.StartDate,
             Notes = notes,
             CreatedAt = now
@@ -75,6 +79,34 @@ public sealed class LifecycleService(
         return new OnboardingResultDto(employee.EmployeeId, employee.EmployeeCode,
             employee.Status, firstAssignment.WorkHistoryId, firstAssignment.StartDate,
             firstAssignment.DepartmentId, firstAssignment.PositionId, employee.EmploymentType);
+    }
+
+    private static void ValidateEmploymentTypePosition(Employee employee, Position position)
+    {
+        if (employee.EmploymentType == EmploymentTypes.PartTime
+            && !PositionSeniorityLevels.IsEligibleForPartTime(position.SeniorityLevel))
+        {
+            throw new HrException(400, "PartTimePositionNotAllowed",
+                position.SeniorityLevel is null
+                    ? "Chức vụ chưa được phân loại cấp bậc. Hãy phân loại trong Organization trước khi chọn cho nhân viên part-time."
+                    : "Nhân viên part-time chỉ được đảm nhiệm chức vụ cấp STAFF; không được giữ chức vụ quản lý trở lên.");
+        }
+    }
+
+    private async Task ValidateDirectorAvailabilityAsync(
+        Guid departmentId,
+        Position position,
+        DateOnly effectiveDate,
+        Guid? excludingEmployeeId,
+        CancellationToken cancellationToken)
+    {
+        if (position.SeniorityLevel == PositionSeniorityLevels.Director
+            && await organization.HasDirectorAssignmentInDepartmentAsync(
+                departmentId, effectiveDate, excludingEmployeeId, cancellationToken))
+        {
+            throw new HrException(409, "DepartmentDirectorAlreadyAssigned",
+                "Phòng ban đã có Giám đốc được phân công trong khoảng thời gian này.");
+        }
     }
 
     public async Task<OffboardingDto> StartOffboardingAsync(StartOffboardingRequest request, CancellationToken cancellationToken)

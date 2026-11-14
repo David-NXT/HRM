@@ -112,6 +112,64 @@ public sealed class OrgStructureRepository : IOrgStructureRepository
                 && (history.EndDate == null || history.EndDate >= effectiveOn),
             cancellationToken);
 
+    public async Task<bool> HasPartTimeAssignmentsInPositionAsync(Guid positionId, CancellationToken cancellationToken)
+    {
+        var employeeHasPositionWithoutHistory = await _db.Employees.AnyAsync(
+            employee => employee.PositionId == positionId
+                && employee.Status == EmployeeStatuses.Active
+                && employee.EmploymentType == EmploymentTypes.PartTime
+                && !_db.WorkHistories.Any(history => history.EmployeeId == employee.EmployeeId),
+            cancellationToken);
+        return employeeHasPositionWithoutHistory || await _db.WorkHistories.AnyAsync(
+            history => history.PositionId == positionId
+                && history.EndDate == null
+                && history.Employee != null
+                && history.Employee.EmploymentType == EmploymentTypes.PartTime,
+            cancellationToken);
+    }
+
+    public Task<bool> HasMultipleOpenDirectorAssignmentsAsync(Guid positionId, CancellationToken cancellationToken)
+    {
+        var directorPositionIds = _db.Positions
+            .Where(position => position.PositionId == positionId
+                || position.SeniorityLevel == PositionSeniorityLevels.Director)
+            .Select(position => position.PositionId);
+        return _db.WorkHistories
+            .Where(history => history.EndDate == null && directorPositionIds.Contains(history.PositionId))
+            .GroupBy(history => history.DepartmentId)
+            .AnyAsync(group => group.Count() > 1, cancellationToken);
+    }
+
+    public Task<bool> HasDirectorAssignmentInDepartmentAsync(
+        Guid departmentId,
+        DateOnly effectiveDate,
+        Guid? excludingEmployeeId,
+        CancellationToken cancellationToken)
+    {
+        var query = _db.WorkHistories.Where(history => history.DepartmentId == departmentId
+            && history.IsDirector
+            && (history.EndDate == null || history.EndDate >= effectiveDate));
+        if (excludingEmployeeId.HasValue)
+        {
+            query = query.Where(history => history.EmployeeId != excludingEmployeeId.Value);
+        }
+        return query.AnyAsync(cancellationToken);
+    }
+
+    public async Task UpdateOpenWorkHistoryDirectorFlagsAsync(
+        Guid positionId,
+        bool isDirector,
+        CancellationToken cancellationToken)
+    {
+        var assignments = await _db.WorkHistories
+            .Where(history => history.PositionId == positionId && history.EndDate == null)
+            .ToArrayAsync(cancellationToken);
+        foreach (var assignment in assignments)
+        {
+            assignment.IsDirector = isDirector;
+        }
+    }
+
     public async Task SaveChangesAsync(CancellationToken cancellationToken)
     {
         try
@@ -121,6 +179,12 @@ public sealed class OrgStructureRepository : IOrgStructureRepository
         catch (DbUpdateException exception) when (exception.InnerException is PostgresException postgres
             && postgres.SqlState == PostgresErrorCodes.UniqueViolation)
         {
+            if (postgres.ConstraintName == "IX_work_history_director_department_open")
+            {
+                _logger.LogWarning(exception, "Trùng vị trí Giám đốc trong một phòng ban khi phân loại chức vụ.");
+                throw new HrException(409, "DepartmentDirectorAlreadyAssigned",
+                    "Có phòng ban đang có nhiều hơn một Giám đốc được phân công.");
+            }
             _logger.LogWarning(exception, "Trùng mã phòng ban hoặc chức vụ khi lưu cơ cấu tổ chức.");
             throw new HrException(409, "DuplicateCode", "Mã phòng ban hoặc chức vụ đã tồn tại.");
         }
