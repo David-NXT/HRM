@@ -479,6 +479,11 @@ namespace HR.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(150)")
                         .HasColumnName("name");
 
+                    b.Property<string>("SeniorityLevel")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("seniority_level");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -629,6 +634,12 @@ namespace HR.Infrastructure.Persistence.Migrations
                         .HasColumnType("date")
                         .HasColumnName("end_date");
 
+                    b.Property<bool>("IsDirector")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_director");
+
                     b.Property<string>("Notes")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
@@ -644,7 +655,10 @@ namespace HR.Infrastructure.Persistence.Migrations
 
                     b.HasKey("WorkHistoryId");
 
-                    b.HasIndex("DepartmentId");
+                    b.HasIndex("DepartmentId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_work_history_director_department_open")
+                        .HasFilter("is_director = TRUE AND end_date IS NULL");
 
                     b.HasIndex("EmployeeId")
                         .IsUnique()

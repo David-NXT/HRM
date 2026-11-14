@@ -98,6 +98,7 @@ public sealed class OrgStructureService
     public async Task<PositionDto> CreatePositionAsync(CreatePositionRequest request, CancellationToken cancellationToken)
     {
         var values = Normalize(request.Code, request.Name, request.Description);
+        var seniorityLevel = NormalizeSeniorityLevel(request.SeniorityLevel);
         await ValidatePositionCodeAsync(values.Code, null, cancellationToken);
         var now = DateTime.UtcNow;
         var position = new Position
@@ -105,6 +106,7 @@ public sealed class OrgStructureService
             Code = values.Code,
             Name = values.Name,
             Description = values.Description,
+            SeniorityLevel = seniorityLevel,
             Status = OrgStatuses.Active,
             CreatedAt = now,
             UpdatedAt = now
@@ -119,11 +121,33 @@ public sealed class OrgStructureService
         var position = await _repository.GetPositionAsync(id, cancellationToken)
             ?? throw new HrException(404, "PositionNotFound", "Không tìm thấy chức vụ.");
         var values = Normalize(request.Code, request.Name, request.Description);
+        var seniorityLevel = NormalizeSeniorityLevel(request.SeniorityLevel);
         await ValidatePositionCodeAsync(values.Code, id, cancellationToken);
+        if (position.Code == PositionCodes.DefaultStaff
+            && (values.Code != PositionCodes.DefaultStaff || seniorityLevel != PositionSeniorityLevels.Staff))
+        {
+            throw new HrException(409, "DefaultStaffPositionProtected",
+                "Chức vụ Nhân viên mặc định phải giữ mã SYS_STAFF và cấp STAFF.");
+        }
+        if (seniorityLevel != PositionSeniorityLevels.Staff
+            && await _repository.HasPartTimeAssignmentsInPositionAsync(id, cancellationToken))
+        {
+            throw new HrException(409, "PositionHasPartTimeEmployees",
+                "Không thể đặt chức vụ từ cấp quản lý trở lên khi đang có nhân viên part-time đảm nhiệm. Hãy điều chuyển họ trước.");
+        }
+        if (seniorityLevel == PositionSeniorityLevels.Director
+            && await _repository.HasMultipleOpenDirectorAssignmentsAsync(id, cancellationToken))
+        {
+            throw new HrException(409, "DepartmentDirectorAlreadyAssigned",
+                "Có phòng ban đang có nhiều hơn một nhân viên ở cấp Giám đốc. Hãy xử lý phân công hiện tại trước.");
+        }
         position.Code = values.Code;
         position.Name = values.Name;
         position.Description = values.Description;
+        position.SeniorityLevel = seniorityLevel;
         position.UpdatedAt = DateTime.UtcNow;
+        await _repository.UpdateOpenWorkHistoryDirectorFlagsAsync(
+            id, seniorityLevel == PositionSeniorityLevels.Director, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
         return ToDto(position);
     }
@@ -132,6 +156,11 @@ public sealed class OrgStructureService
     {
         var position = await _repository.GetPositionAsync(id, cancellationToken)
             ?? throw new HrException(404, "PositionNotFound", "Không tìm thấy chức vụ.");
+        if (position.Code == PositionCodes.DefaultStaff)
+        {
+            throw new HrException(409, "DefaultStaffPositionProtected",
+                "Không thể ngừng hoạt động chức vụ Nhân viên mặc định.");
+        }
         if (position.Status == OrgStatuses.Inactive)
         {
             return ToDto(position);
@@ -170,6 +199,17 @@ public sealed class OrgStructureService
         {
             throw new HrException(409, "DuplicatePositionCode", "Mã chức vụ đã tồn tại.");
         }
+    }
+
+    private static string NormalizeSeniorityLevel(string? value)
+    {
+        var normalized = (value ?? string.Empty).Trim().ToUpperInvariant();
+        if (!PositionSeniorityLevels.IsValid(normalized))
+        {
+            throw new HrException(400, "InvalidPositionSeniorityLevel",
+                "Cấp chức vụ phải là STAFF, MANAGER, DIRECTOR hoặc EXECUTIVE.");
+        }
+        return normalized;
     }
 
     private async Task ValidateParentAsync(Guid? parentId, Guid? departmentId, CancellationToken cancellationToken)
@@ -275,5 +315,6 @@ public sealed class OrgStructureService
         new(item.DepartmentId, item.Code, item.Name, item.Description, item.ParentDepartmentId, item.Status, item.CreatedAt, item.UpdatedAt);
 
     private static PositionDto ToDto(Position item) =>
-        new(item.PositionId, item.Code, item.Name, item.Description, item.Status, item.CreatedAt, item.UpdatedAt);
+        new(item.PositionId, item.Code, item.Name, item.Description, item.Status, item.CreatedAt, item.UpdatedAt,
+            item.SeniorityLevel);
 }

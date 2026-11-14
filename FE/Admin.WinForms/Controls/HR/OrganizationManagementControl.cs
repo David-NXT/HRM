@@ -7,7 +7,8 @@ public sealed class OrganizationManagementControl : HrPageControl
 {
     private readonly TabControl _tabs = new() { Dock = DockStyle.Fill };
     private readonly DataGridView _departments = Table(("Mã", "Code"), ("Phòng ban", "Name"), ("Mô tả", "Description"), ("Trạng thái", "Status"));
-    private readonly DataGridView _positions = Table(("Mã", "Code"), ("Chức vụ", "Name"), ("Mô tả", "Description"), ("Trạng thái", "Status"));
+    private readonly DataGridView _positions = Table(("Mã", "Code"), ("Chức vụ", "Name"),
+        ("Cấp bậc", "SeniorityLevelLabel"), ("Mô tả", "Description"), ("Trạng thái", "Status"));
     private List<DepartmentRow> _departmentRows = [];
 
     public OrganizationManagementControl()
@@ -47,6 +48,15 @@ public sealed class OrganizationManagementControl : HrPageControl
             form.ChoiceField("parent", "Phòng ban cha", new[] { new Choice(null, "Không có (cấp gốc)") }
                 .Concat(_departmentRows.Where(x => x.DepartmentId != department?.DepartmentId)
                     .Select(x => new Choice(x.DepartmentId, x.DisplayName))), department?.ParentDepartmentId);
+        else
+            form.ChoiceField("seniority", "Cấp bậc *", new[]
+            {
+                new Choice(null, "Chọn cấp bậc *"),
+                new Choice("STAFF", HrChoiceOptions.SeniorityLevelLabel("STAFF")),
+                new Choice("MANAGER", HrChoiceOptions.SeniorityLevelLabel("MANAGER")),
+                new Choice("DIRECTOR", HrChoiceOptions.SeniorityLevelLabel("DIRECTOR")),
+                new Choice("EXECUTIVE", HrChoiceOptions.SeniorityLevelLabel("EXECUTIVE"))
+            }, position?.SeniorityLevel);
         form.OnSave(async (f, token) =>
         {
             if (isDepartment)
@@ -56,7 +66,8 @@ public sealed class OrganizationManagementControl : HrPageControl
             else
                 await Api.SendAsync<PositionRow>(editing ? HttpMethod.Put : HttpMethod.Post,
                     editing ? $"positions/{position!.PositionId}" : "positions",
-                    new PositionInput(f.TextValue("code"), f.TextValue("name"), f.OptionalText("description")), token);
+                    new PositionInput(f.TextValue("code"), f.TextValue("name"), f.OptionalText("description"),
+                        f.ChoiceStringValue("seniority")), token);
         });
         if (form.ShowDialog(this) == DialogResult.OK) await ReloadAsync();
     }

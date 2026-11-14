@@ -295,14 +295,15 @@ Request:
     {
       "code": "DEV",
       "name": "Lập trình viên",
-      "description": null
+      "description": null,
+      "seniorityLevel": "STAFF"
     }
 
-Validation mã/tên/description giống phòng ban. Response 201: PositionDto.
+Validation mã/tên/description giống phòng ban. seniorityLevel bắt buộc nhận STAFF, MANAGER, DIRECTOR hoặc EXECUTIVE. Position cũ chưa phân loại trả null cho đến khi HR cập nhật. Response 201: PositionDto.
 
 #### PUT /positions/{id}
 
-Header X-Role: HR. Request cùng schema POST; chỉ cập nhật position đang có. Response 200: PositionDto.
+Header X-Role: HR. Request cùng schema POST; chỉ cập nhật position đang có. Không thể chuyển chức vụ lên quản lý khi còn nhân viên part-time đang đảm nhiệm. Khi phân loại chức vụ là DIRECTOR, các quá trình công tác đang mở phải không tạo ra Giám đốc thứ hai trong một phòng ban. Response 200: PositionDto.
 
 #### POST /positions/{id}/deactivate
 
@@ -366,7 +367,7 @@ Request:
       "notes": "Điều chuyển nội bộ"
     }
 
-Nhân viên RESIGNED không nhận assignment mới. Department và Position phải ACTIVE. Ngày hiệu lực phải sau bản ghi công tác gần nhất. Tạo 201: WorkHistoryDto.
+Nhân viên RESIGNED không nhận assignment mới. Department và Position phải ACTIVE. Part-time chỉ nhận position có seniorityLevel=STAFF; position null/chưa phân loại và cấp MANAGER trở lên bị từ chối. Mỗi phòng ban tối đa một assignment DIRECTOR trong cùng khoảng hiệu lực. Ngày hiệu lực phải sau bản ghi công tác gần nhất. Vi phạm quy tắc part-time trả 400 PartTimePositionNotAllowed; trùng Giám đốc trả 409 DepartmentDirectorAlreadyAssigned. Tạo 201: WorkHistoryDto.
 
 ### 5.4 Onboarding và offboarding
 
@@ -399,7 +400,7 @@ Request:
       "notes": null
     }
 
-employee dùng cùng schema CreateEmployeeRequest. Ngày bắt đầu phải hợp lệ và sau ngày sinh; đơn vị và chức vụ phải ACTIVE; mã nhân viên phải duy nhất. Nếu ngày bắt đầu đã đến, DepartmentId/PositionId hiện tại trên employee được thiết lập ngay; dù ngày tương lai, WorkHistory đầu tiên vẫn được tạo. Response 201: OnboardingResultDto.
+employee dùng cùng schema CreateEmployeeRequest. Ngày bắt đầu phải hợp lệ và sau ngày sinh; đơn vị và chức vụ phải ACTIVE; mã nhân viên phải duy nhất. Part-time chỉ được chọn chức vụ STAFF đã phân loại. Position MANAGER, DIRECTOR, EXECUTIVE hoặc chưa phân loại bị từ chối cho part-time. Một phòng ban không nhận thêm Giám đốc nếu đã có assignment DIRECTOR trùng khoảng hiệu lực. Nếu ngày bắt đầu đã đến, DepartmentId/PositionId hiện tại trên employee được thiết lập ngay; dù ngày tương lai, WorkHistory đầu tiên vẫn được tạo. Response 201: OnboardingResultDto.
 
 #### POST /offboarding
 
@@ -671,8 +672,11 @@ PositionDto:
       "description": null,
       "status": "ACTIVE",
       "createdAt": "2026-07-01T02:00:00Z",
-      "updatedAt": "2026-07-01T02:00:00Z"
+      "updatedAt": "2026-07-01T02:00:00Z",
+      "seniorityLevel": "STAFF"
     }
+
+seniorityLevel có thể là STAFF, MANAGER, DIRECTOR, EXECUTIVE hoặc null với chức vụ cũ chưa được HR phân loại. Chỉ STAFF đủ điều kiện cho nhân viên part-time.
 
 ### 6.4 Hợp đồng và lịch sử công tác
 
