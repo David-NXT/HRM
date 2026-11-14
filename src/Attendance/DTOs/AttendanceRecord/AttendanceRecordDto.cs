@@ -6,6 +6,10 @@ public class AttendanceRecordDto
 
     public Guid EmployeeId { get; set; }
 
+    public string? EmployeeCode { get; set; }
+
+    public string? EmployeeName { get; set; }
+
     public Guid ShiftId { get; set; }
 
     public DateOnly Date { get; set; }

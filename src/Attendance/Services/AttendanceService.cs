@@ -18,7 +18,7 @@ public class AttendanceService : IAttendanceService
 
     public async Task<List<AttendanceRecordDto>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        return await _context.AttendanceRecords
+        var records = await _context.AttendanceRecords
             .AsNoTracking()
             .OrderByDescending(x => x.Date)
             .Select(x => new AttendanceRecordDto
@@ -51,6 +51,9 @@ public class AttendanceService : IAttendanceService
                 UpdatedAt = x.UpdatedAt
             })
             .ToListAsync(cancellationToken);
+
+        await EnrichEmployeeInfoAsync(records, cancellationToken);
+        return records;
     }
 
     public async Task<AttendanceRecordDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
@@ -266,77 +269,105 @@ public class AttendanceService : IAttendanceService
     }
 
     public async Task<List<AttendanceRecordDto>> SearchAsync(
-    AttendanceSearchRequestDto request,
-    CancellationToken cancellationToken = default)
-{
-    var query = _context.AttendanceRecords
-        .AsNoTracking()
-        .AsQueryable();
-
-    // 1. Lọc theo ngày
-    if (request.Date.HasValue)
+        AttendanceSearchRequestDto request,
+        CancellationToken cancellationToken = default)
     {
-        query = query.Where(x => x.Date == request.Date.Value);
-    }
+        var query = _context.AttendanceRecords
+            .AsNoTracking()
+            .AsQueryable();
 
-    // 2. Lọc theo trạng thái
-    if (!string.IsNullOrWhiteSpace(request.Status))
-    {
-        query = query.Where(x => x.Status == request.Status);
-    }
-
-    // 3. Lọc theo phòng ban hoặc thông tin nhân viên
-    /*if (request.DepartmentId.HasValue ||
-        !string.IsNullOrWhiteSpace(request.Keyword))
-    {
-        var employees = await _employees.SearchEmployeesAsync(
-            request.DepartmentId,
-            request.Keyword,
-            cancellationToken);
-
-        var employeeIds = employees
-            .Select(x => x.EmployeeId)
-            .Distinct()
-            .ToList();
-
-        query = query.Where(x =>
-            employeeIds.Contains(x.EmployeeId));
-    } */
-
-    // 4. Trả về kết quả
-    return await query
-        .OrderByDescending(x => x.Date)
-        .Select(x => new AttendanceRecordDto
+        // 1. Lọc theo ngày
+        if (request.Date.HasValue)
         {
-            Id = x.Id,
-            EmployeeId = x.EmployeeId,
-            ShiftId = x.ShiftId,
-            Date = x.Date,
-            TimeIn = x.TimeIn,
-            TimeOut = x.TimeOut,
-            Status = x.Status,
-            WorkHour = x.WorkHour,
-            LateMins = x.LateMins,
-            EarlyLeaveMins = x.EarlyLeaveMins,
-            OTMins = x.OTMins,
-            ActualOTMins = x.ActualOTMins,
-            IsLate = x.IsLate,
-            IsEarlyLeave = x.IsEarlyLeave,
-            CheckInSource = x.CheckInSource,
-            CheckOutSource = x.CheckOutSource,
-            CheckInLatitude = x.CheckInLatitude,
-            CheckInLongitude = x.CheckInLongitude,
-            CheckInLocation = x.CheckInLocation,
-            CheckOutLatitude = x.CheckOutLatitude,
-            CheckOutLongitude = x.CheckOutLongitude,
-            CheckOutLocation = x.CheckOutLocation,
-            DeviceId = x.DeviceId,
-            Note = x.Note,
-            CreatedAt = x.CreatedAt,
-            UpdatedAt = x.UpdatedAt
-        })
-        .ToListAsync(cancellationToken);
-}
+            query = query.Where(x => x.Date == request.Date.Value);
+        }
+
+        // 2. Lọc theo trạng thái
+        if (!string.IsNullOrWhiteSpace(request.Status))
+        {
+            query = query.Where(x => x.Status == request.Status);
+        }
+
+        // 3. Lọc theo thông tin nhân viên (gọi API từ HR qua IHrEmployeeDirectoryClient)
+        if (!string.IsNullOrWhiteSpace(request.Keyword))
+        {
+            try
+            {
+                var employeesPage = await _employees.GetActiveEmployeesAsync(request.Keyword, 1, 100, cancellationToken);
+                if (employeesPage?.Items != null)
+                {
+                    var matchingEmployeeIds = employeesPage.Items.Select(x => x.EmployeeId).Distinct().ToList();
+                    query = query.Where(x => matchingEmployeeIds.Contains(x.EmployeeId));
+                }
+            }
+            catch (HttpRequestException)
+            {
+                // Bỏ qua nếu HR API tạm thời không phản hồi
+            }
+        }
+
+        // 4. Trả về kết quả
+        var records = await query
+            .OrderByDescending(x => x.Date)
+            .Select(x => new AttendanceRecordDto
+            {
+                Id = x.Id,
+                EmployeeId = x.EmployeeId,
+                ShiftId = x.ShiftId,
+                Date = x.Date,
+                TimeIn = x.TimeIn,
+                TimeOut = x.TimeOut,
+                Status = x.Status,
+                WorkHour = x.WorkHour,
+                LateMins = x.LateMins,
+                EarlyLeaveMins = x.EarlyLeaveMins,
+                OTMins = x.OTMins,
+                ActualOTMins = x.ActualOTMins,
+                IsLate = x.IsLate,
+                IsEarlyLeave = x.IsEarlyLeave,
+                CheckInSource = x.CheckInSource,
+                CheckOutSource = x.CheckOutSource,
+                CheckInLatitude = x.CheckInLatitude,
+                CheckInLongitude = x.CheckInLongitude,
+                CheckInLocation = x.CheckInLocation,
+                CheckOutLatitude = x.CheckOutLatitude,
+                CheckOutLongitude = x.CheckOutLongitude,
+                CheckOutLocation = x.CheckOutLocation,
+                DeviceId = x.DeviceId,
+                Note = x.Note,
+                CreatedAt = x.CreatedAt,
+                UpdatedAt = x.UpdatedAt
+            })
+            .ToListAsync(cancellationToken);
+
+        await EnrichEmployeeInfoAsync(records, cancellationToken);
+        return records;
+    }
+
+    private async Task EnrichEmployeeInfoAsync(List<AttendanceRecordDto> dtos, CancellationToken cancellationToken)
+    {
+        if (dtos.Count == 0) return;
+        try
+        {
+            var page = await _employees.GetActiveEmployeesAsync(null, 1, 100, cancellationToken);
+            if (page?.Items != null && page.Items.Count > 0)
+            {
+                var map = page.Items.ToDictionary(e => e.EmployeeId);
+                foreach (var dto in dtos)
+                {
+                    if (map.TryGetValue(dto.EmployeeId, out var emp))
+                    {
+                        dto.EmployeeName = emp.FullName;
+                        dto.EmployeeCode = emp.EmployeeCode;
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Bỏ qua nếu service HR chưa sẵn sàng
+        }
+    }
     private async Task EnsureActiveEmployeeAsync(Guid employeeId, CancellationToken cancellationToken)
     {
         if (await _employees.GetActiveEmployeeAsync(employeeId, cancellationToken) is null)
