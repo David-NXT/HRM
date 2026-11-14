@@ -7,6 +7,7 @@ public interface IHrEmployeeDirectoryClient
 {
     Task<EmployeeDirectoryPage> GetActiveEmployeesAsync(string? keyword, int page, int pageSize, CancellationToken cancellationToken);
     Task<EmployeeDirectoryEntry?> GetActiveEmployeeAsync(Guid employeeId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<HrDepartmentDto>> GetDepartmentsAsync(CancellationToken cancellationToken);
 }
 
 public sealed class HrEmployeeDirectoryClient(HttpClient httpClient) : IHrEmployeeDirectoryClient
@@ -40,9 +41,36 @@ public sealed class HrEmployeeDirectoryClient(HttpClient httpClient) : IHrEmploy
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<EmployeeDirectoryEntry>(cancellationToken);
     }
+
+    public async Task<IReadOnlyList<HrDepartmentDto>> GetDepartmentsAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var response = await httpClient.GetAsync("departments", cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                return Array.Empty<HrDepartmentDto>();
+            }
+
+            var list = await response.Content.ReadFromJsonAsync<List<HrDepartmentDto>>(cancellationToken);
+            return list ?? (IReadOnlyList<HrDepartmentDto>)Array.Empty<HrDepartmentDto>();
+        }
+        catch
+        {
+            return Array.Empty<HrDepartmentDto>();
+        }
+    }
 }
 
-public sealed record EmployeeDirectoryEntry(Guid EmployeeId, string EmployeeCode, string FullName, string Status);
+public sealed record HrDepartmentDto(Guid Id, string Code, string Name, string Status);
+
+public sealed record EmployeeDirectoryEntry(
+    Guid EmployeeId,
+    string EmployeeCode,
+    string FullName,
+    string Status,
+    string? DepartmentName = null,
+    string? PositionName = null);
 
 public sealed record EmployeeDirectoryPage(
     IReadOnlyList<EmployeeDirectoryEntry> Items,

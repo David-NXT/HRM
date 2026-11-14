@@ -71,6 +71,7 @@ builder.Services.AddScoped<ILeaveBalanceService, LeaveBalanceService>();
 builder.Services.AddScoped<IOvertimeRuleService, OvertimeRuleService>();
 builder.Services.AddScoped<IAttendanceRuleService, AttendanceRuleService>();
 builder.Services.AddScoped<IAttendanceConfigAuditLogService, AttendanceConfigAuditLogService>();
+builder.Services.AddScoped<IAttendanceAnalyticsService, AttendanceAnalyticsService>();
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
