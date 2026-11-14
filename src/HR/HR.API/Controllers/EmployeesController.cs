@@ -27,6 +27,12 @@ public sealed class EmployeesController : ControllerBase
         return Ok(await _employees.ListAsync(keyword, page, pageSize, cancellationToken));
     }
 
+    [HttpGet("statistics")]
+    public async Task<ActionResult<EmployeeStatisticsDto>> Statistics(CancellationToken cancellationToken)
+    {
+        return Ok(await _employees.GetStatisticsAsync(cancellationToken));
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<EmployeeDto>> Get(Guid id, CancellationToken cancellationToken)
     {
@@ -40,6 +46,13 @@ public sealed class EmployeesController : ControllerBase
     {
         var created = await _employees.CreateAsync(request, cancellationToken);
         return CreatedAtAction(nameof(Get), new { id = created.EmployeeId }, created);
+    }
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+    {
+        await _employees.DeleteAsync(id, cancellationToken);
+        return NoContent();
     }
 
     [HttpPut("{id:guid}")]

@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Logging;
+using HR.Application.DTOs.Employees;
 using HR.Application.Interfaces.Repositories;
 using HR.Domain.Entities;
+using HR.Domain.Constants;
 using HR.Application.Exceptions;
 using HR.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -79,6 +81,35 @@ public sealed class EmployeeRepository : IEmployeeRepository
         return (items, total);
     }
 
+    public async Task<EmployeeStatisticsDto> GetStatisticsAsync(CancellationToken cancellationToken)
+    {
+        var groups = await _db.Employees.AsNoTracking()
+            .GroupBy(employee => new { employee.Status, employee.EmploymentType })
+            .Select(group => new
+            {
+                group.Key.Status,
+                group.Key.EmploymentType,
+                Count = group.Count()
+            })
+            .ToListAsync(cancellationToken);
+
+        int CountByStatus(string status) => groups
+            .Where(group => group.Status == status)
+            .Sum(group => group.Count);
+
+        int CountByEmploymentType(string employmentType) => groups
+            .Where(group => group.EmploymentType == employmentType)
+            .Sum(group => group.Count);
+
+        return new EmployeeStatisticsDto(
+            groups.Sum(group => group.Count),
+            CountByStatus(EmployeeStatuses.Active),
+            CountByStatus(EmployeeStatuses.Locked),
+            CountByStatus(EmployeeStatuses.Resigned),
+            CountByEmploymentType(EmploymentTypes.FullTime),
+            CountByEmploymentType(EmploymentTypes.PartTime));
+    }
+
     public async Task<Employee?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
         var employee = await _db.Employees.Include(item => item.Department).Include(item => item.Position)
@@ -90,11 +121,20 @@ public sealed class EmployeeRepository : IEmployeeRepository
         return employee;
     }
 
+    public async Task<bool> HasRelatedRecordsAsync(Guid employeeId, CancellationToken cancellationToken) =>
+        await _db.WorkHistories.AnyAsync(item => item.EmployeeId == employeeId, cancellationToken)
+        || await _db.EmploymentContracts.AnyAsync(item => item.EmployeeId == employeeId, cancellationToken)
+        || await _db.ProfileUpdateRequests.AnyAsync(item => item.EmployeeId == employeeId, cancellationToken)
+        || await _db.EmployeeNotifications.AnyAsync(item => item.EmployeeId == employeeId, cancellationToken)
+        || await _db.OffboardingRecords.AnyAsync(item => item.EmployeeId == employeeId, cancellationToken);
+
     public Task<bool> CodeExistsAsync(string employeeCode, CancellationToken cancellationToken) =>
         _db.Employees.AnyAsync(employee => employee.EmployeeCode == employeeCode, cancellationToken);
 
     public Task AddAsync(Employee employee, CancellationToken cancellationToken) =>
         _db.Employees.AddAsync(employee, cancellationToken).AsTask();
+
+    public void Remove(Employee employee) => _db.Employees.Remove(employee);
 
     public async Task SaveChangesAsync(CancellationToken cancellationToken)
     {
@@ -112,6 +152,12 @@ public sealed class EmployeeRepository : IEmployeeRepository
             _logger.LogWarning(exception, "Trùng mã nhân viên khi lưu hồ sơ.");
             throw new HrException(409, "DuplicateEmployeeCode", "Mã nhân viên đã tồn tại. Nhập mã khác.");
         }
+        catch (DbUpdateException exception) when (IsForeignKeyViolation(exception))
+        {
+            _logger.LogWarning(exception, "Không thể xóa hồ sơ nhân viên đang được dữ liệu khác tham chiếu.");
+            throw new HrException(409, "EmployeeHasRelatedRecords",
+                "Không thể xóa nhân viên đang được dữ liệu khác tham chiếu.");
+        }
         catch (DbUpdateException exception)
         {
             _logger.LogError(exception, "Không lưu được hồ sơ nhân viên.");
@@ -122,6 +168,10 @@ public sealed class EmployeeRepository : IEmployeeRepository
     private static bool IsUniqueViolation(DbUpdateException exception) =>
         exception.InnerException is PostgresException postgres
         && postgres.SqlState == PostgresErrorCodes.UniqueViolation;
+
+    private static bool IsForeignKeyViolation(DbUpdateException exception) =>
+        exception.InnerException is PostgresException postgres
+        && postgres.SqlState == PostgresErrorCodes.ForeignKeyViolation;
 
     private static string EscapeLike(string value) =>
         value.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
