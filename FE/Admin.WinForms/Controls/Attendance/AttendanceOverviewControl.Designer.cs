@@ -32,6 +32,7 @@ namespace Admin.WinForms.Controls.Attendance
             button_Overview = new Button();
             button_Approvals = new Button();
             button_Reports = new Button();
+            button_Config = new Button();
             panel_Attendance = new Panel();
             flowLayoutPanel1.SuspendLayout();
             SuspendLayout();
@@ -41,6 +42,7 @@ namespace Admin.WinForms.Controls.Attendance
             flowLayoutPanel1.Controls.Add(button_Overview);
             flowLayoutPanel1.Controls.Add(button_Approvals);
             flowLayoutPanel1.Controls.Add(button_Reports);
+            flowLayoutPanel1.Controls.Add(button_Config);
             flowLayoutPanel1.Location = new Point(15, 3);
             flowLayoutPanel1.Name = "flowLayoutPanel1";
             flowLayoutPanel1.Size = new Size(1797, 81);
@@ -53,7 +55,7 @@ namespace Admin.WinForms.Controls.Attendance
             button_Overview.FlatStyle = FlatStyle.Flat;
             button_Overview.Location = new Point(3, 3);
             button_Overview.Name = "button_Overview";
-            button_Overview.Size = new Size(328, 68);
+            button_Overview.Size = new Size(280, 68);
             button_Overview.TabIndex = 0;
             button_Overview.Text = "Overview";
             button_Overview.UseVisualStyleBackColor = false;
@@ -64,9 +66,9 @@ namespace Admin.WinForms.Controls.Attendance
             button_Approvals.BackColor = Color.Transparent;
             button_Approvals.FlatAppearance.BorderSize = 0;
             button_Approvals.FlatStyle = FlatStyle.Flat;
-            button_Approvals.Location = new Point(337, 3);
+            button_Approvals.Location = new Point(289, 3);
             button_Approvals.Name = "button_Approvals";
-            button_Approvals.Size = new Size(328, 68);
+            button_Approvals.Size = new Size(280, 68);
             button_Approvals.TabIndex = 1;
             button_Approvals.Text = "Approvals";
             button_Approvals.UseVisualStyleBackColor = false;
@@ -77,16 +79,30 @@ namespace Admin.WinForms.Controls.Attendance
             button_Reports.BackColor = Color.Transparent;
             button_Reports.FlatAppearance.BorderSize = 0;
             button_Reports.FlatStyle = FlatStyle.Flat;
-            button_Reports.Location = new Point(671, 3);
+            button_Reports.Location = new Point(575, 3);
             button_Reports.Name = "button_Reports";
-            button_Reports.Size = new Size(328, 68);
+            button_Reports.Size = new Size(280, 68);
             button_Reports.TabIndex = 2;
             button_Reports.Text = "Reports";
             button_Reports.UseVisualStyleBackColor = false;
             button_Reports.Click += btnReports_Click;
             // 
+            // button_Config
+            // 
+            button_Config.BackColor = Color.Transparent;
+            button_Config.FlatAppearance.BorderSize = 0;
+            button_Config.FlatStyle = FlatStyle.Flat;
+            button_Config.Location = new Point(861, 3);
+            button_Config.Name = "button_Config";
+            button_Config.Size = new Size(280, 68);
+            button_Config.TabIndex = 3;
+            button_Config.Text = "Cấu hình (Rules)";
+            button_Config.UseVisualStyleBackColor = false;
+            button_Config.Click += btnConfig_Click;
+            // 
             // panel_Attendance
             // 
+            panel_Attendance.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             panel_Attendance.Location = new Point(15, 90);
             panel_Attendance.Name = "panel_Attendance";
             panel_Attendance.Size = new Size(1797, 786);
@@ -110,6 +126,7 @@ namespace Admin.WinForms.Controls.Attendance
         private Button button_Overview;
         private Button button_Approvals;
         private Button button_Reports;
+        private Button button_Config;
         private Panel panel_Attendance;
     }
 }

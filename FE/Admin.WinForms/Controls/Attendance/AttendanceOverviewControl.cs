@@ -31,6 +31,11 @@ namespace Admin.WinForms.Controls.Attendance
             ShowPage(new AttendanceReportControl(), (Button)sender);
         }
 
+        private void btnConfig_Click(object sender, EventArgs e)
+        {
+            ShowPage(new AttendanceConfigControl(), (Button)sender);
+        }
+
         private void ShowPage(UserControl page, Button selectedButton)
         {
             // 1. Cập nhật màu sắc Active cho nút navigation

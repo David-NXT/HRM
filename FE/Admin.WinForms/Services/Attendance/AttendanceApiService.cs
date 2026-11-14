@@ -144,4 +144,148 @@ public class AttendanceApiService
             return new List<AttendanceDepartmentTrendDto>();
         }
     }
+
+    // GET: api/WorkShifts
+    public async Task<List<WorkShiftDto>> GetWorkShiftsAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<List<WorkShiftDto>>("api/WorkShifts");
+            return response ?? new List<WorkShiftDto>();
+        }
+        catch
+        {
+            return new List<WorkShiftDto>();
+        }
+    }
+
+    // POST: api/WorkShifts
+    public async Task<WorkShiftDto?> CreateWorkShiftAsync(CreateWorkShiftDto dto)
+    {
+        var response = await _httpClient.PostAsJsonAsync("api/WorkShifts", dto);
+        if (response.IsSuccessStatusCode)
+            return await response.Content.ReadFromJsonAsync<WorkShiftDto>();
+        var err = await response.Content.ReadAsStringAsync();
+        throw new Exception($"Tạo ca thất bại: {err}");
+    }
+
+    // PUT: api/WorkShifts/{id}
+    public async Task<bool> UpdateWorkShiftAsync(Guid id, UpdateWorkShiftDto dto)
+    {
+        var response = await _httpClient.PutAsJsonAsync($"api/WorkShifts/{id}", dto);
+        if (!response.IsSuccessStatusCode)
+        {
+            var err = await response.Content.ReadAsStringAsync();
+            throw new Exception($"Cập nhật ca thất bại: {err}");
+        }
+        return true;
+    }
+
+    // DELETE: api/WorkShifts/{id}
+    public async Task<bool> DeleteWorkShiftAsync(Guid id)
+    {
+        var response = await _httpClient.DeleteAsync($"api/WorkShifts/{id}");
+        if (!response.IsSuccessStatusCode)
+        {
+            var err = await response.Content.ReadAsStringAsync();
+            throw new Exception($"Xóa ca thất bại: {err}");
+        }
+        return true;
+    }
+
+    // GET: api/AttendanceRules
+    public async Task<List<AttendanceRuleDto>> GetAttendanceRulesAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<List<AttendanceRuleDto>>("api/AttendanceRules");
+            return response ?? new List<AttendanceRuleDto>();
+        }
+        catch
+        {
+            return new List<AttendanceRuleDto>();
+        }
+    }
+
+    // POST: api/AttendanceRules
+    public async Task<AttendanceRuleDto?> CreateAttendanceRuleAsync(CreateAttendanceRuleDto dto)
+    {
+        var response = await _httpClient.PostAsJsonAsync("api/AttendanceRules", dto);
+        if (response.IsSuccessStatusCode)
+            return await response.Content.ReadFromJsonAsync<AttendanceRuleDto>();
+        var err = await response.Content.ReadAsStringAsync();
+        throw new Exception($"Tạo quy tắc thất bại: {err}");
+    }
+
+    // PUT: api/AttendanceRules/{id}
+    public async Task<bool> UpdateAttendanceRuleAsync(Guid id, UpdateAttendanceRuleDto dto)
+    {
+        var response = await _httpClient.PutAsJsonAsync($"api/AttendanceRules/{id}", dto);
+        if (!response.IsSuccessStatusCode)
+        {
+            var err = await response.Content.ReadAsStringAsync();
+            throw new Exception($"Cập nhật quy tắc thất bại: {err}");
+        }
+        return true;
+    }
+
+    // DELETE: api/AttendanceRules/{id}
+    public async Task<bool> DeleteAttendanceRuleAsync(Guid id)
+    {
+        var response = await _httpClient.DeleteAsync($"api/AttendanceRules/{id}");
+        if (!response.IsSuccessStatusCode)
+        {
+            var err = await response.Content.ReadAsStringAsync();
+            throw new Exception($"Xóa quy tắc thất bại: {err}");
+        }
+        return true;
+    }
+
+    // GET: api/OvertimeRules
+    public async Task<List<OvertimeRuleDto>> GetOvertimeRulesAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<List<OvertimeRuleDto>>("api/OvertimeRules");
+            return response ?? new List<OvertimeRuleDto>();
+        }
+        catch
+        {
+            return new List<OvertimeRuleDto>();
+        }
+    }
+
+    // POST: api/OvertimeRules
+    public async Task<OvertimeRuleDto?> CreateOvertimeRuleAsync(CreateOvertimeRuleDto dto)
+    {
+        var response = await _httpClient.PostAsJsonAsync("api/OvertimeRules", dto);
+        if (response.IsSuccessStatusCode)
+            return await response.Content.ReadFromJsonAsync<OvertimeRuleDto>();
+        var err = await response.Content.ReadAsStringAsync();
+        throw new Exception($"Tạo quy tắc OT thất bại: {err}");
+    }
+
+    // PUT: api/OvertimeRules/{id}
+    public async Task<bool> UpdateOvertimeRuleAsync(Guid id, UpdateOvertimeRuleDto dto)
+    {
+        var response = await _httpClient.PutAsJsonAsync($"api/OvertimeRules/{id}", dto);
+        if (!response.IsSuccessStatusCode)
+        {
+            var err = await response.Content.ReadAsStringAsync();
+            throw new Exception($"Cập nhật quy tắc OT thất bại: {err}");
+        }
+        return true;
+    }
+
+    // DELETE: api/OvertimeRules/{id}
+    public async Task<bool> DeleteOvertimeRuleAsync(Guid id)
+    {
+        var response = await _httpClient.DeleteAsync($"api/OvertimeRules/{id}");
+        if (!response.IsSuccessStatusCode)
+        {
+            var err = await response.Content.ReadAsStringAsync();
+            throw new Exception($"Xóa quy tắc OT thất bại: {err}");
+        }
+        return true;
+    }
 }

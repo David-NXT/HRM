@@ -30,6 +30,14 @@ namespace Admin.WinForms.Controls.Attendance
                 await LoadAnalyticsChartsAsync();
             };
 
+            tabControl_Reports.SelectedIndexChanged += async (s, e) =>
+            {
+                if (tabControl_Reports.SelectedTab == tabPage_Charts)
+                {
+                    await LoadAnalyticsChartsAsync();
+                }
+            };
+
             Load += AttendanceReportControl_Load;
         }
 
@@ -86,6 +94,10 @@ namespace Admin.WinForms.Controls.Attendance
                 else
                 {
                     listView_Report.Items.Clear();
+                    label_NumberRecords.Text = "0";
+                    label_NumberPresent.Text = "0";
+                    label_NumberLate.Text = "0";
+                    label_NumberAbsent.Text = "0";
                 }
             }
             catch (Exception ex)
@@ -135,8 +147,20 @@ namespace Admin.WinForms.Controls.Attendance
             listView_Report.BeginUpdate();
             listView_Report.Items.Clear();
 
-            foreach (var s in summaries)
+            int totalEmployees = summaries?.Count ?? 0;
+            int presentEmployees = summaries?.Count(s => s.ActualWorkingDays > 0) ?? 0;
+            int totalLateOccurrences = summaries?.Sum(s => s.LateOccurrences) ?? 0;
+            int absentEmployees = summaries?.Count(s => s.ActualWorkingDays == 0 && s.PaidLeaveDays == 0) ?? 0;
+
+            label_NumberRecords.Text = totalEmployees.ToString();
+            label_NumberPresent.Text = presentEmployees.ToString();
+            label_NumberLate.Text = totalLateOccurrences.ToString();
+            label_NumberAbsent.Text = absentEmployees.ToString();
+
+            if (summaries != null)
             {
+                foreach (var s in summaries)
+                {
                 // 1. Mã NV
                 var empCode = !string.IsNullOrWhiteSpace(s.EmployeeCode)
                     ? s.EmployeeCode
@@ -188,9 +212,10 @@ namespace Admin.WinForms.Controls.Attendance
                 item.Tag = s.Id;
                 listView_Report.Items.Add(item);
             }
-
-            listView_Report.EndUpdate();
         }
+
+        listView_Report.EndUpdate();
+    }
 
         private async void button_Generate_Click(object? sender, EventArgs e)
         {
@@ -238,52 +263,60 @@ namespace Admin.WinForms.Controls.Attendance
             panel_Trend.SuspendLayout();
             panel_Trend.Controls.Clear();
 
-            // Giữ lại tiêu đề gốc nếu có
+            var titleFont = new Font("Segoe UI", 11, FontStyle.Bold);
+            var titleSize = TextRenderer.MeasureText("Xu hướng chuyên cần theo tuần", titleFont);
             var titleLabel = new Label
             {
                 Text = "Xu hướng chuyên cần theo tuần",
-                Location = new Point(15, 15),
-                Size = new Size(300, 30),
-                Font = new Font("Segoe UI", 11, FontStyle.Bold),
+                Location = new Point(15, 12),
+                Size = new Size(titleSize.Width + 20, titleSize.Height + 8),
+                Font = titleFont,
                 ForeColor = textColor
             };
             panel_Trend.Controls.Add(titleLabel);
 
-            int startY = 60;
-            int barWidth = Math.Max(300, panel_Trend.Width - 60);
+            int startY = 55;
+            int barWidth = Math.Max(280, panel_Trend.Width - 50);
+
+            var weekFont = new Font("Segoe UI", 9, FontStyle.Bold);
+            var pctFont = new Font("Segoe UI", 9, FontStyle.Bold);
 
             foreach (var week in weeks)
             {
+                var weekSize = TextRenderer.MeasureText(week.Name, weekFont);
                 var labelWeek = new Label
                 {
                     Text = week.Name,
                     Location = new Point(20, startY),
-                    Size = new Size(120, 25),
-                    Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                    Size = new Size(weekSize.Width + 10, weekSize.Height + 6),
+                    Font = weekFont,
                     ForeColor = textColor
                 };
 
+                var pctText = $"{week.Present}% Có mặt";
+                var pctSize = TextRenderer.MeasureText(pctText, pctFont);
                 var labelPercentage = new Label
                 {
-                    Text = $"{week.Present}% Có mặt",
-                    Location = new Point(barWidth - 140, startY),
-                    Size = new Size(150, 25),
-                    Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                    Text = pctText,
+                    Location = new Point(20 + barWidth - pctSize.Width - 10, startY),
+                    Size = new Size(pctSize.Width + 12, pctSize.Height + 6),
+                    Font = pctFont,
                     ForeColor = primaryColor,
                     TextAlign = ContentAlignment.MiddleRight
                 };
 
                 var panelBar = new Panel
                 {
-                    Location = new Point(20, startY + 28),
+                    Location = new Point(20, startY + weekSize.Height + 8),
                     Size = new Size(barWidth, 18),
                     BackColor = secondaryColor
                 };
 
+                int presentWidth = (int)Math.Round((double)barWidth * Math.Clamp(week.Present, 0, 100) / 100.0);
                 var panelPresent = new Panel
                 {
                     Location = new Point(0, 0),
-                    Size = new Size(panelBar.Width * Math.Clamp(week.Present, 0, 100) / 100, panelBar.Height),
+                    Size = new Size(presentWidth, panelBar.Height),
                     BackColor = primaryColor
                 };
 
@@ -293,7 +326,7 @@ namespace Admin.WinForms.Controls.Attendance
                 panel_Trend.Controls.Add(labelPercentage);
                 panel_Trend.Controls.Add(panelBar);
 
-                startY += 80;
+                startY += weekSize.Height + 36;
             }
 
             panel_Trend.ResumeLayout();
@@ -307,43 +340,54 @@ namespace Admin.WinForms.Controls.Attendance
             panel_TrendByDepartment.SuspendLayout();
             panel_TrendByDepartment.Controls.Clear();
 
+            var titleFont = new Font("Segoe UI", 11, FontStyle.Bold);
+            var titleSize = TextRenderer.MeasureText("Tỷ lệ chuyên cần theo phòng ban", titleFont);
             var titleLabel = new Label
             {
                 Text = "Tỷ lệ chuyên cần theo phòng ban",
-                Location = new Point(15, 15),
-                Size = new Size(320, 30),
-                Font = new Font("Segoe UI", 11, FontStyle.Bold),
+                Location = new Point(15, 12),
+                Size = new Size(titleSize.Width + 20, titleSize.Height + 8),
+                Font = titleFont,
                 ForeColor = textColor
             };
             panel_TrendByDepartment.Controls.Add(titleLabel);
 
-            int startY = 60;
-            int barWidth = Math.Max(300, panel_TrendByDepartment.Width - 60);
+            int startY = 55;
+            int barWidth = Math.Max(280, panel_TrendByDepartment.Width - 50);
+
+            var deptFont = new Font("Segoe UI", 9, FontStyle.Bold);
+            var pctFont = new Font("Segoe UI", 10, FontStyle.Bold);
 
             foreach (var department in departments)
             {
+                var deptText = department.Name;
+                var deptSize = TextRenderer.MeasureText(deptText, deptFont);
+
+                var pctText = $"{department.Percentage}%";
+                var pctSize = TextRenderer.MeasureText(pctText, pctFont);
+
                 var labelDepartment = new Label
                 {
-                    Text = department.Name,
+                    Text = deptText,
                     Location = new Point(20, startY),
-                    Size = new Size(barWidth - 120, 25),
-                    Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                    Size = new Size(Math.Min(deptSize.Width + 10, barWidth - pctSize.Width - 20), deptSize.Height + 6),
+                    Font = deptFont,
                     ForeColor = textColor
                 };
 
                 var labelPercentage = new Label
                 {
-                    Text = $"{department.Percentage}%",
-                    Location = new Point(barWidth - 90, startY),
-                    Size = new Size(100, 25),
-                    Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                    Text = pctText,
+                    Location = new Point(20 + barWidth - pctSize.Width - 10, startY),
+                    Size = new Size(pctSize.Width + 12, pctSize.Height + 6),
+                    Font = pctFont,
                     ForeColor = primaryColor,
                     TextAlign = ContentAlignment.MiddleRight
                 };
 
                 var progressDepartment = new ProgressBar
                 {
-                    Location = new Point(20, startY + 28),
+                    Location = new Point(20, startY + deptSize.Height + 8),
                     Size = new Size(barWidth, 18),
                     Minimum = 0,
                     Maximum = 100,
@@ -355,7 +399,7 @@ namespace Admin.WinForms.Controls.Attendance
                 panel_TrendByDepartment.Controls.Add(labelPercentage);
                 panel_TrendByDepartment.Controls.Add(progressDepartment);
 
-                startY += 80;
+                startY += deptSize.Height + 36;
             }
 
             panel_TrendByDepartment.ResumeLayout();
