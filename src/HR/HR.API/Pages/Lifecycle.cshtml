@@ -100,6 +100,7 @@ const recordForm = document.querySelector('#recordForm');
 const recordSelect = document.querySelector('#recordSelect');
 const statusBox = document.querySelector('#status');
 let currentRecord = null;
+let positions = [];
 let busy = false;
 const today = new Date().toISOString().slice(0, 10);
 onboardingForm.elements.startDate.value = today;
@@ -136,11 +137,17 @@ function nullable(value) { return value.trim() || null; }
 async function loadOptions() {
     const options = await request('/lifecycle/options');
     const departments = onboardingForm.elements.departmentId;
-    const positions = onboardingForm.elements.positionId;
     departments.replaceChildren(new Option('Chọn phòng ban', ''));
-    positions.replaceChildren(new Option('Chọn chức vụ', ''));
     for (const item of options.departments) departments.add(new Option(`${item.code} — ${item.name}`, item.departmentId));
-    for (const item of options.positions) positions.add(new Option(`${item.code} — ${item.name}`, item.positionId));
+    positions = options.positions;
+    updatePositionOptions();
+}
+function updatePositionOptions() {
+    const select = onboardingForm.elements.positionId;
+    const partTime = onboardingForm.elements.employmentType.value === 'PART_TIME';
+    const eligible = positions.filter(item => !partTime || item.seniorityLevel === 'STAFF');
+    select.replaceChildren(new Option(eligible.length ? 'Chọn chức vụ' : 'Chưa có chức vụ STAFF đã phân loại', ''));
+    for (const item of eligible) select.add(new Option(`${item.code} — ${item.name}`, item.positionId));
 }
 async function loadEmployees() {
     const query = new URLSearchParams({keyword: document.querySelector('#employeeKeyword').value, page: '1', pageSize: '100'});
@@ -178,6 +185,7 @@ onboardingForm.onsubmit = event => {
         await loadEmployees(); statusBox.textContent = 'Đã tạo hồ sơ nhân viên và công tác đầu tiên.';
     });
 };
+onboardingForm.elements.employmentType.addEventListener('change', updatePositionOptions);
 offboardingForm.onsubmit = event => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(offboardingForm));

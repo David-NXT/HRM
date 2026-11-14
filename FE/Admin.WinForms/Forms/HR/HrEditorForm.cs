@@ -43,6 +43,30 @@ public partial class HrEditorForm : Form
         return this;
     }
 
+    public HrEditorForm SetChoices(string key, IEnumerable<Choice> choices, object? selected = null)
+    {
+        var box = (ComboBox)_fields[key];
+        box.BeginUpdate();
+        try
+        {
+            box.Items.Clear();
+            foreach (var choice in choices) box.Items.Add(choice);
+            var match = box.Items.Cast<Choice>().FirstOrDefault(x => Equals(x.Value, selected));
+            box.SelectedItem = match ?? box.Items.Cast<Choice>().FirstOrDefault();
+        }
+        finally
+        {
+            box.EndUpdate();
+        }
+        return this;
+    }
+
+    public HrEditorForm OnChoiceChanged(string key, Action<object?> changed)
+    {
+        ((ComboBox)_fields[key]).SelectionChangeCommitted += (_, _) => changed(ChoiceValue(key));
+        return this;
+    }
+
     public HrEditorForm AmountField(string key, string title, decimal value = 0m)
     {
         var amount = new NumericUpDown
@@ -82,6 +106,8 @@ public partial class HrEditorForm : Form
     public DateOnly DateValue(string key) => DateOnly.FromDateTime(((DateTimePicker)_fields[key]).Value);
     public DateOnly? OptionalDate(string key) => ((DateTimePicker)_fields[key]).Checked ? DateValue(key) : null;
     public object? ChoiceValue(string key) => (((ComboBox)_fields[key]).SelectedItem as Choice)?.Value;
+    public string ChoiceStringValue(string key) => ChoiceValue(key) as string
+        ?? throw new InvalidOperationException("Hãy chọn giá trị trong các danh sách bắt buộc.");
     public Guid GuidValue(string key) => ChoiceValue(key) is Guid id ? id : throw new InvalidOperationException("Hãy chọn đủ phòng ban, chức vụ hoặc nhân viên.");
     public bool CheckedValue(string key) => ((CheckBox)_fields[key]).Checked;
 

@@ -131,6 +131,21 @@ public sealed class ContractService
             ?? throw new HrException(400, "InvalidDepartment", "Phòng ban không tồn tại hoặc đã ngừng hoạt động.");
         var position = await _repository.GetActivePositionAsync(request.PositionId, cancellationToken)
             ?? throw new HrException(400, "InvalidPosition", "Chức vụ không tồn tại hoặc đã ngừng hoạt động.");
+        if (employee.EmploymentType == EmploymentTypes.PartTime
+            && !PositionSeniorityLevels.IsEligibleForPartTime(position.SeniorityLevel))
+        {
+            throw new HrException(400, "PartTimePositionNotAllowed",
+                position.SeniorityLevel is null
+                    ? "Chức vụ chưa được phân loại cấp bậc. Hãy phân loại trong Organization trước khi chọn cho nhân viên part-time."
+                    : "Nhân viên part-time chỉ được đảm nhiệm chức vụ cấp STAFF; không được giữ chức vụ quản lý trở lên.");
+        }
+        if (position.SeniorityLevel == PositionSeniorityLevels.Director
+            && await _repository.HasDirectorAssignmentInDepartmentAsync(
+                department.DepartmentId, request.EffectiveDate, employeeId, cancellationToken))
+        {
+            throw new HrException(409, "DepartmentDirectorAlreadyAssigned",
+                "Phòng ban đã có Giám đốc được phân công trong khoảng thời gian này.");
+        }
         var notes = NormalizeNotes(request.Notes);
         var history = await _repository.GetWorkHistoryAsync(employeeId, cancellationToken);
         var latest = history.OrderByDescending(item => item.StartDate).FirstOrDefault();
@@ -150,6 +165,7 @@ public sealed class ContractService
             EmployeeId = employeeId,
             DepartmentId = department.DepartmentId,
             PositionId = position.PositionId,
+            IsDirector = position.SeniorityLevel == PositionSeniorityLevels.Director,
             StartDate = request.EffectiveDate,
             Notes = notes,
             CreatedAt = DateTime.UtcNow

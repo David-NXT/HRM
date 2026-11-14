@@ -19,5 +19,13 @@ public interface IOrgStructureRepository
     Task<bool> HasOpenWorkHistoryInPositionAsync(Guid positionId, CancellationToken cancellationToken);
     Task<bool> HasCurrentWorkHistoryInDepartmentsAsync(IReadOnlyCollection<Guid> departmentIds, DateOnly effectiveOn, CancellationToken cancellationToken);
     Task<bool> HasCurrentWorkHistoryInPositionAsync(Guid positionId, DateOnly effectiveOn, CancellationToken cancellationToken);
+    Task<bool> HasPartTimeAssignmentsInPositionAsync(Guid positionId, CancellationToken cancellationToken) =>
+        Task.FromResult(false);
+    Task<bool> HasMultipleOpenDirectorAssignmentsAsync(Guid positionId, CancellationToken cancellationToken) =>
+        Task.FromResult(false);
+    Task<bool> HasDirectorAssignmentInDepartmentAsync(Guid departmentId, DateOnly effectiveDate, Guid? excludingEmployeeId, CancellationToken cancellationToken) =>
+        Task.FromResult(false);
+    Task UpdateOpenWorkHistoryDirectorFlagsAsync(Guid positionId, bool isDirector, CancellationToken cancellationToken) =>
+        Task.CompletedTask;
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

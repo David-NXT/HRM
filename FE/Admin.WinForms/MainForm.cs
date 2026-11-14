@@ -62,7 +62,7 @@ namespace Admin.WinForms
         private void MainForm_Load(object sender, EventArgs e)
         {
             // Mặc định khi mở app sẽ chọn sẵn nút Dashboard
-            button_Employee_Click(button_Employee, EventArgs.Empty);
+            button_Dashboard_Click(button_Dashboard, EventArgs.Empty);
         }
 
         // Hàm xử lý đổi màu Active cho nút được chọn
