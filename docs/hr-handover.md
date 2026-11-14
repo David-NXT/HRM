@@ -65,7 +65,7 @@ ContractExpiryJob mặc định bật, chạy ngay khi service khởi động v�
 - DateTime được lưu/trả theo UTC; response thường có hậu tố Z.
 - Các số tiền là JSON number, kiểu decimal, tối đa 2 chữ số thập phân.
 - Query phân trang mặc định page=1, pageSize=20; các API phân trang giới hạn pageSize tối đa 100.
-- Không có endpoint DELETE cho hồ sơ chính; dùng lock, deactivate hoặc quy trình offboarding tùy dữ liệu.
+- DELETE /employees/{id} xóa vật lý hồ sơ chưa có dữ liệu liên quan. Hồ sơ có lịch sử công tác, hợp đồng, yêu cầu cập nhật, thông báo hoặc offboarding trả 409 để bảo toàn lịch sử.
 
 ### 3.2 Header truy cập
 
@@ -105,8 +105,10 @@ Tất cả route dưới đây nằm dưới host HR, ví dụ http://localhost:
 | Method | Route | Quyền | Chức năng | Response thành công |
 |---|---|---|---|---|
 | GET | /employees | HR | Tìm kiếm, phân trang toàn bộ hồ sơ | EmployeeListDto |
+| GET | /employees/statistics | HR | Thống kê tổng số nhân viên theo trạng thái và loại hình làm việc | EmployeeStatisticsDto |
 | GET | /employees/{id} | HR | Chi tiết hồ sơ | EmployeeDto |
 | POST | /employees | HR | Tạo hồ sơ trực tiếp | 201 EmployeeDto |
+| DELETE | /employees/{id} | HR | Xóa hồ sơ chưa có dữ liệu liên quan | 204 |
 | PUT | /employees/{id} | HR | Sửa thông tin cá nhân | EmployeeDto |
 | PUT | /employees/{id}/salary | HR | Sửa đúng trường lương theo loại nhân viên | EmployeeDto |
 | POST | /employees/{id}/lock | HR | Khóa hồ sơ | EmployeeDto |
@@ -158,6 +160,12 @@ Tất cả route dưới đây nằm dưới host HR, ví dụ http://localhost:
 Header X-Role: HR. Query keyword tìm theo mã, tên, email, điện thoại hoặc CCCD; page mặc định 1; pageSize mặc định 20, tối đa 100. API gồm cả ACTIVE, LOCKED và RESIGNED.
 
 Response 200: EmployeeListDto, xem schema mục 6.1.
+
+#### GET /employees/statistics
+
+Header X-Role: HR. Trả tổng số nhân viên, số ACTIVE/LOCKED/RESIGNED và số FULL_TIME/PART_TIME trong một lần truy vấn.
+
+Response 200: EmployeeStatisticsDto.
 
 #### GET /employees/{id}
 
@@ -236,6 +244,10 @@ Sai trường theo loại nhân viên, lương âm, vượt numeric(18,2), hoặ
 #### POST /employees/{id}/lock
 
 Header X-Role: HR. Chuyển hồ sơ sang LOCKED. Hồ sơ RESIGNED không thể khóa lại; trường hợp đó trả 409. Response 200: EmployeeDto.
+
+#### DELETE /employees/{id}
+
+Header X-Role: HR. Xóa vật lý hồ sơ chỉ khi nhân viên chưa có lịch sử công tác, hợp đồng, yêu cầu cập nhật hồ sơ, thông báo hoặc hồ sơ nghỉ việc. Nếu còn dữ liệu liên quan, trả 409 EmployeeHasRelatedRecords; không tìm thấy nhân viên trả 404. Thành công trả 204 No Content.
 
 ### 5.2 Phòng ban và chức vụ
 
@@ -794,6 +806,17 @@ LifecycleOptionsDto:
     {
       "departments": [],
       "positions": []
+    }
+
+EmployeeStatisticsDto:
+
+    {
+      "totalEmployees": 10,
+      "activeEmployees": 7,
+      "lockedEmployees": 2,
+      "resignedEmployees": 1,
+      "fullTimeEmployees": 8,
+      "partTimeEmployees": 2
     }
 
 ContractAlertListDto, EmployeeListDto và EmployeeDirectoryListDto có dạng wrapper phân trang riêng mô tả ở trên. Những collection không phân trang trả JSON array.

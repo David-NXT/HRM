@@ -31,6 +31,9 @@ public sealed class EmployeeService : IEmployeeService
         return new EmployeeListDto(items.Select(ToDto).ToArray(), page, pageSize, total);
     }
 
+    public Task<EmployeeStatisticsDto> GetStatisticsAsync(CancellationToken cancellationToken) =>
+        _employees.GetStatisticsAsync(cancellationToken);
+
     public async Task<EmployeeDirectoryListDto> ListActiveDirectoryAsync(
         string? keyword,
         int page,
@@ -76,6 +79,24 @@ public sealed class EmployeeService : IEmployeeService
         await _employees.AddAsync(employee, cancellationToken);
         await _employees.SaveChangesAsync(cancellationToken);
         return ToDto(employee);
+    }
+
+    public async Task DeleteAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var employee = await _employees.GetByIdAsync(id, cancellationToken);
+        if (employee is null)
+        {
+            throw new HrException(404, "EmployeeNotFound", "Không tìm thấy hồ sơ.");
+        }
+
+        if (await _employees.HasRelatedRecordsAsync(id, cancellationToken))
+        {
+            throw new HrException(409, "EmployeeHasRelatedRecords",
+                "Không thể xóa nhân viên đã có hợp đồng, lịch sử công tác, hồ sơ cập nhật, thông báo hoặc hồ sơ nghỉ việc.");
+        }
+
+        _employees.Remove(employee);
+        await _employees.SaveChangesAsync(cancellationToken);
     }
 
     public Employee PrepareNewEmployee(CreateEmployeeRequest request)

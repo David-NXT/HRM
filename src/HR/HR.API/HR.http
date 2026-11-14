@@ -13,6 +13,10 @@ X-Role: {{HR_Role}}
 GET {{HR_HostAddress}}/employees?keyword=NV001
 X-Role: {{HR_Role}}
 
+### Thống kê nhân viên
+GET {{HR_HostAddress}}/employees/statistics
+X-Role: {{HR_Role}}
+
 ### Thêm hồ sơ
 POST {{HR_HostAddress}}/employees
 Content-Type: application/json
@@ -66,6 +70,10 @@ X-Role: {{HR_Role}}
 
 ### Khóa hồ sơ
 POST {{HR_HostAddress}}/employees/{{EmployeeId}}/lock
+X-Role: {{HR_Role}}
+
+### Xóa hồ sơ chưa có dữ liệu liên quan; nếu đã có lịch sử, API trả 409
+DELETE {{HR_HostAddress}}/employees/{{EmployeeId}}
 X-Role: {{HR_Role}}
 
 ### Directory local: chỉ fallback X-Role ở Development khi HR chưa cấu hình key

@@ -1,3 +1,4 @@
+using HR.Application.DTOs.Employees;
 using HR.Application.DTOs.Lifecycle;
 using HR.Application.Interfaces.Repositories;
 using HR.Application.Services.Employees;
@@ -362,7 +363,22 @@ public sealed class LifecycleServiceTests
 
         public Task<(IReadOnlyList<Employee> Items, int Total)> SearchAsync(string? keyword, int page, int pageSize, CancellationToken ct) => throw new NotSupportedException();
         public Task<(IReadOnlyList<Employee> Items, int Total)> SearchActiveAsync(string? keyword, int page, int pageSize, CancellationToken ct) => throw new NotSupportedException();
+        public Task<EmployeeStatisticsDto> GetStatisticsAsync(CancellationToken ct)
+        {
+            var stats = new EmployeeStatisticsDto(
+                Employees.Count,
+                Employees.Count(item => item.Status == EmployeeStatuses.Active),
+                Employees.Count(item => item.Status == EmployeeStatuses.Locked),
+                Employees.Count(item => item.Status == EmployeeStatuses.Resigned),
+                Employees.Count(item => item.EmploymentType == EmploymentTypes.FullTime),
+                Employees.Count(item => item.EmploymentType == EmploymentTypes.PartTime));
+            return Task.FromResult(stats);
+        }
+        public Task<bool> HasRelatedRecordsAsync(Guid employeeId, CancellationToken ct) =>
+            Task.FromResult(History.Any(item => item.EmployeeId == employeeId)
+                || Offboardings.Any(item => item.EmployeeId == employeeId));
         public Task AddAsync(Employee employee, CancellationToken ct) => throw new NotSupportedException();
+        public void Remove(Employee employee) => Employees.Remove(employee);
         public Task SaveChangesAsync(CancellationToken ct) => throw new NotSupportedException();
         public Task AddDepartmentAsync(Department department, CancellationToken ct) => throw new NotSupportedException();
         public Task AddPositionAsync(Position position, CancellationToken ct) => throw new NotSupportedException();

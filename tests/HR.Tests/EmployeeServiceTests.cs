@@ -275,8 +275,23 @@ public class EmployeeServiceTests
             return Task.FromResult(((IReadOnlyList<Employee>)items, items.Length));
         }
 
+        public Task<EmployeeStatisticsDto> GetStatisticsAsync(CancellationToken cancellationToken)
+        {
+            var stats = new EmployeeStatisticsDto(
+                Items.Count,
+                Items.Count(employee => employee.Status == EmployeeStatuses.Active),
+                Items.Count(employee => employee.Status == EmployeeStatuses.Locked),
+                Items.Count(employee => employee.Status == EmployeeStatuses.Resigned),
+                Items.Count(employee => employee.EmploymentType == EmploymentTypes.FullTime),
+                Items.Count(employee => employee.EmploymentType == EmploymentTypes.PartTime));
+            return Task.FromResult(stats);
+        }
+
         public Task<Employee?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
             Task.FromResult(Items.FirstOrDefault(employee => employee.EmployeeId == id));
+
+        public Task<bool> HasRelatedRecordsAsync(Guid employeeId, CancellationToken cancellationToken) =>
+            Task.FromResult(false);
 
         public Task<bool> CodeExistsAsync(string employeeCode, CancellationToken cancellationToken) =>
             Task.FromResult(Items.Any(employee => employee.EmployeeCode == employeeCode));
@@ -287,6 +302,8 @@ public class EmployeeServiceTests
             Items.Add(employee);
             return Task.CompletedTask;
         }
+
+        public void Remove(Employee employee) => Items.Remove(employee);
 
         public Task SaveChangesAsync(CancellationToken cancellationToken)
         {

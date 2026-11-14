@@ -6,6 +6,8 @@ public interface IEmployeeService
 {
     Task<EmployeeListDto> ListAsync(string? keyword, int page, int pageSize, CancellationToken cancellationToken);
 
+    Task<EmployeeStatisticsDto> GetStatisticsAsync(CancellationToken cancellationToken);
+
     Task<EmployeeDirectoryListDto> ListActiveDirectoryAsync(string? keyword, int page, int pageSize, CancellationToken cancellationToken);
 
     Task<EmployeeDirectoryEntry> GetActiveDirectoryEntryAsync(Guid employeeId, CancellationToken cancellationToken);
@@ -13,6 +15,8 @@ public interface IEmployeeService
     Task<EmployeeDto> GetAsync(Guid id, CancellationToken cancellationToken);
 
     Task<EmployeeDto> CreateAsync(CreateEmployeeRequest request, CancellationToken cancellationToken);
+
+    Task DeleteAsync(Guid id, CancellationToken cancellationToken);
 
     HR.Domain.Entities.Employee PrepareNewEmployee(CreateEmployeeRequest request);
 
