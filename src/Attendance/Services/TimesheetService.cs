@@ -9,10 +9,12 @@ namespace Attendance.Services;
 public class TimesheetService : ITimesheetService
 {
     private readonly AttendanceDbContext _dbContext;
+    private readonly IHrEmployeeDirectoryClient? _employees;
 
-    public TimesheetService(AttendanceDbContext dbContext)
+    public TimesheetService(AttendanceDbContext dbContext, IHrEmployeeDirectoryClient? employees = null)
     {
         _dbContext = dbContext;
+        _employees = employees;
     }
 
     public async Task<List<TimesheetPeriodDto>> GetPeriodsAsync(int? year = null, CancellationToken cancellationToken = default)
@@ -93,7 +95,77 @@ public class TimesheetService : ITimesheetService
             .Where(s => s.PeriodId == periodId)
             .ToListAsync(cancellationToken);
 
-        return summaries.Select(MapToSummaryDto).ToList();
+        if (summaries.Count == 0)
+        {
+            var period = await _dbContext.TimesheetPeriods.FindAsync([periodId], cancellationToken);
+            if (period != null)
+            {
+                var empIds = await _dbContext.AttendanceRecords
+                    .Where(r => r.Date >= period.StartDate && r.Date <= period.EndDate)
+                    .Select(r => r.EmployeeId)
+                    .Distinct()
+                    .ToListAsync(cancellationToken);
+
+                if (empIds.Count == 0)
+                {
+                    empIds = await _dbContext.ShiftAssignments
+                        .Where(s => s.Date >= period.StartDate && s.Date <= period.EndDate)
+                        .Select(s => s.EmployeeId)
+                        .Distinct()
+                        .ToListAsync(cancellationToken);
+                }
+
+                foreach (var empId in empIds)
+                {
+                    try
+                    {
+                        await GenerateOrRecalculateSummaryAsync(periodId, empId, cancellationToken);
+                    }
+                    catch
+                    {
+                    }
+                }
+
+                summaries = await _dbContext.TimesheetSummaries
+                    .AsNoTracking()
+                    .Where(s => s.PeriodId == periodId)
+                    .ToListAsync(cancellationToken);
+            }
+        }
+
+        var result = new List<TimesheetSummaryDto>();
+        Dictionary<Guid, (string Code, string Name)> empMap = new();
+
+        if (_employees != null)
+        {
+            try
+            {
+                var empPage = await _employees.GetActiveEmployeesAsync(null, 1, 500, cancellationToken);
+                if (empPage?.Items != null)
+                {
+                    empMap = empPage.Items.ToDictionary(e => e.EmployeeId, e => (e.EmployeeCode, e.FullName));
+                }
+            }
+            catch { }
+        }
+
+        foreach (var s in summaries)
+        {
+            var dto = MapToSummaryDto(s);
+            if (empMap.TryGetValue(s.EmployeeId, out var info))
+            {
+                dto.EmployeeCode = info.Code;
+                dto.EmployeeName = info.Name;
+            }
+            else
+            {
+                dto.EmployeeCode = s.EmployeeId.ToString()[..8].ToUpper();
+                dto.EmployeeName = $"Nhân viên {dto.EmployeeCode}";
+            }
+            result.Add(dto);
+        }
+
+        return result;
     }
 
     public async Task<EmployeeMonthlyTimesheetDto?> GetEmployeeSummaryAsync(Guid employeeId, int month, int year, CancellationToken cancellationToken = default)

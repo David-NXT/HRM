@@ -16,6 +16,14 @@ public class PayrollPeriodController : ControllerBase
         _payrollPeriodService = payrollPeriodService;
     }
 
+    [HttpGet]
+    public async Task<ActionResult<List<PayrollPeriodResponse>>> GetAll(
+        CancellationToken cancellationToken)
+    {
+        var response = await _payrollPeriodService.GetAllAsync(cancellationToken);
+        return Ok(response);
+    }
+
     [HttpPost]
     public async Task<ActionResult<PayrollPeriodResponse>> Create(
         CreatePayrollPeriodRequest request,

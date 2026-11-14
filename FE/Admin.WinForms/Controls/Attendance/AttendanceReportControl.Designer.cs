@@ -29,6 +29,7 @@
         private void InitializeComponent()
         {
             panel_Statistics = new Panel();
+            tableLayout_Statistics = new TableLayoutPanel();
             panel_TotalAbsent = new Panel();
             label_TotalAbsent = new Label();
             label_NumberAbsent = new Label();
@@ -70,11 +71,11 @@
             col_Report_WeekendOT = new ColumnHeader();
             col_Report_HolidayOT = new ColumnHeader();
             tabPage_Charts = new TabPage();
+            tableLayout_Charts = new TableLayoutPanel();
             panel_TrendByDepartment = new Panel();
-            label1 = new Label();
             panel_Trend = new Panel();
-            label_Report = new Label();
             panel_Statistics.SuspendLayout();
+            tableLayout_Statistics.SuspendLayout();
             panel_TotalAbsent.SuspendLayout();
             panel_TotalLate.SuspendLayout();
             panel_TotalPresent.SuspendLayout();
@@ -84,36 +85,54 @@
             tabControl_Reports.SuspendLayout();
             tabPage_SummaryTable.SuspendLayout();
             tabPage_Charts.SuspendLayout();
-            panel_TrendByDepartment.SuspendLayout();
-            panel_Trend.SuspendLayout();
+            tableLayout_Charts.SuspendLayout();
             SuspendLayout();
             // 
             // panel_Statistics
             // 
-            panel_Statistics.Controls.Add(panel_TotalAbsent);
-            panel_Statistics.Controls.Add(panel_TotalLate);
-            panel_Statistics.Controls.Add(panel_TotalPresent);
-            panel_Statistics.Controls.Add(panel_TotalEmployees);
+            panel_Statistics.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            panel_Statistics.Controls.Add(tableLayout_Statistics);
             panel_Statistics.Location = new Point(5, 7);
             panel_Statistics.Name = "panel_Statistics";
             panel_Statistics.Size = new Size(1808, 142);
             panel_Statistics.TabIndex = 13;
+            // 
+            // tableLayout_Statistics
+            // 
+            tableLayout_Statistics.ColumnCount = 4;
+            tableLayout_Statistics.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            tableLayout_Statistics.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            tableLayout_Statistics.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            tableLayout_Statistics.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            tableLayout_Statistics.Controls.Add(panel_TotalEmployees, 0, 0);
+            tableLayout_Statistics.Controls.Add(panel_TotalPresent, 1, 0);
+            tableLayout_Statistics.Controls.Add(panel_TotalLate, 2, 0);
+            tableLayout_Statistics.Controls.Add(panel_TotalAbsent, 3, 0);
+            tableLayout_Statistics.Dock = DockStyle.Fill;
+            tableLayout_Statistics.Location = new Point(0, 0);
+            tableLayout_Statistics.Name = "tableLayout_Statistics";
+            tableLayout_Statistics.RowCount = 1;
+            tableLayout_Statistics.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tableLayout_Statistics.Size = new Size(1808, 142);
+            tableLayout_Statistics.TabIndex = 0;
             // 
             // panel_TotalAbsent
             // 
             panel_TotalAbsent.BackColor = Color.FromArgb(253, 237, 240);
             panel_TotalAbsent.Controls.Add(label_TotalAbsent);
             panel_TotalAbsent.Controls.Add(label_NumberAbsent);
-            panel_TotalAbsent.Location = new Point(1364, 13);
+            panel_TotalAbsent.Dock = DockStyle.Fill;
+            panel_TotalAbsent.Location = new Point(1359, 3);
+            panel_TotalAbsent.Margin = new Padding(6);
             panel_TotalAbsent.Name = "panel_TotalAbsent";
-            panel_TotalAbsent.Size = new Size(430, 113);
+            panel_TotalAbsent.Size = new Size(443, 136);
             panel_TotalAbsent.TabIndex = 3;
             // 
             // label_TotalAbsent
             // 
             label_TotalAbsent.AutoSize = true;
             label_TotalAbsent.Font = new Font("Segoe UI", 10F);
-            label_TotalAbsent.Location = new Point(13, 63);
+            label_TotalAbsent.Location = new Point(16, 68);
             label_TotalAbsent.Name = "label_TotalAbsent";
             label_TotalAbsent.Size = new Size(99, 37);
             label_TotalAbsent.TabIndex = 7;
@@ -123,7 +142,7 @@
             // 
             label_NumberAbsent.AutoSize = true;
             label_NumberAbsent.Font = new Font("Segoe UI", 15F, FontStyle.Bold);
-            label_NumberAbsent.Location = new Point(13, 9);
+            label_NumberAbsent.Location = new Point(16, 12);
             label_NumberAbsent.Name = "label_NumberAbsent";
             label_NumberAbsent.Size = new Size(46, 54);
             label_NumberAbsent.TabIndex = 6;
@@ -134,16 +153,18 @@
             panel_TotalLate.BackColor = Color.FromArgb(254, 244, 234);
             panel_TotalLate.Controls.Add(label_TotalLate);
             panel_TotalLate.Controls.Add(label_NumberLate);
-            panel_TotalLate.Location = new Point(914, 13);
+            panel_TotalLate.Dock = DockStyle.Fill;
+            panel_TotalLate.Location = new Point(908, 3);
+            panel_TotalLate.Margin = new Padding(6);
             panel_TotalLate.Name = "panel_TotalLate";
-            panel_TotalLate.Size = new Size(430, 113);
+            panel_TotalLate.Size = new Size(439, 136);
             panel_TotalLate.TabIndex = 2;
             // 
             // label_TotalLate
             // 
             label_TotalLate.AutoSize = true;
             label_TotalLate.Font = new Font("Segoe UI", 10F);
-            label_TotalLate.Location = new Point(20, 63);
+            label_TotalLate.Location = new Point(16, 68);
             label_TotalLate.Name = "label_TotalLate";
             label_TotalLate.Size = new Size(67, 37);
             label_TotalLate.TabIndex = 5;
@@ -153,7 +174,7 @@
             // 
             label_NumberLate.AutoSize = true;
             label_NumberLate.Font = new Font("Segoe UI", 15F, FontStyle.Bold);
-            label_NumberLate.Location = new Point(20, 9);
+            label_NumberLate.Location = new Point(16, 12);
             label_NumberLate.Name = "label_NumberLate";
             label_NumberLate.Size = new Size(46, 54);
             label_NumberLate.TabIndex = 4;
@@ -164,16 +185,18 @@
             panel_TotalPresent.BackColor = Color.FromArgb(236, 249, 240);
             panel_TotalPresent.Controls.Add(label_TotalPresent);
             panel_TotalPresent.Controls.Add(label_NumberPresent);
-            panel_TotalPresent.Location = new Point(464, 13);
+            panel_TotalPresent.Dock = DockStyle.Fill;
+            panel_TotalPresent.Location = new Point(457, 3);
+            panel_TotalPresent.Margin = new Padding(6);
             panel_TotalPresent.Name = "panel_TotalPresent";
-            panel_TotalPresent.Size = new Size(430, 113);
+            panel_TotalPresent.Size = new Size(439, 136);
             panel_TotalPresent.TabIndex = 1;
             // 
             // label_TotalPresent
             // 
             label_TotalPresent.AutoSize = true;
             label_TotalPresent.Font = new Font("Segoe UI", 10F);
-            label_TotalPresent.Location = new Point(12, 63);
+            label_TotalPresent.Location = new Point(16, 68);
             label_TotalPresent.Name = "label_TotalPresent";
             label_TotalPresent.Size = new Size(104, 37);
             label_TotalPresent.TabIndex = 3;
@@ -183,7 +206,7 @@
             // 
             label_NumberPresent.AutoSize = true;
             label_NumberPresent.Font = new Font("Segoe UI", 15F, FontStyle.Bold);
-            label_NumberPresent.Location = new Point(12, 9);
+            label_NumberPresent.Location = new Point(16, 12);
             label_NumberPresent.Name = "label_NumberPresent";
             label_NumberPresent.Size = new Size(46, 54);
             label_NumberPresent.TabIndex = 2;
@@ -194,17 +217,19 @@
             panel_TotalEmployees.BackColor = Color.FromArgb(229, 238, 253);
             panel_TotalEmployees.Controls.Add(label_TotalRecords);
             panel_TotalEmployees.Controls.Add(label_NumberRecords);
+            panel_TotalEmployees.Dock = DockStyle.Fill;
             panel_TotalEmployees.Font = new Font("Segoe UI", 13F);
-            panel_TotalEmployees.Location = new Point(14, 13);
+            panel_TotalEmployees.Location = new Point(6, 3);
+            panel_TotalEmployees.Margin = new Padding(6);
             panel_TotalEmployees.Name = "panel_TotalEmployees";
-            panel_TotalEmployees.Size = new Size(430, 113);
+            panel_TotalEmployees.Size = new Size(439, 136);
             panel_TotalEmployees.TabIndex = 0;
             // 
             // label_TotalRecords
             // 
             label_TotalRecords.AutoSize = true;
             label_TotalRecords.Font = new Font("Segoe UI", 10F);
-            label_TotalRecords.Location = new Point(13, 63);
+            label_TotalRecords.Location = new Point(16, 68);
             label_TotalRecords.Name = "label_TotalRecords";
             label_TotalRecords.Size = new Size(174, 37);
             label_TotalRecords.TabIndex = 1;
@@ -214,7 +239,7 @@
             // 
             label_NumberRecords.AutoSize = true;
             label_NumberRecords.Font = new Font("Segoe UI", 15F, FontStyle.Bold);
-            label_NumberRecords.Location = new Point(13, 9);
+            label_NumberRecords.Location = new Point(16, 12);
             label_NumberRecords.Name = "label_NumberRecords";
             label_NumberRecords.Size = new Size(46, 54);
             label_NumberRecords.TabIndex = 0;
@@ -222,6 +247,7 @@
             // 
             // panel_Filter
             // 
+            panel_Filter.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             panel_Filter.Controls.Add(button_ExportPDF);
             panel_Filter.Controls.Add(button_Generate);
             panel_Filter.Controls.Add(comboBox_Status);
@@ -447,8 +473,7 @@
             // 
             // tabPage_Charts
             // 
-            tabPage_Charts.Controls.Add(panel_TrendByDepartment);
-            tabPage_Charts.Controls.Add(panel_Trend);
+            tabPage_Charts.Controls.Add(tableLayout_Charts);
             tabPage_Charts.Location = new Point(8, 46);
             tabPage_Charts.Name = "tabPage_Charts";
             tabPage_Charts.Padding = new Padding(3);
@@ -457,43 +482,42 @@
             tabPage_Charts.Text = "Biểu đồ phân tích (Trends)";
             tabPage_Charts.UseVisualStyleBackColor = true;
             // 
-            // panel_TrendByDepartment
+            // tableLayout_Charts
             // 
-            panel_TrendByDepartment.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            panel_TrendByDepartment.Controls.Add(label1);
-            panel_TrendByDepartment.Location = new Point(900, 12);
-            panel_TrendByDepartment.Name = "panel_TrendByDepartment";
-            panel_TrendByDepartment.Size = new Size(875, 560);
-            panel_TrendByDepartment.TabIndex = 3;
-            // 
-            // label1
-            // 
-            label1.AutoSize = true;
-            label1.Font = new Font("Segoe UI", 11F, FontStyle.Bold);
-            label1.Location = new Point(3, 9);
-            label1.Name = "label1";
-            label1.Size = new Size(175, 32);
-            label1.TabIndex = 4;
-            label1.Text = "By Department";
+            tableLayout_Charts.ColumnCount = 2;
+            tableLayout_Charts.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tableLayout_Charts.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tableLayout_Charts.Controls.Add(panel_Trend, 0, 0);
+            tableLayout_Charts.Controls.Add(panel_TrendByDepartment, 1, 0);
+            tableLayout_Charts.Dock = DockStyle.Fill;
+            tableLayout_Charts.Location = new Point(3, 3);
+            tableLayout_Charts.Name = "tableLayout_Charts";
+            tableLayout_Charts.RowCount = 1;
+            tableLayout_Charts.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tableLayout_Charts.Size = new Size(1786, 580);
+            tableLayout_Charts.TabIndex = 0;
             // 
             // panel_Trend
             // 
-            panel_Trend.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left;
-            panel_Trend.Controls.Add(label_Report);
-            panel_Trend.Location = new Point(11, 12);
+            panel_Trend.AutoScroll = true;
+            panel_Trend.BackColor = Color.White;
+            panel_Trend.Dock = DockStyle.Fill;
+            panel_Trend.Location = new Point(6, 6);
+            panel_Trend.Margin = new Padding(6);
             panel_Trend.Name = "panel_Trend";
-            panel_Trend.Size = new Size(875, 560);
+            panel_Trend.Size = new Size(881, 568);
             panel_Trend.TabIndex = 2;
             // 
-            // label_Report
+            // panel_TrendByDepartment
             // 
-            label_Report.AutoSize = true;
-            label_Report.Font = new Font("Segoe UI", 11F, FontStyle.Bold);
-            label_Report.Location = new Point(3, 9);
-            label_Report.Name = "label_Report";
-            label_Report.Size = new Size(203, 32);
-            label_Report.TabIndex = 1;
-            label_Report.Text = "Attendance Trend";
+            panel_TrendByDepartment.AutoScroll = true;
+            panel_TrendByDepartment.BackColor = Color.White;
+            panel_TrendByDepartment.Dock = DockStyle.Fill;
+            panel_TrendByDepartment.Location = new Point(899, 6);
+            panel_TrendByDepartment.Margin = new Padding(6);
+            panel_TrendByDepartment.Name = "panel_TrendByDepartment";
+            panel_TrendByDepartment.Size = new Size(881, 568);
+            panel_TrendByDepartment.TabIndex = 3;
             // 
             // AttendanceReportControl
             // 
@@ -505,6 +529,7 @@
             Name = "AttendanceReportControl";
             Size = new Size(1815, 884);
             panel_Statistics.ResumeLayout(false);
+            tableLayout_Statistics.ResumeLayout(false);
             panel_TotalAbsent.ResumeLayout(false);
             panel_TotalAbsent.PerformLayout();
             panel_TotalLate.ResumeLayout(false);
@@ -519,16 +544,14 @@
             tabPage_SummaryTable.ResumeLayout(false);
             tabPage_SummaryTable.PerformLayout();
             tabPage_Charts.ResumeLayout(false);
-            panel_TrendByDepartment.ResumeLayout(false);
-            panel_TrendByDepartment.PerformLayout();
-            panel_Trend.ResumeLayout(false);
-            panel_Trend.PerformLayout();
+            tableLayout_Charts.ResumeLayout(false);
             ResumeLayout(false);
         }
 
         #endregion
 
         private Panel panel_Statistics;
+        private TableLayoutPanel tableLayout_Statistics;
         private Panel panel_TotalAbsent;
         private Label label_TotalAbsent;
         private Label label_NumberAbsent;
@@ -551,6 +574,7 @@
         private TabControl tabControl_Reports;
         private TabPage tabPage_SummaryTable;
         private TabPage tabPage_Charts;
+        private TableLayoutPanel tableLayout_Charts;
         private Label label_ReportList;
         private Button button_Print;
         private Button button_ExportExcel;
@@ -571,8 +595,6 @@
         private ColumnHeader col_Report_WeekendOT;
         private ColumnHeader col_Report_HolidayOT;
         private Panel panel_TrendByDepartment;
-        private Label label1;
         private Panel panel_Trend;
-        private Label label_Report;
     }
 }

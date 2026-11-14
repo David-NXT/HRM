@@ -1,5 +1,6 @@
 using Admin.WinForms.Controls.Attendance;
 using Admin.WinForms.Controls.HR;
+using Admin.WinForms.Controls.Payroll;
 using System;
 using System.Drawing;
 using System.Windows.Forms;
@@ -129,7 +130,7 @@ namespace Admin.WinForms
             ActivateButton((Button)sender);
             label_Title.Text = "Payroll Management";
             label_Description.Text = "Manage employee payroll, salary calculations, and related information.";
-            LoadPlaceholder("Payroll", "Màn hình Payroll do nhóm Payroll tích hợp.");
+            LoadControl(new PayrollOverviewControl());
         }
 
         private void button_Project_Click(object sender, EventArgs e)
