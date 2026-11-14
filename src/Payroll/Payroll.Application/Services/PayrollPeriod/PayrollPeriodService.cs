@@ -66,4 +66,21 @@ public class PayrollPeriodService
             CreatedAt = payrollPeriod.CreatedAt
         };
     }
+
+    public async Task<List<PayrollPeriodResponse>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        var periods = await _context.PayrollPeriods
+            .OrderByDescending(p => p.Year)
+            .ThenByDescending(p => p.Month)
+            .ToListAsync(cancellationToken);
+
+        return periods.Select(p => new PayrollPeriodResponse
+        {
+            PayrollPeriodID = p.PayrollPeriodID,
+            Year = p.Year,
+            Month = p.Month,
+            Status = p.Status,
+            CreatedAt = p.CreatedAt
+        }).ToList();
+    }
 }

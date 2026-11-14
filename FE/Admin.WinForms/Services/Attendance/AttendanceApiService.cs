@@ -288,4 +288,137 @@ public class AttendanceApiService
         }
         return true;
     }
+
+    // ==========================================
+    // EMPLOYEE DIRECTORY
+    // ==========================================
+    public async Task<List<EmployeeDirectoryDto>> GetEmployeesAsync(string? keyword = null)
+    {
+        try
+        {
+            var url = string.IsNullOrWhiteSpace(keyword)
+                ? "api/employees?page=1&pageSize=100"
+                : $"api/employees?keyword={Uri.EscapeDataString(keyword.Trim())}&page=1&pageSize=50";
+            var response = await _httpClient.GetFromJsonAsync<EmployeeDirectoryPageDto>(url);
+            return response?.Items ?? new List<EmployeeDirectoryDto>();
+        }
+        catch
+        {
+            return new List<EmployeeDirectoryDto>();
+        }
+    }
+
+    public async Task<EmployeeDirectoryDto?> GetEmployeeByIdAsync(Guid id)
+    {
+        try
+        {
+            return await _httpClient.GetFromJsonAsync<EmployeeDirectoryDto>($"api/employees/{id}");
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    // ==========================================
+    // CHECK-IN & CHECK-OUT ATTENDANCE RECORD
+    // ==========================================
+    public async Task<AttendanceRecordDto?> CreateAttendanceRecordAsync(CreateAttendanceRecordDto dto)
+    {
+        var response = await _httpClient.PostAsJsonAsync("api/Attendance", dto);
+        if (response.IsSuccessStatusCode)
+        {
+            return await response.Content.ReadFromJsonAsync<AttendanceRecordDto>();
+        }
+        var err = await response.Content.ReadAsStringAsync();
+        throw new Exception($"Check-in thất bại: {err}");
+    }
+
+    public async Task<AttendanceRecordDto?> UpdateAttendanceRecordAsync(Guid id, UpdateAttendanceRecordDto dto)
+    {
+        var response = await _httpClient.PutAsJsonAsync($"api/Attendance/{id}", dto);
+        if (response.IsSuccessStatusCode)
+        {
+            return await response.Content.ReadFromJsonAsync<AttendanceRecordDto>();
+        }
+        var err = await response.Content.ReadAsStringAsync();
+        throw new Exception($"Check-out thất bại: {err}");
+    }
+
+    public async Task<AttendanceRecordDto?> GetTodayRecordAsync(Guid employeeId, DateOnly date)
+    {
+        try
+        {
+            var search = new AttendanceSearchRequest
+            {
+                Date = date
+            };
+            var list = await SearchAsync(search);
+            return list.FirstOrDefault(r => r.EmployeeId == employeeId && r.Date == date);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    // ==========================================
+    // LEAVE REQUESTS (UC-ATT03)
+    // ==========================================
+    public async Task<List<LeaveRequestDto>> GetLeaveRequestsAsync(Guid? employeeId = null)
+    {
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<List<LeaveRequestDto>>("api/LeaveRequests");
+            var list = response ?? new List<LeaveRequestDto>();
+            if (employeeId.HasValue && employeeId.Value != Guid.Empty)
+            {
+                list = list.Where(l => l.EmployeeId == employeeId.Value).ToList();
+            }
+            return list;
+        }
+        catch
+        {
+            return new List<LeaveRequestDto>();
+        }
+    }
+
+    public async Task<LeaveRequestDto?> CreateLeaveRequestAsync(CreateLeaveRequestDto dto)
+    {
+        var response = await _httpClient.PostAsJsonAsync("api/LeaveRequests", dto);
+        if (response.IsSuccessStatusCode)
+        {
+            return await response.Content.ReadFromJsonAsync<LeaveRequestDto>();
+        }
+        var err = await response.Content.ReadAsStringAsync();
+        throw new Exception($"Gửi đơn xin nghỉ phép thất bại: {err}");
+    }
+
+    // ==========================================
+    // OT REQUESTS (UC-ATT04)
+    // ==========================================
+    public async Task<OTRequestDto?> CreateOTRequestAsync(CreateOTRequestDto dto)
+    {
+        var response = await _httpClient.PostAsJsonAsync("api/OTRequests", dto);
+        if (response.IsSuccessStatusCode)
+        {
+            return await response.Content.ReadFromJsonAsync<OTRequestDto>();
+        }
+        var err = await response.Content.ReadAsStringAsync();
+        throw new Exception($"Gửi đơn làm thêm giờ thất bại: {err}");
+    }
+
+    // ==========================================
+    // ATTENDANCE EXPLANATIONS (UC-ATT05)
+    // ==========================================
+    public async Task<AttendanceExplanationDto?> CreateAttendanceExplanationAsync(CreateAttendanceExplanationDto dto)
+    {
+        var response = await _httpClient.PostAsJsonAsync("api/AttendanceExplanations", dto);
+        if (response.IsSuccessStatusCode)
+        {
+            return await response.Content.ReadFromJsonAsync<AttendanceExplanationDto>();
+        }
+        var err = await response.Content.ReadAsStringAsync();
+        throw new Exception($"Gửi đơn giải trình thất bại: {err}");
+    }
 }

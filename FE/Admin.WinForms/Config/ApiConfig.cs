@@ -11,5 +11,5 @@ public static class ApiConfig
 
     public const string LeaveServiceUrl = "";
 
-    public const string PayrollServiceUrl = "";
+    public const string PayrollServiceUrl = "http://localhost:5267/";
 }
