@@ -3,29 +3,26 @@ using Admin.WinForms.Models.HR;
 
 namespace Admin.WinForms.Controls.HR;
 
-public sealed class ContractWorkControl : HrPageControl
+public sealed partial class ContractWorkControl : HrPageControl
 {
-    private readonly ComboBox _employees = Choices([]);
-    private readonly DataGridView _contracts = Table(("Số hợp đồng", "ContractNumber"), ("Loại", "ContractType"),
-        ("Bắt đầu", "StartDate"), ("Kết thúc", "EndDate"), ("Trạng thái", "Status"), ("Ghi chú", "Notes"));
-    private readonly DataGridView _history = Table(("Phòng ban", "DepartmentName"), ("Chức vụ", "PositionName"),
-        ("Từ ngày", "StartDate"), ("Đến ngày", "EndDate"), ("Ghi chú", "Notes"));
     private List<ContractRow> _contractRows = [];
 
     public ContractWorkControl()
     {
-        Toolbar.Controls.Add(_employees);
-        ActionButton("Làm mới", ReloadAsync);
-        ActionButton("Thêm hợp đồng", () => EditContractAsync(false, false), true);
-        ActionButton("Sửa hợp đồng", () => EditContractAsync(true, false));
-        ActionButton("Gia hạn", () => EditContractAsync(false, true));
-        ActionButton("Phân công / Điều chuyển", AssignmentAsync);
-        var tabs = new TabControl { Dock = DockStyle.Fill };
-        var contracts = new TabPage("Hợp đồng"); contracts.Controls.Add(_contracts);
-        var history = new TabPage("Lịch sử công tác"); history.Controls.Add(_history);
-        tabs.TabPages.AddRange([contracts, history]);
-        Body.Controls.Add(tabs);
+        InitializeComponent();
+        WireEvents();
+    }
+
+    private void WireEvents()
+    {
+        _refreshButton.Click += async (_, _) => await RunAsync(ReloadAsync);
+        _addContractButton.Click += async (_, _) => await RunAsync(() => EditContractAsync(false, false));
+        _editContractButton.Click += async (_, _) => await RunAsync(() => EditContractAsync(true, false));
+        _renewButton.Click += async (_, _) => await RunAsync(() => EditContractAsync(false, true));
+        _assignmentButton.Click += async (_, _) => await RunAsync(AssignmentAsync);
         _employees.SelectionChangeCommitted += async (_, _) => await RunAsync(LoadDetailsAsync);
+        _contracts.CellFormatting += FormatDateCell;
+        _history.CellFormatting += FormatDateCell;
     }
 
     private Guid EmployeeId => (_employees.SelectedItem as Choice)?.Value is Guid id ? id
@@ -41,7 +38,12 @@ public sealed class ContractWorkControl : HrPageControl
         _employees.SelectedItem = _employees.Items.Cast<Choice>().FirstOrDefault(x => Equals(x.Value, oldId))
             ?? _employees.Items.Cast<Choice>().FirstOrDefault();
         if (_employees.Items.Count > 0) await LoadDetailsAsync();
-        else { _contracts.DataSource = null; _history.DataSource = null; Status.Text = "Chưa có nhân viên."; }
+        else
+        {
+            _contracts.DataSource = null;
+            _history.DataSource = null;
+            Status.Text = "Chưa có nhân viên.";
+        }
     }
 
     private async Task LoadDetailsAsync()
@@ -52,9 +54,11 @@ public sealed class ContractWorkControl : HrPageControl
         await Task.WhenAll(contracts, history);
         Token.ThrowIfCancellationRequested();
         _contractRows = await contracts;
+        var historyRows = await history;
         _contracts.DataSource = _contractRows;
-        _history.DataSource = await history;
-        Status.Text = $"{_contractRows.Count} hợp đồng · {(await history).Count} giai đoạn công tác. Ngày tương lai chưa thay đổi phòng ban hiện tại.";
+        _history.DataSource = historyRows;
+        Status.Text = $"{_contractRows.Count} hợp đồng · {historyRows.Count} giai đoạn công tác. "
+            + "Ngày tương lai chưa thay đổi phòng ban hiện tại.";
     }
 
     private async Task EditContractAsync(bool editing, bool renewing)
@@ -98,8 +102,23 @@ public sealed class ContractWorkControl : HrPageControl
             .ChoiceField("position", "Chức vụ *", HrChoiceOptions.PositionChoices(positions, employee.EmploymentType))
             .DateField("effective", "Ngày hiệu lực *")
             .TextField("notes", "Ghi chú", maxLength: 1000, multiline: true)
-            .OnSave(async (f, token) => await Api.SendAsync<AssignmentRow>(HttpMethod.Post, $"employees/{id}/work-history",
+            .OnSave(async (f, token) => await Api.SendAsync<AssignmentRow>(HttpMethod.Post,
+                $"employees/{id}/work-history",
                 new AssignmentInput(f.GuidValue("department"), f.GuidValue("position"), f.DateValue("effective"), f.OptionalText("notes")), token));
         if (form.ShowDialog(this) == DialogResult.OK) await LoadDetailsAsync();
+    }
+
+    private static void FormatDateCell(object? sender, DataGridViewCellFormattingEventArgs e)
+    {
+        if (e.Value is DateOnly date)
+        {
+            e.Value = date.ToString("dd/MM/yyyy");
+            e.FormattingApplied = true;
+        }
+        else if (e.Value is DateTime time)
+        {
+            e.Value = time.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+            e.FormattingApplied = true;
+        }
     }
 }

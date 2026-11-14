@@ -3,22 +3,21 @@ using Admin.WinForms.Models.HR;
 
 namespace Admin.WinForms.Controls.HR;
 
-public sealed class OffboardingControl : HrPageControl
+public sealed partial class OffboardingControl : HrPageControl
 {
-    private readonly ComboBox _records = Choices([]);
-    private readonly DataGridView _checklist = Table(("Hạng mục", "Title"), ("Bắt buộc", "IsRequired"),
-        ("Hoàn thành", "IsCompleted"), ("Ghi chú", "CompletionNote"), ("Thời điểm", "CompletedAt"));
-
     public OffboardingControl()
     {
-        _records.Width = 470;
-        Toolbar.Controls.Add(_records);
-        ActionButton("Làm mới", ReloadAsync);
-        ActionButton("Tạo hồ sơ nghỉ", StartAsync, true);
-        ActionButton("Sửa ngày nghỉ", EditDateAsync);
-        ActionButton("Cập nhật bàn giao", ChecklistAsync);
-        ActionButton("Xác nhận nghỉ việc", CompleteAsync);
-        Body.Controls.Add(_checklist);
+        InitializeComponent();
+        WireEvents();
+    }
+
+    private void WireEvents()
+    {
+        _refreshButton.Click += async (_, _) => await RunAsync(ReloadAsync);
+        _createButton.Click += async (_, _) => await RunAsync(StartAsync);
+        _editDateButton.Click += async (_, _) => await RunAsync(EditDateAsync);
+        _checklistButton.Click += async (_, _) => await RunAsync(ChecklistAsync);
+        _completeButton.Click += async (_, _) => await RunAsync(CompleteAsync);
         _records.SelectionChangeCommitted += (_, _) => ShowRecord();
     }
 
@@ -32,7 +31,8 @@ public sealed class OffboardingControl : HrPageControl
         Token.ThrowIfCancellationRequested();
         _records.Items.Clear();
         foreach (var row in rows) _records.Items.Add(new Choice(row, row.DisplayName));
-        _records.SelectedItem = _records.Items.Cast<Choice>().FirstOrDefault(x => ((OffboardingRow)x.Value!).OffboardingRecordId == previousId)
+        _records.SelectedItem = _records.Items.Cast<Choice>()
+            .FirstOrDefault(x => ((OffboardingRow)x.Value!).OffboardingRecordId == previousId)
             ?? _records.Items.Cast<Choice>().FirstOrDefault();
         ShowRecord();
     }
@@ -45,6 +45,7 @@ public sealed class OffboardingControl : HrPageControl
             Status.Text = "Chưa có hồ sơ nghỉ việc. Checklist được cấu hình khi tạo hồ sơ.";
             return;
         }
+
         var row = Current;
         _checklist.DataSource = row.Checklist;
         Status.Text = $"{row.Status} · Ngày cuối: {row.LastWorkingDate:dd/MM/yyyy} · Bắt buộc: "
@@ -57,14 +58,17 @@ public sealed class OffboardingControl : HrPageControl
         var employees = await Api.AllEmployeesAsync(Token);
         Token.ThrowIfCancellationRequested();
         using var form = new HrEditorForm("Tạo hồ sơ nghỉ việc");
-        form.ChoiceField("employee", "Nhân viên *", employees.Where(x => x.Status != "RESIGNED").Select(x => new Choice(x.EmployeeId, x.DisplayName)))
+        form.ChoiceField("employee", "Nhân viên *", employees.Where(x => x.Status != "RESIGNED")
+                .Select(x => new Choice(x.EmployeeId, x.DisplayName)))
             .DateField("last", "Ngày làm việc cuối *")
             .TextField("notes", "Ghi chú", maxLength: 1000, multiline: true)
-            .TextField("checklist", "Bàn giao: mỗi dòng 1 mục *", "Bàn giao công việc\r\nBàn giao tài sản\r\nHoàn tất thủ tục", true, 10000, true)
+            .TextField("checklist", "Bàn giao: mỗi dòng 1 mục *",
+                "Bàn giao công việc\r\nBàn giao tài sản\r\nHoàn tất thủ tục", true, 10000, true)
             .CheckField("required", "Các mục trên là bắt buộc (có thể sửa tên trước khi lưu)", true)
             .OnSave(async (f, token) =>
             {
-                var checklist = f.TextValue("checklist").Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                var checklist = f.TextValue("checklist")
+                    .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                     .Select(title => new ChecklistInput(title, f.CheckedValue("required"))).ToList();
                 await Api.SendAsync<OffboardingRow>(HttpMethod.Post, "offboarding",
                     new OffboardingInput(f.GuidValue("employee"), f.DateValue("last"), f.OptionalText("notes"), checklist), token);
@@ -79,7 +83,8 @@ public sealed class OffboardingControl : HrPageControl
         using var form = new HrEditorForm("Cập nhật ngày nghỉ");
         form.DateField("date", "Ngày làm việc cuối *", row.LastWorkingDate)
             .TextField("notes", "Ghi chú", row.Notes, maxLength: 1000, multiline: true)
-            .OnSave(async (f, token) => await Api.SendAsync<OffboardingRow>(HttpMethod.Put, $"offboarding/{row.OffboardingRecordId}",
+            .OnSave(async (f, token) => await Api.SendAsync<OffboardingRow>(HttpMethod.Put,
+                $"offboarding/{row.OffboardingRecordId}",
                 new { LastWorkingDate = f.DateValue("date"), Notes = f.OptionalText("notes"), ExpectedVersion = row.Version }, token));
         if (form.ShowDialog(this) == DialogResult.OK) await ReloadAsync();
     }
