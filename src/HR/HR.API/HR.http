@@ -35,7 +35,7 @@ X-Role: {{HR_Role}}
   "baseSalary": 15000000.00
 }
 
-### Thêm nhân viên part-time: cùng endpoint, employmentType được kiểm tra ở HR
+### Thêm nhân viên part-time: partTimeSalary là đơn giá VND/giờ; cùng endpoint, employmentType được kiểm tra ở HR
 POST {{HR_HostAddress}}/employees
 Content-Type: application/json
 X-Role: {{HR_Role}}
