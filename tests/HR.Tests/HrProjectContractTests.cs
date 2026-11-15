@@ -1,4 +1,5 @@
     using HR.Application.DTOs.Employees;
+    using System.ComponentModel.DataAnnotations;
     using System.Net;
     using System.Text;
     using System.Text.Json;
@@ -7,6 +8,7 @@
     using Project.API.DTOs;
     using Project.API.Services;
     using Xunit;
+    using ProjectHourlyRate = Project.API.Entities.HourlyRate;
 
     namespace HR.Tests;
 
@@ -58,6 +60,64 @@
             await Assert.ThrowsAsync<HttpRequestException>(() => client.GetActiveEmployeeAsync(Guid.NewGuid(), CancellationToken.None));
         }
 
+        [Fact]
+        public void HourlyRate_IsEffectiveAt_UsesCalendarDateOnly()
+        {
+            var rate = new ProjectHourlyRate
+            {
+                EffectiveFrom = new DateTime(2026, 11, 14, 17, 0, 0, DateTimeKind.Utc),
+                EffectiveTo = new DateTime(2026, 11, 15, 17, 0, 0, DateTimeKind.Utc)
+            };
+
+            Assert.True(rate.IsEffectiveAt(new DateTime(2026, 11, 14, 0, 0, 0, DateTimeKind.Utc)));
+            Assert.True(rate.IsEffectiveAt(new DateTime(2026, 11, 15, 0, 0, 0, DateTimeKind.Utc)));
+            Assert.False(rate.IsEffectiveAt(new DateTime(2026, 11, 13, 23, 59, 0, DateTimeKind.Utc)));
+        }
+
+        [Fact]
+        public void ProjectDto_RequiresEndDate()
+        {
+            var dto = new CreateProjectDto
+            {
+                ProjectName = "Test project",
+                StartDate = new DateOnly(2026, 11, 1)
+            };
+            var results = new List<ValidationResult>();
+
+            var isValid = Validator.TryValidateObject(
+                dto,
+                new ValidationContext(dto),
+                results,
+                validateAllProperties: true);
+
+            Assert.False(isValid);
+            Assert.Contains(results, result =>
+                result.MemberNames.Contains(nameof(CreateProjectDto.EndDate)));
+        }
+
+        [Fact]
+        public void ProjectMemberDto_RequiresLeaveDate()
+        {
+            var dto = new CreateProjectMemberDto
+            {
+                ProjectId = Guid.NewGuid(),
+                EmployeeId = Guid.NewGuid(),
+                ProjectRoleId = Guid.NewGuid(),
+                JoinDate = new DateTime(2026, 11, 1)
+            };
+            var results = new List<ValidationResult>();
+
+            var isValid = Validator.TryValidateObject(
+                dto,
+                new ValidationContext(dto),
+                results,
+                validateAllProperties: true);
+
+            Assert.False(isValid);
+            Assert.Contains(results, result =>
+                result.MemberNames.Contains(nameof(CreateProjectMemberDto.LeaveDate)));
+        }
+
         [Theory]
         [InlineData("LOCKED")]
         [InlineData("RESIGNED")]
@@ -78,6 +138,48 @@
             var service = new ProjectMemberService(db, client);
             await Assert.ThrowsAsync<ArgumentException>(() => service.CreateProjectMemberAsync(new CreateProjectMemberDto
             { EmployeeId = Guid.NewGuid(), ProjectId = Guid.NewGuid(), ProjectRoleId = Guid.NewGuid() }));
+            Assert.Empty(db.ChangeTracker.Entries());
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(-1)]
+        public async Task ProjectService_RejectsNonPositiveInitialHourlyRate(decimal hourlyRate)
+        {
+            await using var db = new ProjectManagementDbContext(new DbContextOptionsBuilder<ProjectManagementDbContext>()
+                .UseNpgsql("Host=localhost;Database=not_used").Options);
+            var client = Client(_ => throw new InvalidOperationException("HR lookup should not be reached."));
+            var service = new ProjectMemberService(db, client);
+
+            await Assert.ThrowsAsync<ArgumentException>(() => service.CreateProjectMemberAsync(new CreateProjectMemberDto
+            {
+                EmployeeId = Guid.NewGuid(),
+                ProjectId = Guid.NewGuid(),
+                ProjectRoleId = Guid.NewGuid(),
+                InitialHourlyRate = hourlyRate
+            }));
+
+            Assert.Empty(db.ChangeTracker.Entries());
+        }
+
+        [Theory]
+        [InlineData(-1)]
+        [InlineData(10)]
+        public async Task ProjectService_RejectsOutOfRangeNewRoleCoefficient(decimal coefficient)
+        {
+            await using var db = new ProjectManagementDbContext(new DbContextOptionsBuilder<ProjectManagementDbContext>()
+                .UseNpgsql("Host=localhost;Database=not_used").Options);
+            var client = Client(_ => throw new InvalidOperationException("HR lookup should not be reached."));
+            var service = new ProjectMemberService(db, client);
+
+            await Assert.ThrowsAsync<ArgumentException>(() => service.CreateProjectMemberAsync(new CreateProjectMemberDto
+            {
+                EmployeeId = Guid.NewGuid(),
+                ProjectId = Guid.NewGuid(),
+                ProjectRoleName = "Test Role",
+                NewRoleCoefficient = coefficient
+            }));
+
             Assert.Empty(db.ChangeTracker.Entries());
         }
 

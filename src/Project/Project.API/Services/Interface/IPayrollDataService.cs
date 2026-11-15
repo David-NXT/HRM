@@ -8,7 +8,8 @@ public interface IPayrollDataService
     Task<IEnumerable<PayrollDataDto>> GetApprovedPayrollDataAsync(
         DateTime fromUtc,
         DateTime toExclusiveUtc,
-        Guid? employeeId = null);
+        Guid? employeeId = null,
+        Guid? projectId = null);
 
     Task<IEnumerable<PayrollProjectSummaryDto>>
         GetProjectAllowanceSummaryAsync(

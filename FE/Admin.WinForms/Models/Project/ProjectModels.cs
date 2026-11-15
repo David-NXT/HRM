@@ -5,8 +5,8 @@ internal sealed class ProjectDto
     public Guid ProjectId { get; set; }
     public string ProjectName { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public DateTime StartDate { get; set; }
-    public DateTime? EndDate { get; set; }
+    public DateOnly StartDate { get; set; }
+    public DateOnly? EndDate { get; set; }
     public string Status { get; set; } = string.Empty;
     public decimal Budget { get; set; }
 }
@@ -43,9 +43,21 @@ internal sealed class ProjectMemberDto
     public Guid EmployeeId { get; set; }
     public Guid ProjectRoleId { get; set; }
     public string RoleName { get; set; } = string.Empty;
+    public string? ProjectRoleName { get; set; }
+    public decimal? NewRoleCoefficient { get; set; }
     public DateTime JoinDate { get; set; }
     public DateTime? LeaveDate { get; set; }
     public string Status { get; set; } = string.Empty;
+    public decimal? InitialHourlyRate { get; set; }
+    public DateTime? HourlyRateEffectiveFrom { get; set; }
+}
+
+internal sealed class HourlyRateDto
+{
+    public Guid ProjectMemberId { get; set; }
+    public decimal Rate { get; set; }
+    public DateTime EffectiveFrom { get; set; }
+    public DateTime? EffectiveTo { get; set; }
 }
 
 internal sealed class ProjectRoleDto

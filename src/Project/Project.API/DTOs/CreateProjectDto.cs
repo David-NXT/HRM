@@ -11,9 +11,10 @@ public class CreateProjectDto
     public string? Description { get; set; }
 
     [Required]
-    public DateTime StartDate { get; set; }
+    public DateOnly StartDate { get; set; }
 
-    public DateTime? EndDate { get; set; }
+    [Required]
+    public DateOnly? EndDate { get; set; }
 
     [MaxLength(50)]
     public string Status { get; set; } = "Planning";

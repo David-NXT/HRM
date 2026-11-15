@@ -55,13 +55,15 @@ public class ProjectService : IProjectService
     public async Task<ProjectResponseDto> CreateProjectAsync(
         CreateProjectDto dto)
     {
+        ValidateProjectDates(dto.StartDate, dto.EndDate);
+
         var project = new ProjectEntity
         {
             ProjectId = Guid.NewGuid(),
             ProjectName = dto.ProjectName,
             Description = dto.Description,
-            StartDate = NormalizeUtc(dto.StartDate),
-            EndDate = NormalizeUtc(dto.EndDate),
+            StartDate = dto.StartDate,
+            EndDate = dto.EndDate,
             Status = dto.Status,
             Budget = dto.Budget
         };
@@ -87,6 +89,8 @@ public class ProjectService : IProjectService
         Guid id,
         UpdateProjectDto dto)
     {
+        ValidateProjectDates(dto.StartDate, dto.EndDate);
+
         var project = await _context.Projects.FindAsync(id);
 
         if (project == null)
@@ -98,8 +102,8 @@ public class ProjectService : IProjectService
 
         project.ProjectName = dto.ProjectName;
         project.Description = dto.Description;
-        project.StartDate = NormalizeUtc(dto.StartDate);
-        project.EndDate = NormalizeUtc(dto.EndDate);
+        project.StartDate = dto.StartDate;
+        project.EndDate = dto.EndDate;
         project.Status = dto.Status;
         project.Budget = dto.Budget;
 
@@ -108,19 +112,20 @@ public class ProjectService : IProjectService
         return true;
     }
 
-    private static DateTime NormalizeUtc(DateTime value)
+    private static void ValidateProjectDates(
+        DateOnly startDate,
+        DateOnly? endDate)
     {
-        return value.Kind switch
+        if (!endDate.HasValue)
         {
-            DateTimeKind.Utc => value,
-            DateTimeKind.Local => value.ToUniversalTime(),
-            _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
-        };
-    }
+            throw new ArgumentException("Project end date is required.");
+        }
 
-    private static DateTime? NormalizeUtc(DateTime? value)
-    {
-        return value.HasValue ? NormalizeUtc(value.Value) : null;
+        if (endDate.Value < startDate)
+        {
+            throw new ArgumentException(
+                "Project end date cannot be earlier than start date.");
+        }
     }
 
     // Xóa dự án

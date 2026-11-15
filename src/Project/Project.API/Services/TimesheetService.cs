@@ -108,6 +108,8 @@ public class TimesheetService : ITimesheetService
     public async Task<TimesheetResponseDto> CreateTimesheetAsync(
         CreateTimesheetDto dto)
     {
+        var workDate = DateTimeNormalizer.ToUtc(dto.WorkDate);
+
         if (dto.HoursWorked <= 0 || dto.HoursWorked > 24)
             throw new ArgumentException(
                 "Hours worked must be greater than 0 and not exceed 24.");
@@ -138,7 +140,7 @@ public class TimesheetService : ITimesheetService
             TimesheetId = Guid.NewGuid(),
             ProjectMemberId = dto.ProjectMemberId,
             TaskId = dto.TaskId,
-            WorkDate = dto.WorkDate,
+            WorkDate = workDate,
             HoursWorked = dto.HoursWorked,
             Description = dto.Description
         };

@@ -19,7 +19,8 @@ public class PayrollDataService : IPayrollDataService
         GetApprovedPayrollDataAsync(
             DateTime fromUtc,
             DateTime toExclusiveUtc,
-            Guid? employeeId = null)
+            Guid? employeeId = null,
+            Guid? projectId = null)
     {
         var query = _context.Timesheets
             .AsNoTracking()
@@ -38,6 +39,12 @@ public class PayrollDataService : IPayrollDataService
                 t.ProjectMember.EmployeeId == employeeId.Value);
         }
 
+        if (projectId.HasValue)
+        {
+            query = query.Where(t =>
+                t.ProjectMember.ProjectId == projectId.Value);
+        }
+
         var timesheets = await query.ToListAsync();
 
         var result = new List<PayrollDataDto>();
@@ -47,9 +54,9 @@ public class PayrollDataService : IPayrollDataService
             // Tìm HourlyRate có hiệu lực tại ngày làm việc
             var applicableRates = timesheet.ProjectMember.HourlyRates
     .Where(r =>
-        r.EffectiveFrom <= timesheet.WorkDate &&
+        r.EffectiveFrom.Date <= timesheet.WorkDate.Date &&
         (r.EffectiveTo == null ||
-         r.EffectiveTo >= timesheet.WorkDate))
+         r.EffectiveTo.Value.Date >= timesheet.WorkDate.Date))
     .OrderByDescending(r => r.EffectiveFrom)
     .ToList();
 

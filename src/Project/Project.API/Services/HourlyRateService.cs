@@ -45,6 +45,10 @@ public class HourlyRateService : IHourlyRateService
     public async Task<HourlyRate> CreateHourlyRateAsync(
         HourlyRate input)
     {
+        input.EffectiveFrom = DateTimeNormalizer.ToUtc(input.EffectiveFrom);
+        input.EffectiveTo = input.EffectiveTo.HasValue
+            ? DateTimeNormalizer.ToUtc(input.EffectiveTo.Value)
+            : null;
         ValidateHourlyRate(input);
 
         var memberExists = await _context.ProjectMembers
@@ -87,6 +91,10 @@ public async Task<bool> UpdateHourlyRateAsync(
     if (rate == null)
         return false;
 
+    input.EffectiveFrom = DateTimeNormalizer.ToUtc(input.EffectiveFrom);
+    input.EffectiveTo = input.EffectiveTo.HasValue
+        ? DateTimeNormalizer.ToUtc(input.EffectiveTo.Value)
+        : null;
     ValidateHourlyRate(input);
 
     var memberExists = await _context.ProjectMembers
@@ -100,9 +108,9 @@ public async Task<bool> UpdateHourlyRateAsync(
     var isUsed = await _context.Timesheets
         .AnyAsync(t =>
             t.ProjectMemberId == rate.ProjectMemberId &&
-            t.WorkDate >= rate.EffectiveFrom &&
+            t.WorkDate.Date >= rate.EffectiveFrom.Date &&
             (rate.EffectiveTo == null ||
-             t.WorkDate <= rate.EffectiveTo.Value));
+             t.WorkDate.Date <= rate.EffectiveTo.Value.Date));
 
     if (isUsed)
     {
@@ -177,7 +185,7 @@ public async Task<bool> UpdateHourlyRateAsync(
         }
 
         if (input.EffectiveTo.HasValue &&
-            input.EffectiveTo.Value < input.EffectiveFrom)
+            input.EffectiveTo.Value.Date < input.EffectiveFrom.Date)
         {
             throw new ArgumentException(
                 "EffectiveTo must be greater than or equal to EffectiveFrom.");
@@ -202,8 +210,8 @@ public async Task<bool> UpdateHourlyRateAsync(
 
         return await query.AnyAsync(r =>
             (effectiveTo == null ||
-             r.EffectiveFrom <= effectiveTo.Value) &&
+             r.EffectiveFrom.Date <= effectiveTo.Value.Date) &&
             (r.EffectiveTo == null ||
-             r.EffectiveTo >= effectiveFrom));
+             r.EffectiveTo.Value.Date >= effectiveFrom.Date));
     }
 }

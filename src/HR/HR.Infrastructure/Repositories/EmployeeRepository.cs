@@ -61,7 +61,7 @@ public sealed class EmployeeRepository : IEmployeeRepository
         IQueryable<Employee> query = _db.Employees.AsNoTracking()
             .Include(employee => employee.Department)
             .Include(employee => employee.Position)
-            .Where(employee => employee.Status == "ACTIVE");
+            .Where(employee => EF.Functions.ILike(employee.Status, EmployeeStatuses.Active));
         if (!string.IsNullOrWhiteSpace(keyword))
         {
             var pattern = "%" + EscapeLike(keyword.Trim()) + "%";

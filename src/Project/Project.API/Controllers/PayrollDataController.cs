@@ -23,7 +23,8 @@ public class PayrollDataController : ControllerBase
     public async Task<ActionResult<IEnumerable<PayrollDataDto>>>
         GetPayrollData(
             [FromQuery] DateOnly? fromDate,
-            [FromQuery] DateOnly? toDate)
+            [FromQuery] DateOnly? toDate,
+            [FromQuery] Guid? projectId = null)
     {
         if (!TryBuildPeriod(
             fromDate,
@@ -40,7 +41,8 @@ public class PayrollDataController : ControllerBase
             var result =
                 await _payrollDataService.GetApprovedPayrollDataAsync(
                     fromUtc,
-                    toExclusiveUtc);
+                    toExclusiveUtc,
+                    projectId: projectId);
 
             return Ok(result);
         }

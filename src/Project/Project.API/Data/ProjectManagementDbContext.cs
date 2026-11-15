@@ -27,6 +27,24 @@ public class ProjectManagementDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        modelBuilder.Entity<ProjectEntity>(entity =>
+        {
+            entity.Property(project => project.StartDate)
+                .HasColumnType("date");
+
+            entity.Property(project => project.EndDate)
+                .HasColumnType("date");
+        });
+
+        modelBuilder.Entity<ProjectTask>(entity =>
+        {
+            entity.Property(task => task.StartDate)
+                .HasColumnType("date");
+
+            entity.Property(task => task.DueDate)
+                .HasColumnType("date");
+        });
+
         modelBuilder.Entity<Timesheet>(entity =>
         {
             entity.HasKey(t => t.TimesheetId);

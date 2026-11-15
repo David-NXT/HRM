@@ -63,6 +63,11 @@ internal sealed class ProjectApiClient
         return await GetAsync<List<ProjectRoleDto>>("api/ProjectRoles", cancellationToken);
     }
 
+    public async Task<List<HourlyRateDto>> GetHourlyRatesAsync(CancellationToken cancellationToken)
+    {
+        return await GetAsync<List<HourlyRateDto>>("api/HourlyRates", cancellationToken);
+    }
+
     public Task<ProjectMemberCreateResultDto> CreateProjectMemberAsync(
         ProjectMemberDto member,
         CancellationToken cancellationToken)
@@ -114,9 +119,22 @@ internal sealed class ProjectApiClient
         return await GetAsync<EmployeeDirectoryDto>($"api/employees/{employeeId}", cancellationToken);
     }
 
-    public async Task<EmployeeDirectoryPageDto> GetEmployeesAsync(CancellationToken cancellationToken)
+    public Task<EmployeeDirectoryPageDto> GetEmployeesAsync(CancellationToken cancellationToken)
     {
-        return await GetAsync<EmployeeDirectoryPageDto>("api/employees?page=1&pageSize=100", cancellationToken);
+        return GetEmployeesAsync(null, cancellationToken);
+    }
+
+    public async Task<EmployeeDirectoryPageDto> GetEmployeesAsync(
+        string? keyword,
+        CancellationToken cancellationToken)
+    {
+        var path = "api/employees?page=1&pageSize=100";
+        if (!string.IsNullOrWhiteSpace(keyword))
+        {
+            path += $"&keyword={Uri.EscapeDataString(keyword.Trim())}";
+        }
+
+        return await GetAsync<EmployeeDirectoryPageDto>(path, cancellationToken);
     }
 
     public Task<TimesheetDto> CreateTimesheetAsync(
@@ -158,9 +176,14 @@ internal sealed class ProjectApiClient
     public async Task<List<ApprovedPayrollDataDto>> GetApprovedPayrollDataAsync(
         DateOnly fromDate,
         DateOnly toDate,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Guid? projectId = null)
     {
         var path = $"api/PayrollData?fromDate={fromDate:yyyy-MM-dd}&toDate={toDate:yyyy-MM-dd}";
+        if (projectId.HasValue)
+        {
+            path += $"&projectId={projectId.Value}";
+        }
         return await GetAsync<List<ApprovedPayrollDataDto>>(path, cancellationToken);
     }
 
@@ -169,10 +192,7 @@ internal sealed class ProjectApiClient
         using var response = await HttpClient.GetAsync(path, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
-            throw new HttpRequestException(
-                $"Project API returned HTTP {(int)response.StatusCode}.",
-                null,
-                response.StatusCode);
+            await ThrowApiErrorAsync(response, cancellationToken);
         }
 
         return await response.Content.ReadFromJsonAsync<T>(cancellationToken)
