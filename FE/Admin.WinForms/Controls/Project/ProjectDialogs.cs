@@ -54,7 +54,12 @@ internal sealed class ProjectEditorDialog : Form
             ProjectDialogLayout.ShowValidation(this, "Enter a project name.");
             return;
         }
-        if (_endDate.Checked && _endDate.Value.Date < _startDate.Value.Date)
+        if (!_endDate.Checked)
+        {
+            ProjectDialogLayout.ShowValidation(this, "Enter the project end date.");
+            return;
+        }
+        if (_endDate.Value.Date < _startDate.Value.Date)
         {
             ProjectDialogLayout.ShowValidation(this, "The end date cannot be earlier than the start date.");
             return;
@@ -64,7 +69,7 @@ internal sealed class ProjectEditorDialog : Form
             ProjectName = _name.Text.Trim(),
             Description = string.IsNullOrWhiteSpace(_description.Text) ? null : _description.Text.Trim(),
             StartDate = DateOnly.FromDateTime(_startDate.Value),
-            EndDate = _endDate.Checked ? DateOnly.FromDateTime(_endDate.Value) : null,
+            EndDate = DateOnly.FromDateTime(_endDate.Value),
             Status = _status.SelectedItem?.ToString() ?? "Planning",
             Budget = _budget.Value
         };
@@ -152,14 +157,15 @@ internal sealed class TaskEditorDialog : Form
 internal sealed class ProjectMemberEditorDialog : Form
 {
     private readonly Guid _projectId;
+    private readonly DateOnly _projectEndDate;
     private readonly bool _isNewMember;
     private readonly IReadOnlyList<ProjectRoleDto> _roles;
     private readonly TextBox _employeeId = new();
     private readonly TextBox _roleName = new();
-    private readonly ComboBox _role = ProjectUi.CreateComboBox();
     private readonly NumericUpDown _newRoleCoefficient = new();
     private readonly DateTimePicker _joinDate = ProjectPageControl.CreateDatePickerForDialog(DateTime.Today);
     private readonly DateTimePicker _leaveDate = ProjectPageControl.CreateDatePickerForDialog(DateTime.Today);
+    private readonly DateTimePicker _hourlyRateEffectiveFrom = ProjectPageControl.CreateDatePickerForDialog(DateTime.Today);
     private readonly ComboBox _status = ProjectUi.CreateComboBox();
     private readonly NumericUpDown _hourlyRate = new();
     private Label? _newRoleCoefficientLabel;
@@ -167,35 +173,41 @@ internal sealed class ProjectMemberEditorDialog : Form
     internal ProjectMemberDto Member { get; private set; } = new();
     internal string EmployeeIdentifier => _employeeId.Text.Trim();
 
-    internal ProjectMemberEditorDialog(Guid projectId, IReadOnlyList<ProjectRoleDto> roles, ProjectMemberDto? member)
+    internal ProjectMemberEditorDialog(ProjectDto project, IReadOnlyList<ProjectRoleDto> roles, ProjectMemberDto? member)
     {
-        _projectId = projectId;
+        _projectId = project.ProjectId;
+        _projectEndDate = project.EndDate
+            ?? throw new ArgumentException("Project end date is required.", nameof(project));
         _isNewMember = member is null;
         _roles = roles;
         Text = _isNewMember ? "Add Project Member" : "Edit Project Member";
-        ProjectDialogLayout.Initialize(this, 540, _isNewMember ? 470 : 390);
+        ProjectDialogLayout.Initialize(this, 540, _isNewMember ? 510 : 560);
         _employeeId.Text = member?.EmployeeId.ToString() ?? string.Empty;
         _employeeId.PlaceholderText = "Employee code or GUID";
+        _employeeId.ReadOnly = !_isNewMember;
         _roleName.PlaceholderText = "Type a role name";
         _roleName.MaxLength = 100;
+        _roleName.Text = member?.RoleName ?? string.Empty;
         _newRoleCoefficient.DecimalPlaces = 4;
         _newRoleCoefficient.Maximum = 9.9999m;
         _newRoleCoefficient.Value = 1m;
         _hourlyRate.DecimalPlaces = 2;
         _hourlyRate.Maximum = 1_000_000_000_000m;
         _hourlyRate.ThousandsSeparator = true;
-        _role.DisplayMember = nameof(ProjectRoleDto.RoleName);
-        _role.DropDownStyle = ComboBoxStyle.DropDownList;
-        foreach (var role in roles)
-        {
-            _role.Items.Add(role);
-        }
-        _role.SelectedItem = roles.FirstOrDefault(role => role.ProjectRoleId == member?.ProjectRoleId)
-            ?? _role.Items.Cast<ProjectRoleDto>().FirstOrDefault();
         _joinDate.Value = member?.JoinDate.Date ?? DateTime.Today;
-        _leaveDate.Value = member?.LeaveDate?.Date ?? DateTime.Today;
-        _leaveDate.ShowCheckBox = true;
-        _leaveDate.Checked = member?.LeaveDate.HasValue ?? false;
+        if (member is not null && member.JoinDate.Date > DateTime.Today)
+        {
+            _hourlyRateEffectiveFrom.Value = member.JoinDate.Date;
+        }
+        _joinDate.ValueChanged += (_, _) =>
+        {
+            if (_hourlyRateEffectiveFrom.Value.Date < _joinDate.Value.Date)
+            {
+                _hourlyRateEffectiveFrom.Value = _joinDate.Value.Date;
+            }
+        };
+        _leaveDate.Value = member?.LeaveDate?.Date
+            ?? _projectEndDate.ToDateTime(TimeOnly.MinValue);
         _status.Items.AddRange(["Active", "Inactive", "On Leave"]);
         _status.SelectedItem = member?.Status;
         if (_status.SelectedIndex < 0)
@@ -205,33 +217,23 @@ internal sealed class ProjectMemberEditorDialog : Form
 
         var fields = ProjectDialogLayout.CreateFields();
         ProjectDialogLayout.AddField(fields, 0, "Employee Code or GUID", _employeeId);
-        if (_isNewMember)
+        ProjectDialogLayout.AddField(fields, 1, "Project Role", _roleName);
+        _newRoleCoefficientLabel = ProjectDialogLayout.AddField(
+            fields,
+            2,
+            "Role Coefficient",
+            _newRoleCoefficient);
+        ProjectDialogLayout.AddField(fields, 3, "Join Date", _joinDate);
+        ProjectDialogLayout.AddField(fields, 4, "Leave Date", _leaveDate);
+        ProjectDialogLayout.AddField(fields, 5, "Status", _status);
+        ProjectDialogLayout.AddField(fields, 6, _isNewMember ? "Hourly Rate" : "New Rate (0 = skip)", _hourlyRate);
+        if (!_isNewMember)
         {
-            ProjectDialogLayout.AddField(fields, 1, "Project Role", _roleName);
-            _newRoleCoefficientLabel = ProjectDialogLayout.AddField(
-                fields,
-                2,
-                "Role Coefficient",
-                _newRoleCoefficient);
-            ProjectDialogLayout.AddField(fields, 3, "Join Date", _joinDate);
-            var leaveDateLabel = ProjectDialogLayout.AddField(fields, 4, "Leave Date", _leaveDate);
-            ProjectDialogLayout.AddField(fields, 5, "Status", _status);
-            ProjectDialogLayout.AddField(fields, 6, "Hourly Rate", _hourlyRate);
-            _roleName.TextChanged += (_, _) => UpdateNewRoleCoefficientVisibility(fields);
-            UpdateNewRoleCoefficientVisibility(fields);
-            _status.SelectedIndexChanged += (_, _) => UpdateLeaveDateVisibility(fields, leaveDateLabel, 4);
-            UpdateLeaveDateVisibility(fields, leaveDateLabel, 4);
+            ProjectDialogLayout.AddField(fields, 7, "Rate Effective Date", _hourlyRateEffectiveFrom);
         }
-        else
-        {
-            ProjectDialogLayout.AddField(fields, 1, "Project Role", _role);
-            ProjectDialogLayout.AddField(fields, 2, "Join Date", _joinDate);
-            var leaveDateLabel = ProjectDialogLayout.AddField(fields, 3, "Leave Date", _leaveDate);
-            ProjectDialogLayout.AddField(fields, 4, "Status", _status);
-            _status.SelectedIndexChanged += (_, _) => UpdateLeaveDateVisibility(fields, leaveDateLabel, 3);
-            UpdateLeaveDateVisibility(fields, leaveDateLabel, 3);
-        }
-        ProjectDialogLayout.Attach(this, fields, _isNewMember ? 7 : 5);
+        _roleName.TextChanged += (_, _) => UpdateNewRoleCoefficientVisibility(fields);
+        UpdateNewRoleCoefficientVisibility(fields);
+        ProjectDialogLayout.Attach(this, fields, _isNewMember ? 7 : 8);
         ProjectDialogLayout.AddButtons(this, Save);
     }
 
@@ -242,10 +244,10 @@ internal sealed class ProjectMemberEditorDialog : Form
             ProjectDialogLayout.ShowValidation(this, "Enter an employee code or GUID.");
             return;
         }
-        var roleName = _isNewMember ? _roleName.Text.Trim() : (_role.SelectedItem as ProjectRoleDto)?.RoleName;
+        var roleName = _roleName.Text.Trim();
         if (string.IsNullOrWhiteSpace(roleName))
         {
-            ProjectDialogLayout.ShowValidation(this, "Enter or select a project role.");
+            ProjectDialogLayout.ShowValidation(this, "Enter a project role.");
             return;
         }
         var existingRole = _roles.FirstOrDefault(role =>
@@ -255,13 +257,19 @@ internal sealed class ProjectMemberEditorDialog : Form
             ProjectDialogLayout.ShowValidation(this, "Enter an hourly rate greater than 0.");
             return;
         }
-        var onLeave = string.Equals(
-            _status.SelectedItem?.ToString(),
-            "On Leave",
-            StringComparison.OrdinalIgnoreCase);
-        if (onLeave && _leaveDate.Checked && _leaveDate.Value.Date < _joinDate.Value.Date)
+        if (_leaveDate.Value.Date < _joinDate.Value.Date ||
+            DateOnly.FromDateTime(_leaveDate.Value) > _projectEndDate)
         {
-            ProjectDialogLayout.ShowValidation(this, "The leave date cannot be earlier than the join date.");
+            ProjectDialogLayout.ShowValidation(
+                this,
+                "The leave date must be on or after the join date and no later than the project end date.");
+            return;
+        }
+        if (!_isNewMember && _hourlyRate.Value > 0 &&
+            (_hourlyRateEffectiveFrom.Value.Date < _joinDate.Value.Date ||
+             _hourlyRateEffectiveFrom.Value.Date > _leaveDate.Value.Date))
+        {
+            ProjectDialogLayout.ShowValidation(this, "The rate effective date must fall within the member's date range.");
             return;
         }
         Member = new ProjectMemberDto
@@ -270,12 +278,15 @@ internal sealed class ProjectMemberEditorDialog : Form
             EmployeeId = Guid.TryParse(EmployeeIdentifier, out var employeeId) ? employeeId : Guid.Empty,
             ProjectRoleId = existingRole?.ProjectRoleId ?? Guid.Empty,
             RoleName = roleName,
-            ProjectRoleName = _isNewMember ? roleName : null,
-            NewRoleCoefficient = _isNewMember && existingRole is null ? _newRoleCoefficient.Value : null,
+            ProjectRoleName = roleName,
+            NewRoleCoefficient = existingRole is null ? _newRoleCoefficient.Value : null,
             JoinDate = _joinDate.Value.Date,
-            LeaveDate = onLeave && _leaveDate.Checked ? _leaveDate.Value.Date : null,
+            LeaveDate = _leaveDate.Value.Date,
             Status = _status.SelectedItem?.ToString() ?? "Active",
-            InitialHourlyRate = _isNewMember ? _hourlyRate.Value : null
+            InitialHourlyRate = _isNewMember || _hourlyRate.Value > 0 ? _hourlyRate.Value : null,
+            HourlyRateEffectiveFrom = !_isNewMember && _hourlyRate.Value > 0
+                ? _hourlyRateEffectiveFrom.Value.Date
+                : null
         };
         DialogResult = DialogResult.OK;
         Close();
@@ -296,21 +307,6 @@ internal sealed class ProjectMemberEditorDialog : Form
         fields.PerformLayout();
     }
 
-    private void UpdateLeaveDateVisibility(TableLayoutPanel fields, Control leaveDateLabel, int row)
-    {
-        var showLeaveDate = string.Equals(
-            _status.SelectedItem?.ToString(),
-            "On Leave",
-            StringComparison.OrdinalIgnoreCase);
-        _leaveDate.Visible = showLeaveDate;
-        leaveDateLabel.Visible = showLeaveDate;
-        fields.RowStyles[row].Height = showLeaveDate ? 48 : 0;
-        if (!showLeaveDate)
-        {
-            _leaveDate.Checked = false;
-        }
-        fields.PerformLayout();
-    }
 }
 
 internal sealed class TimesheetEditorDialog : Form

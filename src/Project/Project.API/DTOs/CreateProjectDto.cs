@@ -13,6 +13,7 @@ public class CreateProjectDto
     [Required]
     public DateOnly StartDate { get; set; }
 
+    [Required]
     public DateOnly? EndDate { get; set; }
 
     [MaxLength(50)]

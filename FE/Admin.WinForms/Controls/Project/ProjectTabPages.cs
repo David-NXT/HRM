@@ -361,15 +361,29 @@ internal sealed class ProjectsPageControl : ProjectPageControl
             MessageBox.Show("Select a project first.", "Project Members", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
+        if (!project.EndDate.HasValue)
+        {
+            MessageBox.Show(
+                this,
+                "Set the project end date before adding or editing members.",
+                "Project Members",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+            return;
+        }
         await LoadSafelyAsync(async token =>
         {
             var roles = await Api.GetProjectRolesAsync(token);
-            using var dialog = new ProjectMemberEditorDialog(project.ProjectId, roles, member);
+            using var dialog = new ProjectMemberEditorDialog(project, roles, member);
             if (dialog.ShowDialog(this) != DialogResult.OK)
             {
                 return;
             }
-            var employeeId = await ResolveEmployeeIdAsync(dialog.EmployeeIdentifier, token);
+            Guid? employeeId = member?.EmployeeId;
+            if (!employeeId.HasValue)
+            {
+                employeeId = await ResolveEmployeeIdAsync(dialog.EmployeeIdentifier, token);
+            }
             if (!employeeId.HasValue)
             {
                 MessageBox.Show(
@@ -560,6 +574,7 @@ internal sealed class TasksPageControl : ProjectPageControl
     private List<ProjectDto> _projects = [];
     private List<TaskDto> _tasks = [];
     private List<TimesheetDto> _timesheets = [];
+    private List<HourlyRateDto> _hourlyRates = [];
     private bool _updatingProjects;
 
     internal TasksPageControl(ProjectApiClient api) : base(api)
@@ -588,6 +603,7 @@ internal sealed class TasksPageControl : ProjectPageControl
         ProjectUi.AddColumn(_timesheetsGrid, "Employee", "Employee ID", 0.8F);
         ProjectUi.AddColumn(_timesheetsGrid, "Name", "Employee", 1.3F);
         ProjectUi.AddColumn(_timesheetsGrid, "Date", "Work Date", 1F);
+        ProjectUi.AddColumn(_timesheetsGrid, "HourlyRate", "Hourly Rate on Date", 1.2F);
         ProjectUi.AddColumn(_timesheetsGrid, "Hours", "Hours", 0.7F);
         ProjectUi.AddColumn(_timesheetsGrid, "Status", "Status", 1F);
         ProjectUi.AddColumn(_timesheetsGrid, "Approver", "Approved By", 1F);
@@ -669,6 +685,7 @@ internal sealed class TasksPageControl : ProjectPageControl
         {
             _tasks = [];
             _timesheets = [];
+            _hourlyRates = [];
             RenderTasks();
             RenderTimesheets();
             return;
@@ -676,9 +693,11 @@ internal sealed class TasksPageControl : ProjectPageControl
 
         var tasksRequest = Api.GetTasksAsync(token);
         var timesheetsRequest = Api.GetTimesheetsAsync(projectId, null, token);
-        await Task.WhenAll(tasksRequest, timesheetsRequest);
+        var ratesRequest = Api.GetHourlyRatesAsync(token);
+        await Task.WhenAll(tasksRequest, timesheetsRequest, ratesRequest);
         _tasks = (await tasksRequest).Where(task => task.ProjectId == projectId.Value).ToList();
         _timesheets = await timesheetsRequest;
+        _hourlyRates = await ratesRequest;
         RenderTasks();
         RenderTimesheets();
         StatusLabel.ForeColor = ProjectUi.MutedText;
@@ -720,12 +739,31 @@ internal sealed class TasksPageControl : ProjectPageControl
                 ProjectUi.ShortId(sheet.EmployeeId),
                 ProjectUi.ShortId(sheet.EmployeeId),
                 ProjectUi.Date(sheet.WorkDate),
+                HourlyRateAt(sheet),
                 sheet.HoursWorked.ToString("0.##"),
                 ProjectUi.Status(sheet.Status),
                 sheet.ApprovedBy.HasValue ? ProjectUi.ShortId(sheet.ApprovedBy.Value) : "—");
             _timesheetsGrid.Rows[row].Tag = sheet;
         }
         _totalHours.Text = $"Total Hours: {rows.Sum(sheet => sheet.HoursWorked):0.##}";
+    }
+
+    private string HourlyRateAt(TimesheetDto sheet)
+    {
+        var applicableRates = _hourlyRates
+            .Where(rate =>
+                rate.ProjectMemberId == sheet.ProjectMemberId &&
+                rate.EffectiveFrom.Date <= sheet.WorkDate.Date &&
+                (!rate.EffectiveTo.HasValue ||
+                 rate.EffectiveTo.Value.Date >= sheet.WorkDate.Date))
+            .ToArray();
+
+        return applicableRates.Length switch
+        {
+            0 => "—",
+            1 => ProjectUi.Money(applicableRates[0].Rate),
+            _ => "Multiple"
+        };
     }
 
     private async Task EditTaskAsync(TaskDto? task)
@@ -1206,7 +1244,8 @@ internal sealed class LaborCostsPageControl : ProjectPageControl
         var payrollRequest = Api.GetApprovedPayrollDataAsync(
             DateOnly.FromDateTime(_fromDate.Value.Date),
             DateOnly.FromDateTime(_toDate.Value.Date),
-            token);
+            token,
+            selectedProjectId);
         var membersRequest = Api.GetProjectMembersAsync(selectedProjectId, token);
         await Task.WhenAll(payrollRequest, membersRequest);
         var response = await payrollRequest;
@@ -1491,7 +1530,8 @@ internal sealed class ProjectStatisticsPageControl : ProjectPageControl
         var payrollRequest = Api.GetApprovedPayrollDataAsync(
             DateOnly.FromDateTime(_fromDate.Value.Date),
             DateOnly.FromDateTime(_toDate.Value.Date),
-            token);
+            token,
+            projectId);
         await Task.WhenAll(tasksRequest, pendingRequest, payrollRequest);
         _tasks = (await tasksRequest)
             .Where(task => !projectId.HasValue || task.ProjectId == projectId.Value)

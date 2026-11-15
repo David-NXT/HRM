@@ -55,6 +55,8 @@ public class ProjectService : IProjectService
     public async Task<ProjectResponseDto> CreateProjectAsync(
         CreateProjectDto dto)
     {
+        ValidateProjectDates(dto.StartDate, dto.EndDate);
+
         var project = new ProjectEntity
         {
             ProjectId = Guid.NewGuid(),
@@ -87,6 +89,8 @@ public class ProjectService : IProjectService
         Guid id,
         UpdateProjectDto dto)
     {
+        ValidateProjectDates(dto.StartDate, dto.EndDate);
+
         var project = await _context.Projects.FindAsync(id);
 
         if (project == null)
@@ -106,6 +110,22 @@ public class ProjectService : IProjectService
         await _context.SaveChangesAsync();
 
         return true;
+    }
+
+    private static void ValidateProjectDates(
+        DateOnly startDate,
+        DateOnly? endDate)
+    {
+        if (!endDate.HasValue)
+        {
+            throw new ArgumentException("Project end date is required.");
+        }
+
+        if (endDate.Value < startDate)
+        {
+            throw new ArgumentException(
+                "Project end date cannot be earlier than start date.");
+        }
     }
 
     // Xóa dự án

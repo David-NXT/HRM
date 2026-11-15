@@ -176,9 +176,14 @@ internal sealed class ProjectApiClient
     public async Task<List<ApprovedPayrollDataDto>> GetApprovedPayrollDataAsync(
         DateOnly fromDate,
         DateOnly toDate,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Guid? projectId = null)
     {
         var path = $"api/PayrollData?fromDate={fromDate:yyyy-MM-dd}&toDate={toDate:yyyy-MM-dd}";
+        if (projectId.HasValue)
+        {
+            path += $"&projectId={projectId.Value}";
+        }
         return await GetAsync<List<ApprovedPayrollDataDto>>(path, cancellationToken);
     }
 
@@ -187,10 +192,7 @@ internal sealed class ProjectApiClient
         using var response = await HttpClient.GetAsync(path, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
-            throw new HttpRequestException(
-                $"Project API returned HTTP {(int)response.StatusCode}.",
-                null,
-                response.StatusCode);
+            await ThrowApiErrorAsync(response, cancellationToken);
         }
 
         return await response.Content.ReadFromJsonAsync<T>(cancellationToken)

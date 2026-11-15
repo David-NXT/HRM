@@ -19,10 +19,13 @@ public class CreateProjectMemberDto
 
     public DateTime JoinDate { get; set; }
 
+    [Required]
     public DateTime? LeaveDate { get; set; }
 
     [MaxLength(50)]
     public string Status { get; set; } = "Active";
 
     public decimal? InitialHourlyRate { get; set; }
+
+    public DateTime? HourlyRateEffectiveFrom { get; set; }
 }

@@ -49,6 +49,7 @@ internal sealed class ProjectMemberDto
     public DateTime? LeaveDate { get; set; }
     public string Status { get; set; } = string.Empty;
     public decimal? InitialHourlyRate { get; set; }
+    public DateTime? HourlyRateEffectiveFrom { get; set; }
 }
 
 internal sealed class HourlyRateDto

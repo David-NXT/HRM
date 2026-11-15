@@ -1,4 +1,5 @@
     using HR.Application.DTOs.Employees;
+    using System.ComponentModel.DataAnnotations;
     using System.Net;
     using System.Text;
     using System.Text.Json;
@@ -7,6 +8,7 @@
     using Project.API.DTOs;
     using Project.API.Services;
     using Xunit;
+    using ProjectHourlyRate = Project.API.Entities.HourlyRate;
 
     namespace HR.Tests;
 
@@ -56,6 +58,64 @@
         {
             var client = Client(_ => Task.FromResult(JsonResponse("not JSON")));
             await Assert.ThrowsAsync<HttpRequestException>(() => client.GetActiveEmployeeAsync(Guid.NewGuid(), CancellationToken.None));
+        }
+
+        [Fact]
+        public void HourlyRate_IsEffectiveAt_UsesCalendarDateOnly()
+        {
+            var rate = new ProjectHourlyRate
+            {
+                EffectiveFrom = new DateTime(2026, 11, 14, 17, 0, 0, DateTimeKind.Utc),
+                EffectiveTo = new DateTime(2026, 11, 15, 17, 0, 0, DateTimeKind.Utc)
+            };
+
+            Assert.True(rate.IsEffectiveAt(new DateTime(2026, 11, 14, 0, 0, 0, DateTimeKind.Utc)));
+            Assert.True(rate.IsEffectiveAt(new DateTime(2026, 11, 15, 0, 0, 0, DateTimeKind.Utc)));
+            Assert.False(rate.IsEffectiveAt(new DateTime(2026, 11, 13, 23, 59, 0, DateTimeKind.Utc)));
+        }
+
+        [Fact]
+        public void ProjectDto_RequiresEndDate()
+        {
+            var dto = new CreateProjectDto
+            {
+                ProjectName = "Test project",
+                StartDate = new DateOnly(2026, 11, 1)
+            };
+            var results = new List<ValidationResult>();
+
+            var isValid = Validator.TryValidateObject(
+                dto,
+                new ValidationContext(dto),
+                results,
+                validateAllProperties: true);
+
+            Assert.False(isValid);
+            Assert.Contains(results, result =>
+                result.MemberNames.Contains(nameof(CreateProjectDto.EndDate)));
+        }
+
+        [Fact]
+        public void ProjectMemberDto_RequiresLeaveDate()
+        {
+            var dto = new CreateProjectMemberDto
+            {
+                ProjectId = Guid.NewGuid(),
+                EmployeeId = Guid.NewGuid(),
+                ProjectRoleId = Guid.NewGuid(),
+                JoinDate = new DateTime(2026, 11, 1)
+            };
+            var results = new List<ValidationResult>();
+
+            var isValid = Validator.TryValidateObject(
+                dto,
+                new ValidationContext(dto),
+                results,
+                validateAllProperties: true);
+
+            Assert.False(isValid);
+            Assert.Contains(results, result =>
+                result.MemberNames.Contains(nameof(CreateProjectMemberDto.LeaveDate)));
         }
 
         [Theory]
