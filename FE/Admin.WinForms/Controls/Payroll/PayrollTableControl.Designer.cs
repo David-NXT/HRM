@@ -18,6 +18,7 @@ namespace Admin.WinForms.Controls.Payroll
         private void InitializeComponent()
         {
             panel_Stats = new Panel();
+            tableLayout_Stats = new TableLayoutPanel();
             panel_NetSalary = new Panel();
             label_TotalNet = new Label();
             label_TitleNet = new Label();
@@ -65,25 +66,42 @@ namespace Admin.WinForms.Controls.Payroll
             // 
             // panel_Stats
             // 
-            panel_Stats.Controls.Add(panel_NetSalary);
-            panel_Stats.Controls.Add(panel_Employees);
-            panel_Stats.Controls.Add(panel_Allowance);
-            panel_Stats.Controls.Add(panel_PayCut);
+            panel_Stats.Controls.Add(tableLayout_Stats);
             panel_Stats.Dock = DockStyle.Top;
             panel_Stats.Location = new Point(0, 0);
             panel_Stats.Name = "panel_Stats";
             panel_Stats.Size = new Size(1800, 130);
             panel_Stats.TabIndex = 0;
-
+            // 
+            // tableLayout_Stats
+            // 
+            tableLayout_Stats.ColumnCount = 4;
+            tableLayout_Stats.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            tableLayout_Stats.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            tableLayout_Stats.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            tableLayout_Stats.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            tableLayout_Stats.Controls.Add(panel_NetSalary, 0, 0);
+            tableLayout_Stats.Controls.Add(panel_Employees, 1, 0);
+            tableLayout_Stats.Controls.Add(panel_Allowance, 2, 0);
+            tableLayout_Stats.Controls.Add(panel_PayCut, 3, 0);
+            tableLayout_Stats.Dock = DockStyle.Fill;
+            tableLayout_Stats.Location = new Point(0, 0);
+            tableLayout_Stats.Name = "tableLayout_Stats";
+            tableLayout_Stats.RowCount = 1;
+            tableLayout_Stats.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tableLayout_Stats.Size = new Size(1800, 130);
+            tableLayout_Stats.TabIndex = 0;
             // 
             // panel_NetSalary
             // 
             panel_NetSalary.BackColor = Color.FromArgb(236, 249, 240);
             panel_NetSalary.Controls.Add(label_TotalNet);
             panel_NetSalary.Controls.Add(label_TitleNet);
-            panel_NetSalary.Location = new Point(15, 12);
+            panel_NetSalary.Dock = DockStyle.Fill;
+            panel_NetSalary.Location = new Point(8, 8);
+            panel_NetSalary.Margin = new Padding(8);
             panel_NetSalary.Name = "panel_NetSalary";
-            panel_NetSalary.Size = new Size(420, 105);
+            panel_NetSalary.Size = new Size(434, 114);
             panel_NetSalary.TabIndex = 0;
 
             label_TotalNet.AutoSize = true;
@@ -108,9 +126,11 @@ namespace Admin.WinForms.Controls.Payroll
             panel_Employees.BackColor = Color.FromArgb(229, 238, 253);
             panel_Employees.Controls.Add(label_TotalEmployees);
             panel_Employees.Controls.Add(label_TitleEmployees);
-            panel_Employees.Location = new Point(455, 12);
+            panel_Employees.Dock = DockStyle.Fill;
+            panel_Employees.Location = new Point(458, 8);
+            panel_Employees.Margin = new Padding(8);
             panel_Employees.Name = "panel_Employees";
-            panel_Employees.Size = new Size(420, 105);
+            panel_Employees.Size = new Size(434, 114);
             panel_Employees.TabIndex = 1;
 
             label_TotalEmployees.AutoSize = true;
@@ -135,9 +155,11 @@ namespace Admin.WinForms.Controls.Payroll
             panel_Allowance.BackColor = Color.FromArgb(254, 244, 234);
             panel_Allowance.Controls.Add(label_TotalAllowance);
             panel_Allowance.Controls.Add(label_TitleAllowance);
-            panel_Allowance.Location = new Point(895, 12);
+            panel_Allowance.Dock = DockStyle.Fill;
+            panel_Allowance.Location = new Point(908, 8);
+            panel_Allowance.Margin = new Padding(8);
             panel_Allowance.Name = "panel_Allowance";
-            panel_Allowance.Size = new Size(420, 105);
+            panel_Allowance.Size = new Size(434, 114);
             panel_Allowance.TabIndex = 2;
 
             label_TotalAllowance.AutoSize = true;
@@ -162,9 +184,11 @@ namespace Admin.WinForms.Controls.Payroll
             panel_PayCut.BackColor = Color.FromArgb(253, 237, 240);
             panel_PayCut.Controls.Add(label_TotalPayCut);
             panel_PayCut.Controls.Add(label_TitlePayCut);
-            panel_PayCut.Location = new Point(1335, 12);
+            panel_PayCut.Dock = DockStyle.Fill;
+            panel_PayCut.Location = new Point(1358, 8);
+            panel_PayCut.Margin = new Padding(8);
             panel_PayCut.Name = "panel_PayCut";
-            panel_PayCut.Size = new Size(420, 105);
+            panel_PayCut.Size = new Size(434, 114);
             panel_PayCut.TabIndex = 3;
 
             label_TotalPayCut.AutoSize = true;
@@ -368,6 +392,7 @@ namespace Admin.WinForms.Controls.Payroll
         #endregion
 
         private Panel panel_Stats;
+        private TableLayoutPanel tableLayout_Stats;
         private Panel panel_NetSalary;
         private Label label_TotalNet;
         private Label label_TitleNet;

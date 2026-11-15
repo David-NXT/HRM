@@ -172,6 +172,30 @@ namespace Admin.WinForms.Controls.Attendance
             UpdateActionButtonsStatus();
         }
 
+        public async Task SelectEmployeeAsync(Guid employeeId)
+        {
+            if (_employees == null || _employees.Count == 0)
+            {
+                await LoadInitialDataAsync();
+            }
+
+            var emp = _employees?.FirstOrDefault(e => e.EmployeeId == employeeId);
+            if (emp != null)
+            {
+                comboBox_Employees.SelectedItem = emp;
+                await DisplayEmployeeAsync(emp);
+            }
+        }
+
+        public async Task SelectEmployeeAsync(EmployeeDirectoryDto emp)
+        {
+            if (emp != null)
+            {
+                comboBox_Employees.SelectedItem = emp;
+                await DisplayEmployeeAsync(emp);
+            }
+        }
+
         private void UpdateActionButtonsStatus()
         {
             if (_todayRecord == null)

@@ -18,6 +18,7 @@ namespace Admin.WinForms.Controls.Payroll
         private void InitializeComponent()
         {
             panel_TopCards = new Panel();
+            tableLayout_TopCards = new TableLayoutPanel();
             panel_Calculated = new Panel();
             label_CountCalculated = new Label();
             label_TitleCalculated = new Label();
@@ -59,24 +60,40 @@ namespace Admin.WinForms.Controls.Payroll
             // 
             // panel_TopCards
             // 
-            panel_TopCards.Controls.Add(panel_Calculated);
-            panel_TopCards.Controls.Add(panel_Approved);
-            panel_TopCards.Controls.Add(panel_Paid);
+            panel_TopCards.Controls.Add(tableLayout_TopCards);
             panel_TopCards.Dock = DockStyle.Top;
             panel_TopCards.Location = new Point(0, 0);
             panel_TopCards.Name = "panel_TopCards";
             panel_TopCards.Size = new Size(1800, 120);
             panel_TopCards.TabIndex = 0;
-
+            // 
+            // tableLayout_TopCards
+            // 
+            tableLayout_TopCards.ColumnCount = 3;
+            tableLayout_TopCards.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33333F));
+            tableLayout_TopCards.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33333F));
+            tableLayout_TopCards.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33333F));
+            tableLayout_TopCards.Controls.Add(panel_Calculated, 0, 0);
+            tableLayout_TopCards.Controls.Add(panel_Approved, 1, 0);
+            tableLayout_TopCards.Controls.Add(panel_Paid, 2, 0);
+            tableLayout_TopCards.Dock = DockStyle.Fill;
+            tableLayout_TopCards.Location = new Point(0, 0);
+            tableLayout_TopCards.Name = "tableLayout_TopCards";
+            tableLayout_TopCards.RowCount = 1;
+            tableLayout_TopCards.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tableLayout_TopCards.Size = new Size(1800, 120);
+            tableLayout_TopCards.TabIndex = 0;
             // 
             // panel_Calculated
             // 
             panel_Calculated.BackColor = Color.FromArgb(254, 244, 234);
             panel_Calculated.Controls.Add(label_CountCalculated);
             panel_Calculated.Controls.Add(label_TitleCalculated);
-            panel_Calculated.Location = new Point(15, 12);
+            panel_Calculated.Dock = DockStyle.Fill;
+            panel_Calculated.Location = new Point(8, 8);
+            panel_Calculated.Margin = new Padding(8);
             panel_Calculated.Name = "panel_Calculated";
-            panel_Calculated.Size = new Size(560, 95);
+            panel_Calculated.Size = new Size(584, 104);
             panel_Calculated.TabIndex = 0;
 
             label_CountCalculated.AutoSize = true;
@@ -101,9 +118,11 @@ namespace Admin.WinForms.Controls.Payroll
             panel_Approved.BackColor = Color.FromArgb(229, 238, 253);
             panel_Approved.Controls.Add(label_CountApproved);
             panel_Approved.Controls.Add(label_TitleApproved);
-            panel_Approved.Location = new Point(600, 12);
+            panel_Approved.Dock = DockStyle.Fill;
+            panel_Approved.Location = new Point(608, 8);
+            panel_Approved.Margin = new Padding(8);
             panel_Approved.Name = "panel_Approved";
-            panel_Approved.Size = new Size(560, 95);
+            panel_Approved.Size = new Size(584, 104);
             panel_Approved.TabIndex = 1;
 
             label_CountApproved.AutoSize = true;
@@ -128,9 +147,11 @@ namespace Admin.WinForms.Controls.Payroll
             panel_Paid.BackColor = Color.FromArgb(236, 249, 240);
             panel_Paid.Controls.Add(label_CountPaid);
             panel_Paid.Controls.Add(label_TitlePaid);
-            panel_Paid.Location = new Point(1185, 12);
+            panel_Paid.Dock = DockStyle.Fill;
+            panel_Paid.Location = new Point(1208, 8);
+            panel_Paid.Margin = new Padding(8);
             panel_Paid.Name = "panel_Paid";
-            panel_Paid.Size = new Size(570, 95);
+            panel_Paid.Size = new Size(584, 104);
             panel_Paid.TabIndex = 2;
 
             label_CountPaid.AutoSize = true;
@@ -323,6 +344,7 @@ namespace Admin.WinForms.Controls.Payroll
         #endregion
 
         private Panel panel_TopCards;
+        private TableLayoutPanel tableLayout_TopCards;
         private Panel panel_Calculated;
         private Label label_CountCalculated;
         private Label label_TitleCalculated;

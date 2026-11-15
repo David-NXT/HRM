@@ -260,6 +260,7 @@
             // 
             // button_ExportPDF
             // 
+            button_ExportPDF.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             button_ExportPDF.Location = new Point(1647, 16);
             button_ExportPDF.Name = "button_ExportPDF";
             button_ExportPDF.Size = new Size(150, 46);
@@ -269,6 +270,7 @@
             // 
             // button_Generate
             // 
+            button_Generate.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             button_Generate.Location = new Point(1432, 16);
             button_Generate.Name = "button_Generate";
             button_Generate.Size = new Size(205, 46);
@@ -345,6 +347,7 @@
             // 
             // button_Print
             // 
+            button_Print.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             button_Print.Location = new Point(1681, 8);
             button_Print.Name = "button_Print";
             button_Print.Size = new Size(105, 46);
@@ -354,6 +357,7 @@
             // 
             // button_ExportExcel
             // 
+            button_ExportExcel.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             button_ExportExcel.Location = new Point(1521, 8);
             button_ExportExcel.Name = "button_ExportExcel";
             button_ExportExcel.Size = new Size(150, 46);

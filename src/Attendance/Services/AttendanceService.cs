@@ -84,11 +84,32 @@ public class AttendanceService : IAttendanceService
             throw new ArgumentException("ShiftId is required.", nameof(dto));
         }
 
+        // Đảm bảo có phân ca (ShiftAssignment) cho nhân viên vào ngày này
+        var assignment = await _context.ShiftAssignments
+            .FirstOrDefaultAsync(sa => sa.EmployeeId == dto.EmployeeId && sa.Date == dto.Date, cancellationToken);
+
+        if (assignment == null)
+        {
+            assignment = new ShiftAssignment
+            {
+                Id = Guid.NewGuid(),
+                EmployeeId = dto.EmployeeId,
+                ShiftId = dto.ShiftId,
+                Date = dto.Date,
+                Status = "Approved",
+                AssignAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.ShiftAssignments.Add(assignment);
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+
         var entity = new AttendanceRecord
         {
             Id = Guid.NewGuid(),
             EmployeeId = dto.EmployeeId,
             ShiftId = dto.ShiftId,
+            ShiftAssignmentId = assignment.Id,
             Date = dto.Date,
             TimeIn = dto.TimeIn,
             TimeOut = dto.TimeOut,
