@@ -1,15 +1,18 @@
+using System.Text.Json.Serialization;
+
 namespace Admin.WinForms.Models.HR;
 
 public sealed record EmployeeRow(Guid EmployeeId, string EmployeeCode, string FullName,
     DateOnly DateOfBirth, string Gender, string Email, string Phone, string CitizenId,
     string? Address, string Status, DateTime CreatedAt, DateTime UpdatedAt,
     Guid? DepartmentId, Guid? PositionId, string? DepartmentName, string? PositionName,
-    string EmploymentType, decimal? BaseSalary, decimal? PartTimeSalary)
+    string EmploymentType, decimal? BaseSalary,
+    [property: JsonPropertyName("partTimeSalary")] decimal? PartTimeHourlyRate)
 {
     public string EmploymentTypeLabel => EmploymentType == "PART_TIME" ? "Part-time" : "Full-time";
     public string SalaryLabel => EmploymentType == "PART_TIME"
-        ? $"{PartTimeSalary.GetValueOrDefault():N2} ₫ (part-time)"
-        : $"{BaseSalary.GetValueOrDefault():N2} ₫ (full-time)";
+        ? $"{PartTimeHourlyRate.GetValueOrDefault():N2} VND/giờ (part-time)"
+        : $"{BaseSalary.GetValueOrDefault():N2} VND/tháng (full-time)";
     public string DisplayName => $"{EmployeeCode} — {FullName}";
 }
 public sealed record EmployeePage(List<EmployeeRow> Items, int Page, int PageSize, int Total);
@@ -17,8 +20,9 @@ public sealed record PersonalInfo(string FullName, DateOnly DateOfBirth, string 
     string Email, string Phone, string CitizenId, string? Address);
 public sealed record CreateEmployee(string EmployeeCode, string FullName, DateOnly DateOfBirth,
     string Gender, string Email, string Phone, string CitizenId, string? Address, string EmploymentType,
-    decimal? BaseSalary, decimal? PartTimeSalary);
-public sealed record SalaryInput(decimal? BaseSalary, decimal? PartTimeSalary);
+    decimal? BaseSalary, [property: JsonPropertyName("partTimeSalary")] decimal? PartTimeHourlyRate);
+public sealed record SalaryInput(decimal? BaseSalary,
+    [property: JsonPropertyName("partTimeSalary")] decimal? PartTimeHourlyRate);
 public sealed record OnboardEmployee(CreateEmployee Employee, DateOnly StartDate,
     Guid DepartmentId, Guid PositionId, string? Notes);
 public sealed record OnboardingResult(Guid EmployeeId, string EmployeeCode, string Status,
