@@ -60,8 +60,8 @@ public class ProjectService : IProjectService
             ProjectId = Guid.NewGuid(),
             ProjectName = dto.ProjectName,
             Description = dto.Description,
-            StartDate = dto.StartDate,
-            EndDate = dto.EndDate,
+            StartDate = NormalizeUtc(dto.StartDate),
+            EndDate = NormalizeUtc(dto.EndDate),
             Status = dto.Status,
             Budget = dto.Budget
         };
@@ -93,17 +93,34 @@ public class ProjectService : IProjectService
         {
             return false;
         }
+        EnsureProjectEditable(project);
+
 
         project.ProjectName = dto.ProjectName;
         project.Description = dto.Description;
-        project.StartDate = dto.StartDate;
-        project.EndDate = dto.EndDate;
+        project.StartDate = NormalizeUtc(dto.StartDate);
+        project.EndDate = NormalizeUtc(dto.EndDate);
         project.Status = dto.Status;
         project.Budget = dto.Budget;
 
         await _context.SaveChangesAsync();
 
         return true;
+    }
+
+    private static DateTime NormalizeUtc(DateTime value)
+    {
+        return value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+        };
+    }
+
+    private static DateTime? NormalizeUtc(DateTime? value)
+    {
+        return value.HasValue ? NormalizeUtc(value.Value) : null;
     }
 
     // Xóa dự án
@@ -115,6 +132,7 @@ public class ProjectService : IProjectService
         {
             return false;
         }
+        EnsureProjectEditable(project);
 
         _context.Projects.Remove(project);
 
@@ -122,4 +140,13 @@ public class ProjectService : IProjectService
 
         return true;
     }
+    private static void EnsureProjectEditable(ProjectEntity project)
+{
+    if (project.Status == "Completed" ||
+        project.Status == "Cancelled")
+    {
+        throw new InvalidOperationException(
+            "Không thể thay đổi dự án đã hoàn thành hoặc đã hủy.");
+    }
+}
 }

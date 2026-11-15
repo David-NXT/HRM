@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Project.API.Data;
 using Project.API.DTOs;
 using Project.API.Entities;
-
+using Task = System.Threading.Tasks.Task;
 namespace Project.API.Services;
 
 public class ProjectMemberService : IProjectMemberService
@@ -58,12 +58,8 @@ public class ProjectMemberService : IProjectMemberService
         // 2. Kiểm tra ngày tham gia
         ValidateMemberDates(dto.JoinDate, dto.LeaveDate);
 
-        // 3. Kiểm tra Project
-        var projectExists = await _context.Projects
-            .AnyAsync(p => p.ProjectId == dto.ProjectId);
-
-        if (!projectExists)
-            throw new ArgumentException("Project does not exist.");
+        // 3. Kiểm tra dự án tồn tại và được phép chỉnh sửa
+        await EnsureProjectEditableAsync(dto.ProjectId);
 
         // 4. Kiểm tra ProjectRole
         var roleExists = await _context.ProjectRoles
@@ -109,6 +105,15 @@ public class ProjectMemberService : IProjectMemberService
 
         if (member == null)
             return false;
+        
+        // Kiểm tra dự án hiện tại của thành viên
+await EnsureProjectEditableAsync(member.ProjectId);
+
+// Kiểm tra dự án mới nếu chuyển thành viên sang dự án khác
+if (member.ProjectId != dto.ProjectId)
+{
+    await EnsureProjectEditableAsync(dto.ProjectId);
+}
 
         ValidateMemberDates(dto.JoinDate, dto.LeaveDate);
 
@@ -187,6 +192,7 @@ public class ProjectMemberService : IProjectMemberService
         if (member == null)
             return false;
 
+        await EnsureProjectEditableAsync(member.ProjectId);
         var hasTimesheets = await _context.Timesheets
             .AnyAsync(t => t.ProjectMemberId == id);
 
@@ -240,4 +246,19 @@ public class ProjectMemberService : IProjectMemberService
             (!m.LeaveDate.HasValue ||
              m.LeaveDate.Value.Date >= joinDate.Date));
     }
+    private async Task EnsureProjectEditableAsync(Guid projectId)
+{
+    var project = await _context.Projects
+        .FirstOrDefaultAsync(p => p.ProjectId == projectId);
+
+    if (project == null)
+        throw new ArgumentException("Project does not exist.");
+
+    if (project.Status == "Completed" ||
+        project.Status == "Cancelled")
+    {
+        throw new InvalidOperationException(
+            "Không thể thay đổi thành viên của dự án đã hoàn thành hoặc đã hủy.");
+    }
+}
 }

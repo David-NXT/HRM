@@ -18,12 +18,62 @@ public class TimesheetsController : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<TimesheetResponseDto>>>
-        GetTimesheets([FromQuery] Guid? projectMemberId = null)
+        GetTimesheets(
+            [FromQuery] Guid? projectMemberId = null,
+            [FromQuery] Guid? projectId = null,
+            [FromQuery] Guid? employeeId = null,
+            [FromQuery] DateOnly? fromDate = null,
+            [FromQuery] DateOnly? toDate = null,
+            [FromQuery] string? status = null)
     {
+        if (fromDate.HasValue && toDate.HasValue && fromDate.Value > toDate.Value)
+            return BadRequest("fromDate cannot be later than toDate.");
+
+        if (fromDate == DateOnly.MinValue || toDate == DateOnly.MaxValue)
+            return BadRequest("The requested date range is outside the supported range.");
+
+        if (!TryNormalizeStatus(status, out var normalizedStatus))
+            return BadRequest("status must be Pending/SUBMITTED, Approved, Rejected, or All.");
+
+        var fromUtc = fromDate.HasValue
+            ? ToVietnamDayStartUtc(fromDate.Value)
+            : (DateTime?)null;
+        var toExclusiveUtc = toDate.HasValue
+            ? ToVietnamDayStartUtc(toDate.Value.AddDays(1))
+            : (DateTime?)null;
+
         var timesheets =
-            await _timesheetService.GetTimesheetsAsync(projectMemberId);
+            await _timesheetService.GetTimesheetsAsync(
+                projectMemberId,
+                projectId,
+                employeeId,
+                fromUtc,
+                toExclusiveUtc,
+                normalizedStatus);
 
         return Ok(timesheets);
+    }
+
+    [HttpPut("review/bulk-approve")]
+    public async Task<ActionResult<BulkApproveTimesheetsResponse>> BulkApproveTimesheets(
+        [FromBody] BulkApproveTimesheetsRequest request)
+    {
+        if (request.ApprovedBy == Guid.Empty)
+            return BadRequest("Invalid approver ID.");
+
+        if (request.TimesheetIds is null || request.TimesheetIds.Count is < 1 or > 100)
+            return BadRequest("Provide between 1 and 100 timesheet IDs.");
+
+        if (request.TimesheetIds.Any(id => id == Guid.Empty)
+            || request.TimesheetIds.Distinct().Count() != request.TimesheetIds.Count)
+        {
+            return BadRequest("Timesheet IDs must be valid and unique.");
+        }
+
+        var response = await _timesheetService.ApproveTimesheetsAsync(
+            request.TimesheetIds,
+            request.ApprovedBy);
+        return Ok(response);
     }
 
     [HttpGet("{id:guid}")]
@@ -60,7 +110,30 @@ public class TimesheetsController : ControllerBase
             return BadRequest(ex.Message);
         }
     }
+[HttpPut("{id:guid}")]
+public async Task<IActionResult> UpdateTimesheet(
+    Guid id,
+    [FromBody] UpdateTimesheetDto dto)
+{
+    try
+    {
+        var result = await _timesheetService
+            .UpdateTimesheetAsync(id, dto);
 
+        if (!result)
+            return NotFound("Timesheet not found.");
+
+        return NoContent();
+    }
+    catch (ArgumentException ex)
+    {
+        return BadRequest(ex.Message);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return BadRequest(ex.Message);
+    }
+}
     // Duyệt hoặc từ chối Timesheet
     [HttpPut("{id:guid}/review")]
     public async Task<IActionResult> ReviewTimesheet(
@@ -86,6 +159,10 @@ public class TimesheetsController : ControllerBase
                     return BadRequest(
                         "Rejection reason is required.");
 
+                if (reason.Trim().Length > 500)
+                    return BadRequest(
+                        "Rejection reason cannot exceed 500 characters.");
+
                 result = await _timesheetService
                     .RejectTimesheetAsync(id, approvedBy, reason);
             }
@@ -101,7 +178,7 @@ public class TimesheetsController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(ex.Message);
+            return Conflict(new { message = ex.Message });
         }
     }
 
@@ -151,5 +228,43 @@ public class TimesheetsController : ControllerBase
         {
             return BadRequest(ex.Message);
         }
+    }
+
+    private static bool TryNormalizeStatus(string? status, out string? normalizedStatus)
+    {
+        normalizedStatus = null;
+        if (string.IsNullOrWhiteSpace(status)
+            || string.Equals(status, "All", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (string.Equals(status, "Pending", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(status, "Submitted", StringComparison.OrdinalIgnoreCase))
+        {
+            normalizedStatus = "Pending";
+            return true;
+        }
+
+        if (string.Equals(status, "Approved", StringComparison.OrdinalIgnoreCase))
+        {
+            normalizedStatus = "Approved";
+            return true;
+        }
+
+        if (string.Equals(status, "Rejected", StringComparison.OrdinalIgnoreCase))
+        {
+            normalizedStatus = "Rejected";
+            return true;
+        }
+
+        return false;
+    }
+
+    private static DateTime ToVietnamDayStartUtc(DateOnly date)
+    {
+        return DateTime.SpecifyKind(
+            date.ToDateTime(TimeOnly.MinValue).AddHours(-7),
+            DateTimeKind.Utc);
     }
 }

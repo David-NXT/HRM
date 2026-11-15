@@ -55,6 +55,7 @@ public class TaskService : ITaskService
 
     public async Task<TaskResponseDto> CreateTaskAsync(CreateTaskDto dto)
     {
+        await EnsureProjectEditableAsync(dto.ProjectId);
         var task = new ProjectTask
         {
             TaskId = Guid.NewGuid(),
@@ -89,7 +90,14 @@ public class TaskService : ITaskService
 
         if (task == null)
             return false;
+        // Kiểm tra dự án hiện tại
+        await EnsureProjectEditableAsync(task.ProjectId);
 
+        // Nếu chuyển Task sang dự án khác, kiểm tra cả dự án mới
+        if (task.ProjectId != dto.ProjectId)
+        {
+            await EnsureProjectEditableAsync(dto.ProjectId);
+        }
         task.TaskName = dto.TaskName;
         task.Description = dto.Description;
         task.StartDate = dto.StartDate;
@@ -108,10 +116,25 @@ public class TaskService : ITaskService
 
         if (task == null)
             return false;
-
+        await EnsureProjectEditableAsync(task.ProjectId);
         _context.Tasks.Remove(task);
         await _context.SaveChangesAsync();
 
         return true;
     }
+    private async Task EnsureProjectEditableAsync(Guid projectId)
+{
+    var project = await _context.Projects
+        .FirstOrDefaultAsync(p => p.ProjectId == projectId);
+
+    if (project == null)
+        throw new ArgumentException("Project does not exist.");
+
+    if (project.Status == "Completed" ||
+        project.Status == "Cancelled")
+    {
+        throw new InvalidOperationException(
+            "Không thể thay đổi công việc của dự án đã hoàn thành hoặc đã hủy.");
+    }
+}
 }
