@@ -110,7 +110,7 @@ public sealed partial class EmployeeManagementControl : HrPageControl
         if (creating)
         {
             form.AmountField("baseSalary", "Lương cơ bản full-time (VND/tháng)")
-                .AmountField("partTimeSalary", "Lương part-time (VND)");
+                .AmountField("partTimeSalary", "Đơn giá part-time (VND/giờ)");
             var departments = await Api.GetAsync<List<DepartmentRow>>("departments", Token);
             var positions = await Api.GetAsync<List<PositionRow>>("positions", Token);
             Token.ThrowIfCancellationRequested();
@@ -168,8 +168,8 @@ public sealed partial class EmployeeManagementControl : HrPageControl
         Token.ThrowIfCancellationRequested();
         var isPartTime = employee.EmploymentType == "PART_TIME";
         using var form = new HrEditorForm($"Cập nhật lương · {employee.DisplayName}");
-        form.AmountField("salary", isPartTime ? "Lương part-time (VND)" : "Lương cơ bản full-time (VND/tháng)",
-                isPartTime ? employee.PartTimeSalary.GetValueOrDefault() : employee.BaseSalary.GetValueOrDefault())
+        form.AmountField("salary", isPartTime ? "Đơn giá part-time (VND/giờ)" : "Lương cơ bản full-time (VND/tháng)",
+                isPartTime ? employee.PartTimeHourlyRate.GetValueOrDefault() : employee.BaseSalary.GetValueOrDefault())
             .OnSave(async (f, token) => await Api.SendAsync<EmployeeRow>(HttpMethod.Put,
                 $"employees/{employee.EmployeeId}/salary",
                 new SalaryInput(isPartTime ? null : f.AmountValue("salary"), isPartTime ? f.AmountValue("salary") : null), token));
@@ -184,8 +184,8 @@ public sealed partial class EmployeeManagementControl : HrPageControl
         form.TextField("profile", "Thông tin hồ sơ", string.Join(Environment.NewLine,
             $"GUID: {employee.EmployeeId}", $"Loại: {employee.EmploymentTypeLabel}",
             employee.EmploymentType == "PART_TIME"
-                ? $"Lương part-time: {employee.PartTimeSalary.GetValueOrDefault():N2} ₫"
-                : $"Lương cơ bản: {employee.BaseSalary.GetValueOrDefault():N2} ₫",
+                ? $"Đơn giá part-time: {employee.PartTimeHourlyRate.GetValueOrDefault():N2} VND/giờ"
+                : $"Lương cơ bản: {employee.BaseSalary.GetValueOrDefault():N2} VND/tháng",
             $"Phòng ban: {employee.DepartmentName ?? "Chưa phân công"}", $"Chức vụ: {employee.PositionName ?? "Chưa phân công"}",
             $"Trạng thái: {employee.Status}", $"Ngày sinh: {employee.DateOfBirth:dd/MM/yyyy}", $"Giới tính: {employee.Gender}",
             $"Email: {employee.Email}", $"Điện thoại: {employee.Phone}", $"CCCD: {employee.CitizenId}", $"Địa chỉ: {employee.Address}"),

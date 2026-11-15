@@ -21,16 +21,6 @@ namespace Admin.WinForms.Controls.Attendance
             ShowPage(new AttendanceOverviewPageControl(), (Button)sender);
         }
 
-        private void btnCheckIn_Click(object sender, EventArgs e)
-        {
-            ShowPage(new AttendanceCheckInControl(), (Button)sender);
-        }
-
-        private void btnRequests_Click(object sender, EventArgs e)
-        {
-            ShowPage(new AttendanceRequestsControl(), (Button)sender);
-        }
-
         private void btnApprovals_Click(object sender, EventArgs e)
         {
             ShowPage(new AttendanceApprovalControl(), (Button)sender);

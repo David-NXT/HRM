@@ -29,6 +29,7 @@
         private void InitializeComponent()
         {
             panel_Statistics = new Panel();
+            tableLayout_Statistics = new TableLayoutPanel();
             panel_TotalAbsent = new Panel();
             label_TotalAbsent = new Label();
             label_NumberAbsent = new Label();
@@ -67,6 +68,7 @@
             col_DeviceId = new ColumnHeader();
             col_Note = new ColumnHeader();
             panel_Statistics.SuspendLayout();
+            tableLayout_Statistics.SuspendLayout();
             panel_TotalAbsent.SuspendLayout();
             panel_TotalLate.SuspendLayout();
             panel_TotalPresent.SuspendLayout();
@@ -77,23 +79,42 @@
             // 
             // panel_Statistics
             // 
-            panel_Statistics.Controls.Add(panel_TotalAbsent);
-            panel_Statistics.Controls.Add(panel_TotalLate);
-            panel_Statistics.Controls.Add(panel_TotalPresent);
-            panel_Statistics.Controls.Add(panel_TotalEmployees);
+            panel_Statistics.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            panel_Statistics.Controls.Add(tableLayout_Statistics);
             panel_Statistics.Location = new Point(5, 7);
             panel_Statistics.Name = "panel_Statistics";
             panel_Statistics.Size = new Size(1808, 142);
             panel_Statistics.TabIndex = 13;
+            // 
+            // tableLayout_Statistics
+            // 
+            tableLayout_Statistics.ColumnCount = 4;
+            tableLayout_Statistics.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            tableLayout_Statistics.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            tableLayout_Statistics.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            tableLayout_Statistics.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            tableLayout_Statistics.Controls.Add(panel_TotalEmployees, 0, 0);
+            tableLayout_Statistics.Controls.Add(panel_TotalPresent, 1, 0);
+            tableLayout_Statistics.Controls.Add(panel_TotalLate, 2, 0);
+            tableLayout_Statistics.Controls.Add(panel_TotalAbsent, 3, 0);
+            tableLayout_Statistics.Dock = DockStyle.Fill;
+            tableLayout_Statistics.Location = new Point(0, 0);
+            tableLayout_Statistics.Name = "tableLayout_Statistics";
+            tableLayout_Statistics.RowCount = 1;
+            tableLayout_Statistics.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tableLayout_Statistics.Size = new Size(1808, 142);
+            tableLayout_Statistics.TabIndex = 0;
             // 
             // panel_TotalAbsent
             // 
             panel_TotalAbsent.BackColor = Color.FromArgb(253, 237, 240);
             panel_TotalAbsent.Controls.Add(label_TotalAbsent);
             panel_TotalAbsent.Controls.Add(label_NumberAbsent);
-            panel_TotalAbsent.Location = new Point(1364, 13);
+            panel_TotalAbsent.Dock = DockStyle.Fill;
+            panel_TotalAbsent.Location = new Point(1359, 3);
+            panel_TotalAbsent.Margin = new Padding(6);
             panel_TotalAbsent.Name = "panel_TotalAbsent";
-            panel_TotalAbsent.Size = new Size(430, 113);
+            panel_TotalAbsent.Size = new Size(446, 136);
             panel_TotalAbsent.TabIndex = 3;
             // 
             // label_TotalAbsent
@@ -121,9 +142,11 @@
             panel_TotalLate.BackColor = Color.FromArgb(254, 244, 234);
             panel_TotalLate.Controls.Add(label_TotalLate);
             panel_TotalLate.Controls.Add(label_NumberLate);
-            panel_TotalLate.Location = new Point(914, 13);
+            panel_TotalLate.Dock = DockStyle.Fill;
+            panel_TotalLate.Location = new Point(908, 3);
+            panel_TotalLate.Margin = new Padding(6);
             panel_TotalLate.Name = "panel_TotalLate";
-            panel_TotalLate.Size = new Size(430, 113);
+            panel_TotalLate.Size = new Size(439, 136);
             panel_TotalLate.TabIndex = 2;
             // 
             // label_TotalLate
@@ -151,9 +174,11 @@
             panel_TotalPresent.BackColor = Color.FromArgb(236, 249, 240);
             panel_TotalPresent.Controls.Add(label_TotalPresent);
             panel_TotalPresent.Controls.Add(label_NumberPresent);
-            panel_TotalPresent.Location = new Point(464, 13);
+            panel_TotalPresent.Dock = DockStyle.Fill;
+            panel_TotalPresent.Location = new Point(457, 3);
+            panel_TotalPresent.Margin = new Padding(6);
             panel_TotalPresent.Name = "panel_TotalPresent";
-            panel_TotalPresent.Size = new Size(430, 113);
+            panel_TotalPresent.Size = new Size(439, 136);
             panel_TotalPresent.TabIndex = 1;
             // 
             // label_TotalPresent
@@ -181,10 +206,12 @@
             panel_TotalEmployees.BackColor = Color.FromArgb(229, 238, 253);
             panel_TotalEmployees.Controls.Add(label_TotalEmployees);
             panel_TotalEmployees.Controls.Add(label_NumberEmployees);
+            panel_TotalEmployees.Dock = DockStyle.Fill;
             panel_TotalEmployees.Font = new Font("Segoe UI", 13F);
-            panel_TotalEmployees.Location = new Point(14, 13);
+            panel_TotalEmployees.Location = new Point(6, 3);
+            panel_TotalEmployees.Margin = new Padding(6);
             panel_TotalEmployees.Name = "panel_TotalEmployees";
-            panel_TotalEmployees.Size = new Size(430, 113);
+            panel_TotalEmployees.Size = new Size(439, 136);
             panel_TotalEmployees.TabIndex = 0;
             // 
             // label_TotalEmployees
@@ -209,6 +236,7 @@
             // 
             // panel_Filter
             // 
+            panel_Filter.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             panel_Filter.Controls.Add(button_Search);
             panel_Filter.Controls.Add(textBox_Search);
             panel_Filter.Controls.Add(comboBox_Status);
@@ -221,6 +249,7 @@
             // 
             // button_Search
             // 
+            button_Search.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             button_Search.Location = new Point(1647, 16);
             button_Search.Name = "button_Search";
             button_Search.Size = new Size(150, 46);
@@ -230,6 +259,7 @@
             // 
             // textBox_Search
             // 
+            textBox_Search.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             textBox_Search.Location = new Point(964, 20);
             textBox_Search.Name = "textBox_Search";
             textBox_Search.PlaceholderText = "Search by name or code...";
@@ -273,6 +303,7 @@
             // 
             // button_Print
             // 
+            button_Print.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             button_Print.Location = new Point(1697, 5);
             button_Print.Name = "button_Print";
             button_Print.Size = new Size(105, 46);
@@ -282,6 +313,7 @@
             // 
             // button_ExportExcel
             // 
+            button_ExportExcel.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             button_ExportExcel.Location = new Point(1537, 5);
             button_ExportExcel.Name = "button_ExportExcel";
             button_ExportExcel.Size = new Size(150, 46);
@@ -415,6 +447,7 @@
         #endregion
 
         private Panel panel_Statistics;
+        private TableLayoutPanel tableLayout_Statistics;
         private Panel panel_TotalAbsent;
         private Label label_TotalAbsent;
         private Label label_NumberAbsent;

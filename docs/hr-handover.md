@@ -37,7 +37,9 @@ Solution dùng .NET 10. HR backend được chia thành:
 | HR.Domain | Entity, status và employment type |
 | HR.Infrastructure | EF Core, PostgreSQL, repositories, migration, scheduled job, lưu file |
 
-Employee dùng GUID làm định danh liên dịch vụ. EmploymentType là FULL_TIME hoặc PART_TIME. Theo model hiện tại, full-time có BaseSalary; part-time có PartTimeSalary. API trả một giá trị lương có số và trường còn lại là null. Cả hai trường là decimal, ánh xạ database numeric(18,2). PartTimeSalary hiện chưa mang đơn vị trong tên field; nếu consumer cần VND/tháng, cần thống nhất contract đó với Payroll.
+Employee dùng GUID làm định danh liên dịch vụ. EmploymentType là FULL_TIME hoặc PART_TIME. Theo model hiện tại, full-time có BaseSalary (VND/tháng); part-time có PartTimeSalary (VND/giờ). API trả một giá trị lương có số và trường còn lại là null. Cả hai trường là decimal, ánh xạ database numeric(18,2). Tên JSON partTimeSalary được giữ để tương thích consumer hiện tại; DTO HR đặt tên rõ nghĩa PartTimeHourlyRate và ánh xạ về JSON partTimeSalary.
+
+Ràng buộc đơn vị và luồng tính của Payroll được mô tả tại [hr-payroll-salary-contract.md](hr-payroll-salary-contract.md).
 
 ## 2. Khởi động và cấu hình
 
@@ -205,7 +207,7 @@ Ví dụ nhân viên part-time:
       "partTimeSalary": 35000.00
     }
 
-EmploymentType mặc định FULL_TIME nếu bỏ qua. BaseSalary thuộc FULL_TIME; PartTimeSalary thuộc PART_TIME. Lương bỏ trống khi tạo hiện được khởi tạo bằng 0 để tương thích request cũ. Client nên gửi trường đúng loại. Mã nhân viên chuẩn hóa chữ hoa; mã dài 3–20 ký tự, gồm chữ/số/_/-. Mã trùng trả 409.
+EmploymentType mặc định FULL_TIME nếu bỏ qua. BaseSalary thuộc FULL_TIME và tính theo VND/tháng; PartTimeSalary thuộc PART_TIME và là đơn giá VND/giờ. Lương bỏ trống khi tạo hiện được khởi tạo bằng 0 để tương thích request cũ. Client nên gửi trường đúng loại. Mã nhân viên chuẩn hóa chữ hoa; mã dài 3–20 ký tự, gồm chữ/số/_/-. Mã trùng trả 409.
 
 Các trường chung được kiểm tra trước khi lưu: fullName dài 2–150; dateOfBirth từ năm 1900 đến ngày hiện tại; email hợp lệ, tối đa 200 ký tự; phone sau chuẩn hóa phải có 9–15 chữ số; citizenId phải có 9 hoặc 12 chữ số; address tối đa 500 ký tự. Gender nhận Male/Female/Other và các giá trị tiếng Việt tương ứng, rồi chuẩn hóa về tiếng Anh.
 
@@ -239,7 +241,7 @@ hoặc:
 
     { "partTimeSalary": 35000.00 }
 
-Sai trường theo loại nhân viên, lương âm, vượt numeric(18,2), hoặc có trên 2 chữ số thập phân sẽ bị từ chối. Response 200: EmployeeDto.
+Sai trường theo loại nhân viên, lương âm, vượt numeric(18,2), hoặc có trên 2 chữ số thập phân sẽ bị từ chối. Response 200: EmployeeDto. Dù tên JSON giữ là partTimeSalary để tương thích, giá trị này là VND/giờ.
 
 #### POST /employees/{id}/lock
 
@@ -621,7 +623,7 @@ EmployeeDto:
       "partTimeSalary": null
     }
 
-Với PART_TIME, response có employmentType=PART_TIME, baseSalary=null và partTimeSalary là số.
+Với PART_TIME, response có employmentType=PART_TIME, baseSalary=null và partTimeSalary là số theo đơn vị VND/giờ.
 
 EmployeeListDto:
 

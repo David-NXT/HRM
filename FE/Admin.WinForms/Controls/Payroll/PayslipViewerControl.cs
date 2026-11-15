@@ -20,6 +20,11 @@ namespace Admin.WinForms.Controls.Payroll
         {
             InitializeComponent();
 
+            panel_CenterWrapper.Resize += (s, e) =>
+            {
+                panel_SlipCard.Left = Math.Max(20, (panel_CenterWrapper.ClientSize.Width - panel_SlipCard.Width) / 2);
+            };
+
             comboBox_Periods.SelectedIndexChanged += async (s, e) => await LoadEmployeesInPeriodAsync();
             comboBox_Employees.SelectedIndexChanged += async (s, e) =>
             {

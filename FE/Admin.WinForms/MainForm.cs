@@ -1,4 +1,5 @@
 using Admin.WinForms.Controls.Attendance;
+using Admin.WinForms.Controls.Dashboard;
 using Admin.WinForms.Controls.HR;
 using Admin.WinForms.Controls.Payroll;
 using Admin.WinForms.Controls.Project;
@@ -23,9 +24,9 @@ namespace Admin.WinForms
         {
             // Preserve the shared navigation, but let content follow window size.
             var shell = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 2, Margin = Padding.Empty };
-            shell.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 220));
+            shell.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 300));
             shell.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            shell.RowStyles.Add(new RowStyle(SizeType.Absolute, 105));
+            shell.RowStyles.Add(new RowStyle(SizeType.Absolute, 135));
             shell.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             Controls.Clear();
             shell.Controls.Add(panel_Sidebar, 0, 0);
@@ -35,26 +36,7 @@ namespace Admin.WinForms
             Controls.Add(shell);
             panel_Sidebar.Dock = panel_header.Dock = panel_Content.Dock = DockStyle.Fill;
             panel_Sidebar.Margin = panel_header.Margin = panel_Content.Margin = Padding.Empty;
-            panel_Sidebar.AutoScroll = true;
             flowLayoutPanel1.Visible = flowLayoutPanel2.Visible = false;
-            label_HRM.Location = new Point(22, 20);
-            label_HRM.Font = new Font("Segoe UI", 24F, FontStyle.Bold);
-            label_Title.Location = new Point(20, 16);
-            label_Title.Font = new Font("Segoe UI", 16F, FontStyle.Bold);
-            label_Description.Location = new Point(20, 59);
-            label_Description.Font = new Font("Segoe UI", 10F);
-            label_Admin.Visible = false;
-            var navigation = new[] { button_Dashboard, button_Employee, button_Organization,
-                button_Contract_Work, button_Attendance, button_Payroll, button_Project, button_System, button_LogOut };
-            for (var i = 0; i < navigation.Length; i++)
-            {
-                navigation[i].Location = new Point(10, 105 + i * 51);
-                navigation[i].Size = new Size(200, 43);
-                navigation[i].Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            }
-            button_Employee.Text = "Nhân sự";
-            button_Organization.Text = "Phòng ban / Chức vụ";
-            button_Contract_Work.Text = "Hợp đồng / Công tác";
             MinimumSize = new Size(1080, 680);
             ClientSize = new Size(1440, 850);
             StartPosition = FormStartPosition.CenterScreen;
@@ -90,8 +72,38 @@ namespace Admin.WinForms
         {
             ActivateButton((Button)sender);
             label_Title.Text = "Dashboard";
-            label_Description.Text = "Overview of HR activities and key statistics.";
-            LoadPlaceholder("Dashboard", "Chọn Nhân sự, Phòng ban / Chức vụ hoặc Hợp đồng / Công tác để làm việc với HR.");
+            label_Description.Text = "Tổng quan hoạt động và các chỉ số trọng yếu của hệ thống HR & Payroll.";
+            LoadControl(new DashboardControl());
+        }
+
+        public void NavigateTo(string target)
+        {
+            switch (target.ToLowerInvariant())
+            {
+                case "employee":
+                case "hr":
+                    button_Employee_Click(button_Employee, EventArgs.Empty);
+                    break;
+                case "attendance":
+                    button_Attendance_Click(button_Attendance, EventArgs.Empty);
+                    break;
+                case "payroll":
+                    button_Payroll_Click(button_Payroll, EventArgs.Empty);
+                    break;
+                case "project":
+                    button_Project_Click(button_Project, EventArgs.Empty);
+                    break;
+                case "contract":
+                    button_Contract_Work_Click(button_Contract_Work, EventArgs.Empty);
+                    break;
+                case "org":
+                case "organization":
+                    button_Organization_Click(button_Organization, EventArgs.Empty);
+                    break;
+                default:
+                    button_Dashboard_Click(button_Dashboard, EventArgs.Empty);
+                    break;
+            }
         }
 
         private void button_Employee_Click(object sender, EventArgs e)

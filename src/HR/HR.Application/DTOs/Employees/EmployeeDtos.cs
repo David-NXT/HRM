@@ -1,7 +1,9 @@
 using HR.Domain.Constants;
+using System.Text.Json.Serialization;
 
 namespace HR.Application.DTOs.Employees;
 
+// Part-time rate values are VND/hour. Keep the JSON key partTimeSalary for existing consumers such as Payroll.
 public sealed record CreateEmployeeRequest(
     string EmployeeCode,
     string FullName,
@@ -13,9 +15,11 @@ public sealed record CreateEmployeeRequest(
     string? Address,
     string EmploymentType = EmploymentTypes.FullTime,
     decimal? BaseSalary = null,
-    decimal? PartTimeSalary = null);
+    [property: JsonPropertyName("partTimeSalary")] decimal? PartTimeHourlyRate = null);
 
-public sealed record UpdateEmployeeSalaryRequest(decimal? BaseSalary = null, decimal? PartTimeSalary = null);
+public sealed record UpdateEmployeeSalaryRequest(
+    decimal? BaseSalary = null,
+    [property: JsonPropertyName("partTimeSalary")] decimal? PartTimeHourlyRate = null);
 
 public sealed record UpdateEmployeeRequest(
     string FullName,
@@ -45,7 +49,7 @@ public sealed record EmployeeDto(
     string? PositionName,
     string EmploymentType,
     decimal? BaseSalary,
-    decimal? PartTimeSalary);
+    [property: JsonPropertyName("partTimeSalary")] decimal? PartTimeHourlyRate);
 
 public sealed record EmployeeDirectoryEntry(
     Guid EmployeeId,

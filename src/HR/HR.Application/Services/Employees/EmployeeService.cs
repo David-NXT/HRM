@@ -127,7 +127,7 @@ public sealed class EmployeeService : IEmployeeService
         employee.Phone = profile.Phone;
         employee.CitizenId = profile.CitizenId;
         employee.Address = profile.Address;
-        ApplySalary(employee, request.BaseSalary, request.PartTimeSalary, allowMissingSalary: true);
+        ApplySalary(employee, request.BaseSalary, request.PartTimeHourlyRate, allowMissingSalary: true);
         employee.Status = EmployeeStatuses.Active;
         employee.CreatedAt = now;
         employee.UpdatedAt = now;
@@ -157,7 +157,7 @@ public sealed class EmployeeService : IEmployeeService
             throw new HrException(404, "EmployeeNotFound", "Không tìm thấy hồ sơ.");
         }
 
-        ApplySalary(employee, request.BaseSalary, request.PartTimeSalary, allowMissingSalary: false);
+        ApplySalary(employee, request.BaseSalary, request.PartTimeHourlyRate, allowMissingSalary: false);
         employee.UpdatedAt = DateTime.UtcNow;
         await _employees.SaveChangesAsync(cancellationToken);
         return ToDto(employee);
@@ -174,13 +174,13 @@ public sealed class EmployeeService : IEmployeeService
     private static void ApplySalary(
         Employee employee,
         decimal? baseSalary,
-        decimal? partTimeSalary,
+        decimal? partTimeHourlyRate,
         bool allowMissingSalary)
     {
         switch (employee)
         {
             case FullTimeEmployee fullTime:
-                if (partTimeSalary.HasValue)
+                if (partTimeHourlyRate.HasValue)
                 {
                     throw new HrException(400, "InvalidSalaryForEmploymentType", "Nhân viên full-time chỉ nhận lương cơ bản.");
                 }
@@ -195,13 +195,13 @@ public sealed class EmployeeService : IEmployeeService
             case PartTimeEmployee partTime:
                 if (baseSalary is > 0m)
                 {
-                    throw new HrException(400, "InvalidSalaryForEmploymentType", "Nhân viên part-time dùng trường partTimeSalary.");
+                    throw new HrException(400, "InvalidSalaryForEmploymentType", "Nhân viên part-time dùng trường partTimeSalary (đơn giá VND/giờ).");
                 }
-                if (!partTimeSalary.HasValue && !allowMissingSalary)
+                if (!partTimeHourlyRate.HasValue && !allowMissingSalary)
                 {
-                    throw new HrException(400, "ValidationError", "Cần cung cấp lương part-time.");
+                    throw new HrException(400, "ValidationError", "Cần cung cấp đơn giá part-time theo giờ (VND/giờ).");
                 }
-                partTime.PartTimeSalary = partTimeSalary ?? 0m;
+                partTime.PartTimeSalary = partTimeHourlyRate ?? 0m;
                 ValidateSalary(partTime.PartTimeSalary);
                 break;
 
