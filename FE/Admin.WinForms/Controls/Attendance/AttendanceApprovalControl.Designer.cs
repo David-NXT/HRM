@@ -76,6 +76,7 @@
             // 
             // button_Approve
             // 
+            button_Approve.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             button_Approve.BackColor = Color.FromArgb(40, 167, 69);
             button_Approve.FlatStyle = FlatStyle.Flat;
             button_Approve.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
@@ -89,6 +90,7 @@
             // 
             // button_Reject
             // 
+            button_Reject.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             button_Reject.BackColor = Color.FromArgb(220, 53, 69);
             button_Reject.FlatStyle = FlatStyle.Flat;
             button_Reject.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
@@ -102,6 +104,7 @@
             // 
             // button_Reload
             // 
+            button_Reload.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             button_Reload.Location = new Point(1697, 5);
             button_Reload.Name = "button_Reload";
             button_Reload.Size = new Size(105, 46);
@@ -111,6 +114,7 @@
             // 
             // button_Filter
             // 
+            button_Filter.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             button_Filter.Location = new Point(1537, 5);
             button_Filter.Name = "button_Filter";
             button_Filter.Size = new Size(150, 46);

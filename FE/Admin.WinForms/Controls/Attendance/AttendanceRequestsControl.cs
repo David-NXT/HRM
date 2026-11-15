@@ -102,6 +102,33 @@ namespace Admin.WinForms.Controls.Attendance
             catch { }
         }
 
+        public void SelectEmployee(Guid employeeId)
+        {
+            void SelectIn(ComboBox cmb)
+            {
+                for (int i = 0; i < cmb.Items.Count; i++)
+                {
+                    if (cmb.Items[i] is EmployeeDirectoryDto e && e.EmployeeId == employeeId)
+                    {
+                        cmb.SelectedIndex = i;
+                        break;
+                    }
+                }
+            }
+
+            SelectIn(cmb_LeaveEmp);
+            SelectIn(cmb_OTEmp);
+            SelectIn(cmb_ExpEmp);
+        }
+
+        public void SelectEmployee(EmployeeDirectoryDto emp)
+        {
+            if (emp != null)
+            {
+                SelectEmployee(emp.EmployeeId);
+            }
+        }
+
         // ==========================================
         // TAB 1: LEAVE REQUEST (UC-ATT03)
         // ==========================================
