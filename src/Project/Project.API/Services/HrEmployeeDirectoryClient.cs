@@ -27,7 +27,8 @@ public sealed class HrEmployeeDirectoryClient(HttpClient httpClient) : IHrEmploy
         using var response = await GetResponseAsync("internal/employees" + query, cancellationToken);
         response.EnsureSuccessStatusCode();
         var pageResult = await ReadRequiredAsync<EmployeeDirectoryPage>(response, cancellationToken);
-        if (pageResult.Items is null || pageResult.Items.Any(item => item is null || item.Status != "ACTIVE"))
+        if (pageResult.Items is null || pageResult.Items.Any(item =>
+                item is null || !string.Equals(item.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase)))
             throw new HttpRequestException("HR returned an invalid employee directory response.");
         return pageResult;
     }
@@ -42,7 +43,8 @@ public sealed class HrEmployeeDirectoryClient(HttpClient httpClient) : IHrEmploy
 
         response.EnsureSuccessStatusCode();
         var employee = await ReadRequiredAsync<EmployeeDirectoryEntry>(response, cancellationToken);
-        if (employee.EmployeeId != employeeId || employee.Status != "ACTIVE")
+        if (employee.EmployeeId != employeeId
+            || !string.Equals(employee.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase))
             throw new HttpRequestException("HR returned an employee who is not assignable.");
         return employee;
     }

@@ -44,6 +44,22 @@ public class ProjectMemberService : IProjectMemberService
     public async Task<ProjectMember> CreateProjectMemberAsync(
         CreateProjectMemberDto dto)
     {
+        if (dto.InitialHourlyRate is <= 0m)
+        {
+            throw new ArgumentException(
+                "Hourly rate must be greater than 0.");
+        }
+        if (dto.NewRoleCoefficient is < 0m or > 9.9999m)
+        {
+            throw new ArgumentException(
+                "Role coefficient must be between 0 and 9.9999.");
+        }
+
+        var joinDate = DateTimeNormalizer.ToUtc(dto.JoinDate);
+        var leaveDate = dto.LeaveDate.HasValue
+            ? DateTimeNormalizer.ToUtc(dto.LeaveDate.Value)
+            : (DateTime?)null;
+
         // 1. Kiểm tra nhân viên từ HR Service trước
         var employee = await _employees.GetActiveEmployeeAsync(
             dto.EmployeeId,
@@ -56,28 +72,61 @@ public class ProjectMemberService : IProjectMemberService
         }
 
         // 2. Kiểm tra ngày tham gia
-        ValidateMemberDates(dto.JoinDate, dto.LeaveDate);
+        ValidateMemberDates(joinDate, leaveDate);
 
         // 3. Kiểm tra dự án tồn tại và được phép chỉnh sửa
         await EnsureProjectEditableAsync(dto.ProjectId);
 
-        // 4. Kiểm tra ProjectRole
-        var roleExists = await _context.ProjectRoles
-            .AnyAsync(r => r.ProjectRoleId == dto.ProjectRoleId);
+        // 4. Reuse an existing role name or prepare a new role.
+        var projectRoleId = dto.ProjectRoleId;
+        ProjectRole? newRole = null;
+        if (!string.IsNullOrWhiteSpace(dto.ProjectRoleName))
+        {
+            var roleName = dto.ProjectRoleName.Trim();
+            var existingRole = await _context.ProjectRoles
+                .FirstOrDefaultAsync(role => role.RoleName.ToLower() == roleName.ToLower());
+            if (existingRole is not null)
+            {
+                projectRoleId = existingRole.ProjectRoleId;
+            }
+            else
+            {
+                if (!dto.NewRoleCoefficient.HasValue)
+                {
+                    throw new ArgumentException(
+                        "A role coefficient is required when creating a new project role.");
+                }
 
-        if (!roleExists)
+                newRole = new ProjectRole
+                {
+                    ProjectRoleId = Guid.NewGuid(),
+                    RoleName = roleName,
+                    RoleCoefficient = dto.NewRoleCoefficient.Value
+                };
+                projectRoleId = newRole.ProjectRoleId;
+            }
+        }
+        else if (!await _context.ProjectRoles
+            .AnyAsync(role => role.ProjectRoleId == projectRoleId))
+        {
             throw new ArgumentException("Project role does not exist.");
+        }
 
         // 5. Kiểm tra thành viên bị trùng thời gian
         var hasOverlap = await HasOverlappingMembershipAsync(
             dto.ProjectId,
             dto.EmployeeId,
-            dto.JoinDate,
-            dto.LeaveDate);
+            joinDate,
+            leaveDate);
 
         if (hasOverlap)
             throw new InvalidOperationException(
                 "Employee already has an overlapping membership in this project.");
+
+        if (newRole is not null)
+        {
+            _context.ProjectRoles.Add(newRole);
+        }
 
         // 6. Tạo ProjectMember
         var member = new ProjectMember
@@ -85,13 +134,23 @@ public class ProjectMemberService : IProjectMemberService
             ProjectMemberId = Guid.NewGuid(),
             ProjectId = dto.ProjectId,
             EmployeeId = dto.EmployeeId,
-            ProjectRoleId = dto.ProjectRoleId,
-            JoinDate = dto.JoinDate,
-            LeaveDate = dto.LeaveDate,
+            ProjectRoleId = projectRoleId,
+            JoinDate = joinDate,
+            LeaveDate = leaveDate,
             Status = dto.Status
         };
 
         _context.ProjectMembers.Add(member);
+        if (dto.InitialHourlyRate.HasValue)
+        {
+            _context.HourlyRates.Add(new HourlyRate
+            {
+                HourlyRateId = Guid.NewGuid(),
+                ProjectMemberId = member.ProjectMemberId,
+                Rate = dto.InitialHourlyRate.Value,
+                EffectiveFrom = joinDate
+            });
+        }
         await _context.SaveChangesAsync();
 
         return member;
@@ -105,6 +164,11 @@ public class ProjectMemberService : IProjectMemberService
 
         if (member == null)
             return false;
+
+        var joinDate = DateTimeNormalizer.ToUtc(dto.JoinDate);
+        var leaveDate = dto.LeaveDate.HasValue
+            ? DateTimeNormalizer.ToUtc(dto.LeaveDate.Value)
+            : (DateTime?)null;
         
         // Kiểm tra dự án hiện tại của thành viên
 await EnsureProjectEditableAsync(member.ProjectId);
@@ -115,7 +179,7 @@ if (member.ProjectId != dto.ProjectId)
     await EnsureProjectEditableAsync(dto.ProjectId);
 }
 
-        ValidateMemberDates(dto.JoinDate, dto.LeaveDate);
+        ValidateMemberDates(joinDate, leaveDate);
 
         var projectExists = await _context.Projects
             .AnyAsync(p => p.ProjectId == dto.ProjectId);
@@ -141,7 +205,7 @@ if (member.ProjectId != dto.ProjectId)
             if (member.ProjectId != dto.ProjectId ||
                 member.EmployeeId != dto.EmployeeId ||
                 member.ProjectRoleId != dto.ProjectRoleId ||
-                member.JoinDate != dto.JoinDate)
+            member.JoinDate != joinDate)
             {
                 throw new InvalidOperationException(
                     "Cannot change project, employee, role or join date because this member already has related records.");
@@ -151,20 +215,20 @@ if (member.ProjectId != dto.ProjectId)
         var hasOverlap = await HasOverlappingMembershipAsync(
             dto.ProjectId,
             dto.EmployeeId,
-            dto.JoinDate,
-            dto.LeaveDate,
+            joinDate,
+            leaveDate,
             id);
 
         if (hasOverlap)
             throw new InvalidOperationException(
                 "Employee already has an overlapping membership in this project.");
 
-        if (dto.LeaveDate.HasValue)
+        if (leaveDate.HasValue)
         {
             var hasWorkAfterLeaveDate = await _context.Timesheets
                 .AnyAsync(t =>
                     t.ProjectMemberId == id &&
-                    t.WorkDate.Date > dto.LeaveDate.Value.Date);
+                    t.WorkDate.Date > leaveDate.Value.Date);
 
             if (hasWorkAfterLeaveDate)
             {
@@ -176,8 +240,8 @@ if (member.ProjectId != dto.ProjectId)
         member.ProjectId = dto.ProjectId;
         member.EmployeeId = dto.EmployeeId;
         member.ProjectRoleId = dto.ProjectRoleId;
-        member.JoinDate = dto.JoinDate;
-        member.LeaveDate = dto.LeaveDate;
+        member.JoinDate = joinDate;
+        member.LeaveDate = leaveDate;
         member.Status = dto.Status;
 
         await _context.SaveChangesAsync();
@@ -196,15 +260,16 @@ if (member.ProjectId != dto.ProjectId)
         var hasTimesheets = await _context.Timesheets
             .AnyAsync(t => t.ProjectMemberId == id);
 
-        var hasHourlyRates = await _context.HourlyRates
-            .AnyAsync(r => r.ProjectMemberId == id);
-
-        if (hasTimesheets || hasHourlyRates)
+        if (hasTimesheets)
         {
             throw new InvalidOperationException(
-                "Cannot delete a project member that has timesheets or hourly rates.");
+                "Cannot delete a project member that has timesheets. Set the member status to Inactive instead.");
         }
 
+        var hourlyRates = await _context.HourlyRates
+            .Where(r => r.ProjectMemberId == id)
+            .ToListAsync();
+        _context.HourlyRates.RemoveRange(hourlyRates);
         _context.ProjectMembers.Remove(member);
         await _context.SaveChangesAsync();
 

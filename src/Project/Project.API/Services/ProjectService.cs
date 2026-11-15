@@ -60,8 +60,8 @@ public class ProjectService : IProjectService
             ProjectId = Guid.NewGuid(),
             ProjectName = dto.ProjectName,
             Description = dto.Description,
-            StartDate = NormalizeUtc(dto.StartDate),
-            EndDate = NormalizeUtc(dto.EndDate),
+            StartDate = dto.StartDate,
+            EndDate = dto.EndDate,
             Status = dto.Status,
             Budget = dto.Budget
         };
@@ -98,29 +98,14 @@ public class ProjectService : IProjectService
 
         project.ProjectName = dto.ProjectName;
         project.Description = dto.Description;
-        project.StartDate = NormalizeUtc(dto.StartDate);
-        project.EndDate = NormalizeUtc(dto.EndDate);
+        project.StartDate = dto.StartDate;
+        project.EndDate = dto.EndDate;
         project.Status = dto.Status;
         project.Budget = dto.Budget;
 
         await _context.SaveChangesAsync();
 
         return true;
-    }
-
-    private static DateTime NormalizeUtc(DateTime value)
-    {
-        return value.Kind switch
-        {
-            DateTimeKind.Utc => value,
-            DateTimeKind.Local => value.ToUniversalTime(),
-            _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
-        };
-    }
-
-    private static DateTime? NormalizeUtc(DateTime? value)
-    {
-        return value.HasValue ? NormalizeUtc(value.Value) : null;
     }
 
     // Xóa dự án

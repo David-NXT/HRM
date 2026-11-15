@@ -172,6 +172,10 @@ internal static class ProjectUi
     internal static string Money(decimal amount) =>
         amount.ToString("N0", CultureInfo.GetCultureInfo("vi-VN"));
 
+    internal static string Date(DateOnly date) => date.ToString("dd/MM/yyyy");
+
+    internal static string Date(DateOnly? date) => date?.ToString("dd/MM/yyyy") ?? "—";
+
     internal static string Date(DateTime? date) => date?.ToString("dd/MM/yyyy") ?? "—";
 
     internal static Label CreateStatusLabel()

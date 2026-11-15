@@ -149,6 +149,21 @@ public class EmployeeServiceTests
     }
 
     [Theory]
+    [InlineData("Active")]
+    [InlineData("active")]
+    public async Task InternalDirectory_AcceptsActiveStatusRegardlessOfCase(string status)
+    {
+        var repository = new FakeEmployeeRepository();
+        var employee = new FullTimeEmployee { EmployeeId = Id(24), Status = status };
+        repository.Items.Add(employee);
+
+        var dto = await new EmployeeService(repository)
+            .GetActiveDirectoryEntryAsync(employee.EmployeeId, CancellationToken.None);
+
+        Assert.Equal(employee.EmployeeId, dto.EmployeeId);
+    }
+
+    [Theory]
     [InlineData(EmployeeStatuses.Locked)]
     [InlineData(EmployeeStatuses.Resigned)]
     public async Task InternalDirectory_NonActiveEmployeeReturns404(string status)

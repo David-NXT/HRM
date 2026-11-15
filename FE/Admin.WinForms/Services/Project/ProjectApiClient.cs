@@ -63,6 +63,11 @@ internal sealed class ProjectApiClient
         return await GetAsync<List<ProjectRoleDto>>("api/ProjectRoles", cancellationToken);
     }
 
+    public async Task<List<HourlyRateDto>> GetHourlyRatesAsync(CancellationToken cancellationToken)
+    {
+        return await GetAsync<List<HourlyRateDto>>("api/HourlyRates", cancellationToken);
+    }
+
     public Task<ProjectMemberCreateResultDto> CreateProjectMemberAsync(
         ProjectMemberDto member,
         CancellationToken cancellationToken)
@@ -114,9 +119,22 @@ internal sealed class ProjectApiClient
         return await GetAsync<EmployeeDirectoryDto>($"api/employees/{employeeId}", cancellationToken);
     }
 
-    public async Task<EmployeeDirectoryPageDto> GetEmployeesAsync(CancellationToken cancellationToken)
+    public Task<EmployeeDirectoryPageDto> GetEmployeesAsync(CancellationToken cancellationToken)
     {
-        return await GetAsync<EmployeeDirectoryPageDto>("api/employees?page=1&pageSize=100", cancellationToken);
+        return GetEmployeesAsync(null, cancellationToken);
+    }
+
+    public async Task<EmployeeDirectoryPageDto> GetEmployeesAsync(
+        string? keyword,
+        CancellationToken cancellationToken)
+    {
+        var path = "api/employees?page=1&pageSize=100";
+        if (!string.IsNullOrWhiteSpace(keyword))
+        {
+            path += $"&keyword={Uri.EscapeDataString(keyword.Trim())}";
+        }
+
+        return await GetAsync<EmployeeDirectoryPageDto>(path, cancellationToken);
     }
 
     public Task<TimesheetDto> CreateTimesheetAsync(

@@ -53,6 +53,7 @@ internal abstract class ProjectPageControl : UserControl
                 {
                     HttpStatusCode.Unauthorized => "Project API access was denied.",
                     HttpStatusCode.Forbidden => "You are not allowed to view project data.",
+                    HttpStatusCode.Conflict => ex.Message,
                     HttpStatusCode.ServiceUnavailable => "The HR employee directory is unavailable.",
                     _ => "Cannot load project data. Check that the Project API is running, then refresh."
                 };
@@ -92,6 +93,24 @@ internal abstract class ProjectPageControl : UserControl
         {
             return null;
         }
+    }
+
+    protected async Task<Guid?> ResolveEmployeeIdAsync(
+        string employeeIdentifier,
+        CancellationToken cancellationToken)
+    {
+        if (Guid.TryParse(employeeIdentifier, out var employeeId) && employeeId != Guid.Empty)
+        {
+            return employeeId;
+        }
+
+        var employees = await Api.GetEmployeesAsync(employeeIdentifier, cancellationToken);
+        return employees.Items
+            .FirstOrDefault(employee => string.Equals(
+                employee.EmployeeCode,
+                employeeIdentifier,
+                StringComparison.OrdinalIgnoreCase))
+            ?.EmployeeId;
     }
 
     protected static TableLayoutPanel CreateLayout(params float[] rowHeights)
@@ -205,6 +224,7 @@ internal sealed class ProjectsPageControl : ProjectPageControl
     private List<ProjectMemberDto> _members = [];
     private Dictionary<Guid, string> _employeeNames = [];
     private Dictionary<Guid, string> _employeeCodes = [];
+    private Dictionary<Guid, decimal> _hourlyRates = [];
     private bool _renderingProjects;
     private bool _employeeDirectoryUnavailable;
 
@@ -228,6 +248,7 @@ internal sealed class ProjectsPageControl : ProjectPageControl
         ProjectUi.AddColumn(_membersGrid, "Employee", "Employee ID", 1F);
         ProjectUi.AddColumn(_membersGrid, "Name", "Full Name", 1.8F);
         ProjectUi.AddColumn(_membersGrid, "Role", "Project Role", 1.5F);
+        ProjectUi.AddColumn(_membersGrid, "HourlyRate", "Hourly Rate", 1F);
         ProjectUi.AddColumn(_membersGrid, "JoinDate", "Join Date", 1F);
         ProjectUi.AddColumn(_membersGrid, "LeaveDate", "Leave Date", 1F);
 
@@ -348,6 +369,18 @@ internal sealed class ProjectsPageControl : ProjectPageControl
             {
                 return;
             }
+            var employeeId = await ResolveEmployeeIdAsync(dialog.EmployeeIdentifier, token);
+            if (!employeeId.HasValue)
+            {
+                MessageBox.Show(
+                    this,
+                    $"No active HR employee matches \"{dialog.EmployeeIdentifier}\".",
+                    "Project Members",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+            dialog.Member.EmployeeId = employeeId.Value;
             if (member is null)
             {
                 await Api.CreateProjectMemberAsync(dialog.Member, token);
@@ -442,7 +475,19 @@ internal sealed class ProjectsPageControl : ProjectPageControl
 
     private async Task LoadMembersAsync(Guid projectId, CancellationToken token)
     {
-        var members = await Api.GetProjectMembersAsync(projectId, token);
+        var membersTask = Api.GetProjectMembersAsync(projectId, token);
+        var ratesTask = Api.GetHourlyRatesAsync(token);
+        await Task.WhenAll(membersTask, ratesTask);
+        var members = await membersTask;
+        var today = DateTime.Today;
+        _hourlyRates = (await ratesTask)
+            .Where(rate =>
+                rate.EffectiveFrom.Date <= today
+                && (!rate.EffectiveTo.HasValue || rate.EffectiveTo.Value.Date >= today))
+            .GroupBy(rate => rate.ProjectMemberId)
+            .ToDictionary(
+                group => group.Key,
+                group => group.OrderByDescending(rate => rate.EffectiveFrom).First().Rate);
         var employeePage = await TryGetEmployeeDirectoryAsync(token);
         _members = members;
         _employeeDirectoryUnavailable = employeePage is null;
@@ -495,6 +540,9 @@ internal sealed class ProjectsPageControl : ProjectPageControl
                 _employeeCodes.GetValueOrDefault(member.EmployeeId, ProjectUi.ShortId(member.EmployeeId)),
                 _employeeNames.GetValueOrDefault(member.EmployeeId, "—"),
                 member.RoleName,
+                _hourlyRates.TryGetValue(member.ProjectMemberId, out var hourlyRate)
+                    ? ProjectUi.Money(hourlyRate)
+                    : "—",
                 ProjectUi.Date(member.JoinDate),
                 ProjectUi.Date(member.LeaveDate));
             _membersGrid.Rows[row].Tag = member.ProjectMemberId;
@@ -1010,10 +1058,22 @@ internal sealed class TimesheetApprovalPageControl : ProjectPageControl
         }
         await LoadSafelyAsync(async token =>
         {
+            var approverId = await ResolveEmployeeIdAsync(dialog.EmployeeIdentifier, token);
+            if (!approverId.HasValue)
+            {
+                MessageBox.Show(
+                    this,
+                    $"No active HR employee matches \"{dialog.EmployeeIdentifier}\".",
+                    "Timesheet Approval",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+
             await Api.ReviewTimesheetAsync(
                 sheet.TimesheetId,
                 approved,
-                dialog.ApproverId,
+                approverId.Value,
                 approved ? null : _reasonBox.Text,
                 token);
             await RefreshTimesheetsAsync(token);

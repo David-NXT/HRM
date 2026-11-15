@@ -81,6 +81,48 @@
             Assert.Empty(db.ChangeTracker.Entries());
         }
 
+        [Theory]
+        [InlineData(0)]
+        [InlineData(-1)]
+        public async Task ProjectService_RejectsNonPositiveInitialHourlyRate(decimal hourlyRate)
+        {
+            await using var db = new ProjectManagementDbContext(new DbContextOptionsBuilder<ProjectManagementDbContext>()
+                .UseNpgsql("Host=localhost;Database=not_used").Options);
+            var client = Client(_ => throw new InvalidOperationException("HR lookup should not be reached."));
+            var service = new ProjectMemberService(db, client);
+
+            await Assert.ThrowsAsync<ArgumentException>(() => service.CreateProjectMemberAsync(new CreateProjectMemberDto
+            {
+                EmployeeId = Guid.NewGuid(),
+                ProjectId = Guid.NewGuid(),
+                ProjectRoleId = Guid.NewGuid(),
+                InitialHourlyRate = hourlyRate
+            }));
+
+            Assert.Empty(db.ChangeTracker.Entries());
+        }
+
+        [Theory]
+        [InlineData(-1)]
+        [InlineData(10)]
+        public async Task ProjectService_RejectsOutOfRangeNewRoleCoefficient(decimal coefficient)
+        {
+            await using var db = new ProjectManagementDbContext(new DbContextOptionsBuilder<ProjectManagementDbContext>()
+                .UseNpgsql("Host=localhost;Database=not_used").Options);
+            var client = Client(_ => throw new InvalidOperationException("HR lookup should not be reached."));
+            var service = new ProjectMemberService(db, client);
+
+            await Assert.ThrowsAsync<ArgumentException>(() => service.CreateProjectMemberAsync(new CreateProjectMemberDto
+            {
+                EmployeeId = Guid.NewGuid(),
+                ProjectId = Guid.NewGuid(),
+                ProjectRoleName = "Test Role",
+                NewRoleCoefficient = coefficient
+            }));
+
+            Assert.Empty(db.ChangeTracker.Entries());
+        }
+
         [Fact]
         public async Task WrongGuid200Response_IsRejected()
         {
