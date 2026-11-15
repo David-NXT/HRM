@@ -7,7 +7,15 @@ public class TimesheetResponseDto
 
     public Guid ProjectMemberId { get; set; }
 
+    public Guid ProjectId { get; set; }
+
+    public Guid EmployeeId { get; set; }
+
     public Guid TaskId { get; set; }
+
+    public string ProjectName { get; set; } = string.Empty;
+
+    public string TaskName { get; set; } = string.Empty;
 
     public DateTime WorkDate { get; set; }
 

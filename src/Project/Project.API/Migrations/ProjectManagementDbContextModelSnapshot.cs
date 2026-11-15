@@ -207,9 +207,6 @@ namespace Project.Migrations
                     b.Property<Guid>("TaskId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("TaskId1")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime>("WorkDate")
                         .HasColumnType("timestamp with time zone");
 
@@ -218,8 +215,6 @@ namespace Project.Migrations
                     b.HasIndex("ProjectMemberId");
 
                     b.HasIndex("TaskId");
-
-                    b.HasIndex("TaskId1");
 
                     b.ToTable("Timesheets");
                 });
@@ -274,14 +269,10 @@ namespace Project.Migrations
                         .IsRequired();
 
                     b.HasOne("Project.API.Entities.Task", "Task")
-                        .WithMany()
+                        .WithMany("Timesheets")
                         .HasForeignKey("TaskId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("Project.API.Entities.Task", null)
-                        .WithMany("Timesheets")
-                        .HasForeignKey("TaskId1");
 
                     b.Navigation("ProjectMember");
 

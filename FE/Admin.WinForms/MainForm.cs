@@ -1,6 +1,7 @@
 using Admin.WinForms.Controls.Attendance;
 using Admin.WinForms.Controls.HR;
 using Admin.WinForms.Controls.Payroll;
+using Admin.WinForms.Controls.Project;
 using System;
 using System.Drawing;
 using System.Windows.Forms;
@@ -137,8 +138,8 @@ namespace Admin.WinForms
         {
             ActivateButton((Button)sender);
             label_Title.Text = "Project Management";
-            label_Description.Text = "Manage projects, tasks, and related information.";
-            LoadPlaceholder("Project", "Màn hình Project do nhóm Project tích hợp.");
+            label_Description.Text = "Manage projects, tasks, timesheets, and approved labor costs.";
+            LoadControl(new ProjectOverviewControl());
         }
 
         private void button_System_Click(object sender, EventArgs e)

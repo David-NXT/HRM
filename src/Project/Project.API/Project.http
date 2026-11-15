@@ -1,6 +1,38 @@
 @Project_HostAddress = http://localhost:5032
+@ProjectId = replace-with-project-guid
+@EmployeeId = replace-with-employee-guid
+@TimesheetId = replace-with-timesheet-guid
+@ApproverId = replace-with-approver-guid
 
-GET {{Project_HostAddress}}/weatherforecast/
+### List and filter timesheets (status accepts Pending/SUBMITTED, Approved, Rejected, or All)
+GET {{Project_HostAddress}}/api/Timesheets?projectId={{ProjectId}}&employeeId={{EmployeeId}}&fromDate=2026-11-01&toDate=2026-11-30&status=SUBMITTED
 Accept: application/json
 
 ###
+
+### Get a timesheet with project and task details
+GET {{Project_HostAddress}}/api/Timesheets/{{TimesheetId}}
+Accept: application/json
+
+###
+
+### Approve one timesheet
+PUT {{Project_HostAddress}}/api/Timesheets/{{TimesheetId}}/review?approved=true&approvedBy={{ApproverId}}
+
+###
+
+### Reject one timesheet (reason is required)
+PUT {{Project_HostAddress}}/api/Timesheets/{{TimesheetId}}/review?approved=false&approvedBy={{ApproverId}}&reason=Please%20add%20more%20work%20details
+
+###
+
+### Approve multiple timesheets (up to 100; results returned per timesheet)
+PUT {{Project_HostAddress}}/api/Timesheets/review/bulk-approve
+Content-Type: application/json
+
+{
+  "timesheetIds": [
+    "{{TimesheetId}}"
+  ],
+  "approvedBy": "{{ApproverId}}"
+}

@@ -16,7 +16,12 @@ public class TimesheetService : ITimesheetService
     }
 
     public async Task<IEnumerable<TimesheetResponseDto>> GetTimesheetsAsync(
-        Guid? projectMemberId = null)
+        Guid? projectMemberId = null,
+        Guid? projectId = null,
+        Guid? employeeId = null,
+        DateTime? fromUtc = null,
+        DateTime? toExclusiveUtc = null,
+        string? status = null)
     {
         var query = _context.Timesheets.AsNoTracking();
 
@@ -26,13 +31,44 @@ public class TimesheetService : ITimesheetService
                 t.ProjectMemberId == projectMemberId.Value);
         }
 
+        if (projectId.HasValue)
+        {
+            query = query.Where(t =>
+                t.ProjectMember.ProjectId == projectId.Value);
+        }
+
+        if (employeeId.HasValue)
+        {
+            query = query.Where(t =>
+                t.ProjectMember.EmployeeId == employeeId.Value);
+        }
+
+        if (fromUtc.HasValue)
+        {
+            query = query.Where(t => t.WorkDate >= fromUtc.Value);
+        }
+
+        if (toExclusiveUtc.HasValue)
+        {
+            query = query.Where(t => t.WorkDate < toExclusiveUtc.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            query = query.Where(t => t.Status == status);
+        }
+
         return await query
             .OrderByDescending(t => t.WorkDate)
             .Select(t => new TimesheetResponseDto
             {
                 TimesheetId = t.TimesheetId,
                 ProjectMemberId = t.ProjectMemberId,
+                ProjectId = t.ProjectMember.ProjectId,
+                EmployeeId = t.ProjectMember.EmployeeId,
                 TaskId = t.TaskId,
+                ProjectName = t.ProjectMember.Project.ProjectName,
+                TaskName = t.Task.TaskName,
                 WorkDate = t.WorkDate,
                 HoursWorked = t.HoursWorked,
                 Description = t.Description,
@@ -53,7 +89,11 @@ public class TimesheetService : ITimesheetService
             {
                 TimesheetId = t.TimesheetId,
                 ProjectMemberId = t.ProjectMemberId,
+                ProjectId = t.ProjectMember.ProjectId,
+                EmployeeId = t.ProjectMember.EmployeeId,
                 TaskId = t.TaskId,
+                ProjectName = t.ProjectMember.Project.ProjectName,
+                TaskName = t.Task.TaskName,
                 WorkDate = t.WorkDate,
                 HoursWorked = t.HoursWorked,
                 Description = t.Description,
@@ -106,19 +146,8 @@ public class TimesheetService : ITimesheetService
         _context.Timesheets.Add(timesheet);
         await _context.SaveChangesAsync();
 
-        return new TimesheetResponseDto
-        {
-            TimesheetId = timesheet.TimesheetId,
-            ProjectMemberId = timesheet.ProjectMemberId,
-            TaskId = timesheet.TaskId,
-            WorkDate = timesheet.WorkDate,
-            HoursWorked = timesheet.HoursWorked,
-            Description = timesheet.Description,
-            Status = timesheet.Status,
-            RejectReason = timesheet.RejectReason,
-            ApprovedAt = timesheet.ApprovedAt,
-            ApprovedBy = timesheet.ApprovedBy
-        };
+        return await GetTimesheetAsync(timesheet.TimesheetId)
+            ?? throw new InvalidOperationException("The created timesheet could not be loaded.");
     }
 public async Task<bool> UpdateTimesheetAsync(
     Guid id,
@@ -160,6 +189,55 @@ public async Task<bool> UpdateTimesheetAsync(
 
         await _context.SaveChangesAsync();
         return true;
+    }
+
+    public async Task<BulkApproveTimesheetsResponse> ApproveTimesheetsAsync(
+        IReadOnlyCollection<Guid> timesheetIds,
+        Guid approvedBy)
+    {
+        var response = new BulkApproveTimesheetsResponse();
+        foreach (var timesheetId in timesheetIds)
+        {
+            try
+            {
+                var approved = await ApproveTimesheetAsync(timesheetId, approvedBy);
+                var current = approved
+                    ? null
+                    : await GetTimesheetAsync(timesheetId);
+
+                response.Results.Add(new TimesheetReviewResultDto
+                {
+                    TimesheetId = timesheetId,
+                    Succeeded = approved,
+                    Status = approved ? "Approved" : current?.Status,
+                    Message = approved
+                        ? null
+                        : current is null
+                            ? "Timesheet not found."
+                            : "Timesheet is no longer pending."
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                var current = await GetTimesheetAsync(timesheetId);
+                response.Results.Add(new TimesheetReviewResultDto
+                {
+                    TimesheetId = timesheetId,
+                    Status = current?.Status,
+                    Message = ex.Message
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                response.Results.Add(new TimesheetReviewResultDto
+                {
+                    TimesheetId = timesheetId,
+                    Message = ex.Message
+                });
+            }
+        }
+
+        return response;
     }
 
     public async Task<bool> RejectTimesheetAsync(
