@@ -15,7 +15,7 @@ public class HourlyRate
     // Kiểm tra mức lương theo giờ có hiệu lực tại ngày làm việc không
     public bool IsEffectiveAt(DateTime workDate)
     {
-        return workDate >= EffectiveFrom &&
-               (EffectiveTo == null || workDate <= EffectiveTo.Value);
+        return workDate.Date >= EffectiveFrom.Date &&
+               (EffectiveTo == null || workDate.Date <= EffectiveTo.Value.Date);
     }
 }

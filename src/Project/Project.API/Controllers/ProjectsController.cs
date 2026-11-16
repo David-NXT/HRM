@@ -43,7 +43,15 @@ public class ProjectsController : ControllerBase
     public async Task<ActionResult<ProjectResponseDto>> CreateProject(
         CreateProjectDto dto)
     {
-        var project = await _projectService.CreateProjectAsync(dto);
+        ProjectResponseDto project;
+        try
+        {
+            project = await _projectService.CreateProjectAsync(dto);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
 
         return CreatedAtAction(
             nameof(GetProject),
@@ -57,7 +65,15 @@ public class ProjectsController : ControllerBase
         Guid id,
         UpdateProjectDto dto)
     {
-        var updated = await _projectService.UpdateProjectAsync(id, dto);
+        bool updated;
+        try
+        {
+            updated = await _projectService.UpdateProjectAsync(id, dto);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
 
         if (!updated)
         {

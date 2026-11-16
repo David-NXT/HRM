@@ -50,7 +50,7 @@ public sealed class EmployeeService : IEmployeeService
         CancellationToken cancellationToken)
     {
         var employee = await _employees.GetByIdAsync(employeeId, cancellationToken);
-        if (employee is null || employee.Status != EmployeeStatuses.Active)
+        if (employee is null || !string.Equals(employee.Status, EmployeeStatuses.Active, StringComparison.OrdinalIgnoreCase))
         {
             throw new HrException(404, "EmployeeNotFound", "Không tìm thấy nhân viên đang hoạt động.");
         }

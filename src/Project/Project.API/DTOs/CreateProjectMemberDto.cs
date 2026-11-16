@@ -13,10 +13,19 @@ public class CreateProjectMemberDto
     [Required]
     public Guid ProjectRoleId { get; set; }
 
+    public string? ProjectRoleName { get; set; }
+
+    public decimal? NewRoleCoefficient { get; set; }
+
     public DateTime JoinDate { get; set; }
 
+    [Required]
     public DateTime? LeaveDate { get; set; }
 
     [MaxLength(50)]
     public string Status { get; set; } = "Active";
+
+    public decimal? InitialHourlyRate { get; set; }
+
+    public DateTime? HourlyRateEffectiveFrom { get; set; }
 }
