@@ -10,4 +10,5 @@ public interface IAttendanceService
     Task<AttendanceRecordDto?> UpdateAsync(Guid id, UpdateAttendanceRecordDto dto, CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
     Task<List<AttendanceRecordDto>> SearchAsync(AttendanceSearchRequestDto request,CancellationToken cancellationToken = default);
+    Task<AttendanceWorkHoursDto?> GetWorkHoursAsync(Guid employeeId, DateOnly date, CancellationToken cancellationToken = default);
 }

@@ -30,6 +30,12 @@ builder.Services.AddScoped<IProjectRoleService, ProjectRoleService>();
 builder.Services.AddScoped<IHourlyRateService, HourlyRateService>();
 builder.Services.AddScoped<ITimesheetService, TimesheetService>();
 builder.Services.AddScoped<IPayrollDataService, PayrollDataService>();
+var attendanceBaseUrl = builder.Configuration["Services:Attendance:BaseUrl"] ?? "http://localhost:5231/";
+builder.Services.AddHttpClient<IAttendanceWorkHoursClient, AttendanceWorkHoursClient>(client =>
+{
+    client.BaseAddress = new Uri(attendanceBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
 var hrBaseUrl = builder.Configuration["Services:HR:BaseUrl"] ?? "http://localhost:5012/";
 builder.Services.AddHttpClient<IHrEmployeeDirectoryClient, HrEmployeeDirectoryClient>(client =>
 {

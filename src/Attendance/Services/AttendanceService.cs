@@ -56,6 +56,25 @@ public class AttendanceService : IAttendanceService
         return records;
     }
 
+    public async Task<AttendanceWorkHoursDto?> GetWorkHoursAsync(
+        Guid employeeId,
+        DateOnly date,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.AttendanceRecords
+            .AsNoTracking()
+            .Where(record => record.EmployeeId == employeeId && record.Date == date)
+            .GroupBy(record => record.EmployeeId)
+            .Select(records => new AttendanceWorkHoursDto
+            {
+                EmployeeId = records.Key,
+                Date = date,
+                TotalWorkHours = records.Sum(record => record.WorkHour),
+                RecordCount = records.Count()
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<AttendanceRecordDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var entity = await _context.AttendanceRecords

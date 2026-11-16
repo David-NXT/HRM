@@ -9,10 +9,14 @@ namespace Project.API.Services;
 public class TimesheetService : ITimesheetService
 {
     private readonly ProjectManagementDbContext _context;
+    private readonly IAttendanceWorkHoursClient _attendanceWorkHours;
 
-    public TimesheetService(ProjectManagementDbContext context)
+    public TimesheetService(
+        ProjectManagementDbContext context,
+        IAttendanceWorkHoursClient attendanceWorkHours)
     {
         _context = context;
+        _attendanceWorkHours = attendanceWorkHours;
     }
 
     public async Task<IEnumerable<TimesheetResponseDto>> GetTimesheetsAsync(
@@ -134,6 +138,22 @@ public class TimesheetService : ITimesheetService
         if (task.ProjectId != member.ProjectId)
             throw new ArgumentException(
                 "Task and project member must belong to the same project.");
+
+        var attendance = await _attendanceWorkHours.GetWorkHoursAsync(
+            member.EmployeeId,
+            DateOnly.FromDateTime(workDate));
+
+        if (attendance is null || attendance.RecordCount == 0)
+        {
+            throw new InvalidOperationException(
+                "Không có dữ liệu chấm công cho nhân viên trong ngày đã chọn.");
+        }
+
+        if (dto.HoursWorked != attendance.TotalWorkHours)
+        {
+            throw new InvalidOperationException(
+                $"Số giờ khai báo ({dto.HoursWorked:0.##}) không khớp với chấm công ({attendance.TotalWorkHours:0.##}).");
+        }
 
         var timesheet = new Timesheet
         {
