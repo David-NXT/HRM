@@ -47,6 +47,9 @@ namespace Admin.WinForms.Controls.Attendance
             flowLayoutPanel1.Location = new Point(0, 0);
             flowLayoutPanel1.Name = "flowLayoutPanel1";
             flowLayoutPanel1.Padding = new Padding(15, 6, 0, 6);
+            flowLayoutPanel1.AutoSize = true;
+            flowLayoutPanel1.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            flowLayoutPanel1.WrapContents = true;
             flowLayoutPanel1.Size = new Size(1815, 75);
             flowLayoutPanel1.TabIndex = 11;
             // 

@@ -31,6 +31,7 @@ namespace Admin.WinForms.Controls.Payroll
             button_LockPeriod.Click += async (s, e) => await OnLockPeriodAsync();
             button_Reload.Click += async (s, e) => await LoadPayrollsAsync();
 
+            UpdateSelectedActionButtons();
             Load += async (s, e) => await LoadPeriodsAsync();
         }
 
@@ -136,6 +137,24 @@ namespace Admin.WinForms.Controls.Payroll
             label_CountPaid.Text = "0";
         }
 
+        private void listView_Approvals_SelectedIndexChanged(object? sender, EventArgs e)
+        {
+            UpdateSelectedActionButtons();
+        }
+
+        private void UpdateSelectedActionButtons()
+        {
+            var selectedPayroll = listView_Approvals.SelectedItems.Count == 1
+                && listView_Approvals.SelectedItems[0].Tag is Guid payrollId
+                    ? _payrolls.FirstOrDefault(p => p.PayrollID == payrollId)
+                    : null;
+
+            button_ApproveSelected.Enabled = selectedPayroll is not null
+                && string.Equals(selectedPayroll.Status, "calculated", StringComparison.OrdinalIgnoreCase);
+            button_PaySelected.Enabled = selectedPayroll is not null
+                && string.Equals(selectedPayroll.Status, "approved", StringComparison.OrdinalIgnoreCase);
+        }
+
         private static string FormatStatus(string? status)
         {
             return status?.ToLowerInvariant() switch
@@ -205,6 +224,7 @@ namespace Admin.WinForms.Controls.Payroll
             if (confirm != DialogResult.Yes) return;
 
             int count = 0;
+            var failures = new List<string>();
             foreach (var p in toApprove)
             {
                 try
@@ -212,10 +232,23 @@ namespace Admin.WinForms.Controls.Payroll
                     await Program.PayrollApi.ApprovePayrollAsync(p.PayrollID);
                     count++;
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    failures.Add($"{p.EmployeeCode ?? p.EmployeeID.ToString()}: {ex.Message}");
+                }
             }
 
-            MessageBox.Show($"Đã phê duyệt thành công {count}/{toApprove.Count} bảng lương!", "Kết quả", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            var resultMessage = $"Đã phê duyệt thành công {count}/{toApprove.Count} bảng lương.";
+            if (failures.Count > 0)
+            {
+                resultMessage += $"{Environment.NewLine}{Environment.NewLine}Lỗi:{Environment.NewLine}{string.Join(Environment.NewLine, failures)}";
+            }
+
+            MessageBox.Show(
+                resultMessage,
+                "Kết quả phê duyệt",
+                MessageBoxButtons.OK,
+                failures.Count == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
             await LoadPayrollsAsync();
         }
 
@@ -234,6 +267,7 @@ namespace Admin.WinForms.Controls.Payroll
             if (confirm != DialogResult.Yes) return;
 
             int count = 0;
+            var failures = new List<string>();
             foreach (var p in toPay)
             {
                 try
@@ -241,10 +275,23 @@ namespace Admin.WinForms.Controls.Payroll
                     await Program.PayrollApi.MarkAsPaidAsync(p.PayrollID);
                     count++;
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    failures.Add($"{p.EmployeeCode ?? p.EmployeeID.ToString()}: {ex.Message}");
+                }
             }
 
-            MessageBox.Show($"Đã xác nhận chi trả lương thành công cho {count}/{toPay.Count} nhân sự!", "Kết quả", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            var resultMessage = $"Đã xác nhận chi trả lương thành công cho {count}/{toPay.Count} nhân sự.";
+            if (failures.Count > 0)
+            {
+                resultMessage += $"{Environment.NewLine}{Environment.NewLine}Lỗi:{Environment.NewLine}{string.Join(Environment.NewLine, failures)}";
+            }
+
+            MessageBox.Show(
+                resultMessage,
+                "Kết quả chi trả",
+                MessageBoxButtons.OK,
+                failures.Count == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
             await LoadPayrollsAsync();
         }
 

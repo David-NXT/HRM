@@ -1,12 +1,48 @@
 # 📋 Payroll Service — Tài Liệu Handover
 
 > **Dành cho:** Người mới chưa biết gì về .NET và Microservice  
-> **Mục tiêu:** Hiểu được luồng xây dựng dự án, luồng chạy chương trình, và cách làm việc với Payroll Service từ đầu đến cuối
+> **Mục tiêu:** Hiểu kiến trúc Payroll hiện tại, lần theo luồng xây dựng từ yêu cầu đến UI/API/database, và dùng quy trình này làm mẫu để tạo service mới.
+> **Cập nhật:** 16/11/2026
+
+## 0. Lộ trình từ con số 0 đến Payroll hiện tại
+
+Hãy đọc theo thứ tự này nếu đây là lần đầu tiếp cận repo:
+
+1. **Hiểu ranh giới nghiệp vụ:** Payroll sở hữu kỳ lương, bản ghi lương, khoản cộng/trừ và trạng thái thanh toán; HR sở hữu thông tin nhân viên; Attendance sở hữu công; Project sở hữu timesheet dự án.
+2. **Thiết kế dữ liệu Payroll:** bắt đầu từ `PayrollPeriod`, `Payroll`, `Allowance`, `PayCut` và quan hệ của chúng. Không lưu trùng dữ liệu sở hữu bởi service khác; chỉ lưu snapshot cần cho kỳ lương.
+3. **Chia lớp:** Domain giữ entity; Application giữ DTO, interface và nghiệp vụ; Infrastructure hiện thực EF Core/HTTP clients; API nhận HTTP request và gọi Application.
+4. **Tạo nghiệp vụ theo luồng:** mở kỳ → tạo payroll từng nhân viên → đồng bộ công và lương → tính → duyệt → chi trả → xuất phiếu.
+5. **Kết nối service ngoài qua HTTP:** khai báo interface/response DTO ở Application, tạo typed client ở Infrastructure, cấu hình BaseUrl rồi inject client vào nghiệp vụ.
+6. **Lưu schema bằng migration:** thay đổi entity → cập nhật `PayrollDbContext` → sinh migration → build → khi Payroll API khởi động, `Database.MigrateAsync()` áp dụng migration.
+7. **Kết nối UI:** WinForms gọi Payroll API qua `PayrollApiService`; UI không gọi database trực tiếp. Khi thêm field mới, đồng bộ entity → response DTO → WinForms DTO → màn hình.
+8. **Kiểm chứng:** chạy unit tests, build API/UI, sau đó kiểm tra API phụ thuộc đang chạy đúng URL.
+
+Luồng đồng bộ lương hiện tại là ví dụ đầy đủ của các lớp trên:
+
+```text
+Payroll UI: "Đồng Bộ Mức Lương"
+  → FE/Admin.WinForms/Services/Payroll/PayrollApiService
+  → POST /api/payroll-salary/periods/{periodId}/sync
+  → PayrollSalarySyncController
+  → PayrollSalarySyncService
+      ├─ HR API: lấy BaseSalary/HourlyRate và loại nhân viên
+      └─ Project API: GET /api/PayrollData/summary theo tháng
+           → cộng TotalProjectIncome theo EmployeeId
+           → lưu Payroll.TotalProjectAllowance
+
+Nút "Tính Lương"
+  → PayrollCalculationService
+  → TotalAllowance = phụ cấp thủ công + TotalProjectAllowance
+  → tính GrossSalary / NetSalary
+```
+
+Project API local mặc định là `http://localhost:5032/`; Payroll API là `http://localhost:5267/` (HTTPS `https://localhost:7043/`). Xem các phần 7, 8, 9 và 10 để theo dõi chi tiết runtime, nghiệp vụ, routes và cách chạy.
 
 ---
 
 ## Mục lục
 
+0. [Lộ trình từ con số 0 đến Payroll hiện tại](#0-lộ-trình-từ-con-số-0-đến-payroll-hiện-tại)
 1. [Tổng quan hệ thống](#1-tổng-quan-hệ-thống)
 2. [Kiến thức nền cần có](#2-kiến-thức-nền-cần-có)
 3. [Cấu trúc thư mục dự án](#3-cấu-trúc-thư-mục-dự-án)
@@ -19,6 +55,7 @@
 10. [Hướng dẫn setup và chạy dự án](#10-hướng-dẫn-setup-và-chạy-dự-án)
 11. [Cách thêm tính năng mới](#11-cách-thêm-tính-năng-mới)
 12. [Các vấn đề thường gặp](#12-các-vấn-đề-thường-gặp)
+13. [Tạo một microservice mới từ con số 0](#13-tạo-một-microservice-mới-từ-con-số-0)
 
 ---
 
@@ -53,10 +90,11 @@ Payroll Service xử lý toàn bộ quy trình **tính và thanh toán lương**
 2. Tạo bản ghi lương cho từng nhân viên  
 3. Thêm phụ cấp (allowance) và khấu trừ (pay cut)
 4. Đồng bộ dữ liệu chấm công từ Attendance Service
-5. Tính lương (gross salary, net salary)
-6. Phê duyệt lương
-7. Đánh dấu đã thanh toán
-8. Xuất phiếu lương (payslip)
+5. Đồng bộ mức lương từ HR và phụ cấp dự án từ Project Service
+6. Tính lương (gross salary, net salary)
+7. Phê duyệt lương
+8. Đánh dấu đã thanh toán
+9. Xuất phiếu lương (payslip)
 ```
 
 ---
@@ -142,6 +180,7 @@ Payroll.API/
 │   ├── PayrollApprovalController.cs        → Phê duyệt lương
 │   ├── PayrollPaymentController.cs         → Đánh dấu đã thanh toán
 │   ├── PayrollPeriodManagementController.cs→ Cập nhật trạng thái kỳ lương
+│   ├── PayrollSalarySyncController.cs       → Đồng bộ lương HR và phụ cấp Project
 │   ├── PayrollQueryController.cs           → Truy vấn / xem lương
 │   └── PayslipController.cs               → Phiếu lương
 ├── Program.cs                              → Entry point, cấu hình app
@@ -163,11 +202,13 @@ Payroll.Application/
 │   ├── PayrollPayment/
 │   ├── PayrollPeriodManagement/
 │   ├── PayrollQuery/
+│   ├── ProjectPayroll/                      → DTO nhận tổng hợp phụ cấp từ Project API
 │   └── Payslip/
 ├── Interfaces/
 │   ├── IApplicationDbContext.cs            → Interface cho DbContext
 │   ├── IAttendanceServiceClient.cs         → Interface gọi Attendance Service
-│   └── IHRServiceClient.cs                 → Interface gọi HR Service
+│   ├── IHRServiceClient.cs                 → Interface gọi HR Service
+│   └── IProjectServiceClient.cs            → Interface gọi Project Service
 ├── Services/                               → Logic nghiệp vụ
 │   ├── PayrollPeriod/
 │   ├── PayrollManagement/
@@ -178,6 +219,7 @@ Payroll.Application/
 │   ├── PayrollPayment/
 │   ├── PayrollPeriodManagement/
 │   ├── PayrollQuery/
+│   ├── PayrollSalarySync/                  → Đồng bộ lương HR và phụ cấp Project
 │   └── Payslip/
 └── DependencyInjection.cs                 → Đăng ký services vào DI container
 ```
@@ -187,7 +229,7 @@ Payroll.Application/
 ```
 Payroll.Domain/
 └── Entities/
-    ├── Payroll.cs          → Bản ghi lương của 1 nhân viên
+    ├── Payroll.cs          → Bản ghi lương, gồm TotalProjectAllowance
     ├── PayrollPeriod.cs    → Kỳ lương (tháng/năm)
     ├── Allowance.cs        → Nhóm phụ cấp
     ├── AllowanceDetail.cs  → Chi tiết từng khoản phụ cấp
@@ -206,7 +248,9 @@ Payroll.Infrastructure/
 │   ├── PayrollDataSeeder.cs     → Tạo dữ liệu mặc định khi app khởi động
 │   └── DependencyInjection.cs  → Đăng ký DbContext và HTTP clients
 ├── Services/
-│   └── AttendanceServiceClient.cs → Gọi API của Attendance Service
+│   ├── AttendanceServiceClient.cs → Gọi API của Attendance Service
+│   ├── HRServiceClient.cs         → Lấy thông tin lương nhân viên từ HR
+│   └── ProjectServiceClient.cs    → Lấy tổng timesheet/phụ cấp dự án
 └── Migrations/                  → Lịch sử thay đổi database schema
 ```
 
@@ -261,8 +305,10 @@ PayrollPeriod (Kỳ lương)
 └─── Payroll (Bản ghi lương từng nhân viên) [1 kỳ có nhiều nhân viên]
       │  PayrollID (PK)
       │  EmployeeID (ID nhân viên từ HR Service)
-      │  BaseSalary, WorkingDays, StandardWorkingDay
-      │  TotalAllowance, TotalPayCut
+      │  BaseSalary, HourlyRate, WorkingDays, StandardWorkingDay
+      │  TotalWorkingHours, OTHours, OTMultiplier, OTPay
+      │  TotalProjectAllowance (snapshot từ Project API)
+      │  TotalAllowance (tổng phụ cấp ở lần tính gần nhất), TotalPayCut
       │  GrossSalary, NetSalary
       │  Status: draft → calculated → approved → paid
       │
@@ -307,6 +353,8 @@ Khi app khởi động, `PayrollDataSeeder` tự động tạo:
 | Phụ cấp trách nhiệm | fixed | 1,000,000 đ |
 | Làm thêm giờ (OT) | percentage | 1.5x |
 
+OT thực tế được tính riêng từ `OTHours × OTMultiplier` trong công thức lương; không cộng từ AllowanceDetail.
+
 **PayCutReason (Lý do khấu trừ):**
 | Tên | Loại tính | Tỷ lệ |
 |-----|-----------|-------|
@@ -319,9 +367,18 @@ Khi app khởi động, `PayrollDataSeeder` tự động tạo:
 ### 5.3 Công thức tính lương
 
 ```
-Lương thực tế (Prorated)  = BaseSalary × WorkingDays / StandardWorkingDay
-Lương gộp (Gross)         = Prorated + TotalAllowance
-Lương thực nhận (Net)     = Gross - TotalPayCut
+FULL_TIME:
+  ProratedSalary = BaseSalary × WorkingDays / StandardWorkingDay
+  OT hourly rate = BaseSalary / (StandardWorkingDay × 8)
+
+PART_TIME:
+  ProratedSalary = HourlyRate × TotalWorkingHours
+  OT hourly rate = HourlyRate
+
+OTPay          = OT hourly rate × OTHours × OTMultiplier
+TotalAllowance = tổng AllowanceDetail active + TotalProjectAllowance
+GrossSalary    = ProratedSalary + OTPay + TotalAllowance
+NetSalary      = GrossSalary - TotalPayCut
 ```
 
 ---
@@ -451,10 +508,10 @@ public class PayrollDbContext : DbContext, IApplicationDbContext
 
 ### Bước 6: Tạo Migration (Tạo schema database)
 
-```bash
-# Chạy trong thư mục Payroll.API
-dotnet ef migrations add InitialPayroll --project ../Payroll.Infrastructure
-dotnet ef database update
+```powershell
+# Chạy tại src\Payroll
+dotnet ef migrations add InitialPayroll --project .\Payroll.Infrastructure --startup-project .\Payroll.API
+dotnet ef database update --project .\Payroll.Infrastructure --startup-project .\Payroll.API
 ```
 
 ### Bước 7: Tạo Controllers (API Endpoints)
@@ -511,37 +568,77 @@ public static IServiceCollection AddInfrastructure(
     services.AddScoped<IApplicationDbContext>(
         provider => provider.GetRequiredService<PayrollDbContext>());
 
-    // Đăng ký HTTP client để gọi Attendance Service
-    services.AddHttpClient<IAttendanceServiceClient, AttendanceServiceClient>(
-        client => { client.BaseAddress = attendanceUri; });
+    // Đăng ký typed HTTP clients sau khi validate BaseUrl trong cấu hình.
+    // Payroll hiện đăng ký Attendance, HR và Project clients tại đây.
+    services.AddHttpClient<IAttendanceServiceClient, AttendanceServiceClient>(client =>
+    {
+        client.BaseAddress = attendanceUri;
+        client.Timeout = TimeSpan.FromSeconds(30);
+    });
+    services.AddHttpClient<IHRServiceClient, HRServiceClient>(client =>
+    {
+        client.BaseAddress = hrUri;
+        client.Timeout = TimeSpan.FromSeconds(30);
+    });
+    services.AddHttpClient<IProjectServiceClient, ProjectServiceClient>(client =>
+    {
+        client.BaseAddress = projectUri;
+        client.Timeout = TimeSpan.FromSeconds(30);
+    });
 
     return services;
 }
 ```
 
+Đây là đoạn rút gọn để minh họa đăng ký typed clients; cấu hình thật đọc và validate từng BaseUrl trước khi gọi `AddHttpClient`.
+
 ### Bước 9: Cấu hình Program.cs (Entry Point)
 
 ```csharp
-// Đọc .env file
-Env.Load(envPath);
-
+// Program.cs còn gọi FindEnvFile() và Env.Load(...) trước khi tạo builder.
 var builder = WebApplication.CreateBuilder(args);
-
-// Đăng ký các services
-builder.Services.AddApplication();        // ← Services từ Application layer
-builder.Services.AddInfrastructure(builder.Configuration); // ← DbContext, HTTP clients
-
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddControllers();
-builder.Services.AddOpenApi();            // ← Swagger
+builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-// Chạy seed data khi khởi động
-await PayrollDataSeeder.SeedAsync(context);
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+}
+
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<PayrollDbContext>();
+    await context.Database.MigrateAsync();
+    await PayrollDataSeeder.SeedAsync(context);
+}
 
 app.MapControllers();
 app.Run();
 ```
+
+### Bước 10: Tích hợp một service bên ngoài
+
+Payroll không đọc database của Project trực tiếp. Luồng chuẩn là HTTP client:
+
+1. Tạo response DTO chỉ chứa dữ liệu cần dùng trong `Application/DTOs/`.
+2. Tạo interface trong `Application/Interfaces/`, ví dụ `IProjectServiceClient`.
+3. Implement interface bằng `HttpClient` trong `Infrastructure/Services/`.
+4. Đăng ký typed client và kiểm tra BaseUrl trong Infrastructure DI.
+5. Đưa interface vào constructor của service nghiệp vụ; truyền `CancellationToken`, kiểm tra lỗi HTTP và dữ liệu trả về.
+6. Ghi BaseUrl vào `appsettings.Development.json` cho local; môi trường khác dùng biến môi trường.
+
+Ví dụ hiện tại: [ProjectServiceClient](../src/Payroll/Payroll.Infrastructure/Services/ProjectServiceClient.cs), [IProjectServiceClient](../src/Payroll/Payroll.Application/Interfaces/IProjectServiceClient.cs), [PayrollSalarySyncService](../src/Payroll/Payroll.Application/Services/PayrollSalarySync/PayrollSalarySyncService.cs). Client gọi Project API để lấy tổng theo nhân viên, sau đó service lưu snapshot `TotalProjectAllowance` trong payroll của kỳ. Nếu API lỗi thì đồng bộ thất bại rõ ràng, không tự coi khoản phụ cấp là 0.
+
+### Bước 11: Kiểm thử, nối UI và xác minh end-to-end
+
+- Unit test nghiệp vụ thuần (ví dụ công thức tính) trong `tests/Payroll.Application.Tests/`.
+- Với field mới, cập nhật Entity → mapping response DTO → WinForms DTO → cột/phiếu lương; kiểm tra UI không tự tính lại nghiệp vụ thuộc backend.
+- Build cả API và UI, chạy test, rồi mới thử request tới API phụ thuộc.
+- Kiểm tra API phụ thuộc bằng đúng URL trong cấu hình; không chạy đồng bộ thật nếu chưa xác nhận database và kỳ lương thử nghiệm.
 
 ---
 
@@ -566,10 +663,13 @@ Program.cs thực thi
     │
     ├── 4. Build app
     │
-    ├── 5. Chạy Database Seeder
+    ├── 5. Áp dụng migration, sau đó chạy Database Seeder
+    │       ├── Database.MigrateAsync() → cập nhật schema
     │       └── Tạo AllowanceTypes và PayCutReasons mặc định nếu chưa có
     │
-    └── 6. app.Run() → Lắng nghe HTTP requests (mặc định port 5178 hoặc 7073)
+    └── 6. app.Run() → lắng nghe HTTP requests
+            ├── http://localhost:5267
+            └── https://localhost:7043
 ```
 
 ### 7.2 Luồng xử lý một HTTP Request
@@ -653,7 +753,7 @@ BƯỚC 2: Tạo Bản Ghi Lương Cho Nhân Viên
 POST /api/payroll-management/periods/{payrollPeriodID}/payrolls
 Body: { "employeeIDs": ["guid1", "guid2", ...] }
 → Tạo Payroll records với status = "draft" cho từng nhân viên
-   (BaseSalary = 0, WorkingDays = 0 — sẽ cập nhật ở bước sau)
+   (các khoản lương và chấm công được điền ở bước đồng bộ)
 
         │
         ▼
@@ -680,22 +780,23 @@ POST /api/payroll-attendance/periods/{payrollPeriodID}/sync
         │
         ▼
 
-BƯỚC 5: Nhập Lương Cơ Bản (nếu chưa có)
-PUT /api/payroll-period-management/{payrollPeriodID}/update-status
-hoặc cập nhật BaseSalary trực tiếp vào từng payroll record
+BƯỚC 5: Đồng Bộ Lương HR và Phụ Cấp Dự Án
+POST /api/payroll-salary/periods/{payrollPeriodID}/sync
+→ Lấy BaseSalary/HourlyRate và loại nhân viên từ HR API
+→ Lấy tổng thu nhập timesheet đã duyệt trong kỳ từ Project API
+→ Lưu TotalProjectAllowance vào Payroll theo từng EmployeeID
+   ⚠️ Hai API HR và Project phải hoạt động; lỗi được trả về để tránh lưu đồng bộ dở dang.
 
         │
         ▼
 
 BƯỚC 6: Tính Lương
-POST /api/payrolls/{payrollID}/calculate   (theo từng nhân viên)
-→ Lấy Payroll record (kèm Allowances, PayCuts)
-→ Tổng hợp TotalAllowance từ các AllowanceDetail active
+POST /api/payroll-calculation/{payrollID}/calculate   (theo từng nhân viên)
+→ Lấy Payroll record cùng Allowances, PayCuts và TotalProjectAllowance
+→ TotalAllowance = tổng AllowanceDetail active + TotalProjectAllowance
 → Tổng hợp TotalPayCut từ các PayCutDetail active
-→ Tính:
-   ProratedSalary = BaseSalary × WorkingDays / StandardWorkingDay
-   GrossSalary    = ProratedSalary + TotalAllowance
-   NetSalary      = GrossSalary - TotalPayCut
+→ Tính ProratedSalary, OTPay, GrossSalary và NetSalary theo loại nhân viên
+   (xem công thức ở mục 5.3)
 → Cập nhật status = "calculated"
 
         │
@@ -764,6 +865,7 @@ Quy tắc chuyển trạng thái:
 
 | Method | URL | Mô tả |
 |--------|-----|-------|
+| GET | `/api/payroll-periods` | Danh sách kỳ lương |
 | POST | `/api/payroll-periods` | Tạo kỳ lương mới |
 
 ### Payroll Management (Quản lý bản ghi lương)
@@ -785,11 +887,17 @@ Quy tắc chuyển trạng thái:
 |--------|-----|-------|
 | POST | `/api/payroll-attendance/periods/{payrollPeriodID}/sync` | Đồng bộ dữ liệu chấm công |
 
+### Payroll Salary Sync (Đồng bộ lương HR và phụ cấp Project)
+
+| Method | URL | Mô tả |
+|--------|-----|-------|
+| POST | `/api/payroll-salary/periods/{payrollPeriodID}/sync` | Lấy lương từ HR và tổng phụ cấp dự án từ Project |
+
 ### Payroll Calculation (Tính lương)
 
 | Method | URL | Mô tả |
 |--------|-----|-------|
-| POST | `/api/payrolls/{payrollID}/calculate` | Tính lương cho 1 nhân viên |
+| POST | `/api/payroll-calculation/{payrollID}/calculate` | Tính lương cho 1 nhân viên |
 
 ### Payroll Approval (Phê duyệt)
 
@@ -824,6 +932,8 @@ Quy tắc chuyển trạng thái:
 | GET | `/api/payslips/{payrollID}` | Phiếu lương của 1 nhân viên |
 | GET | `/api/payslips/periods/{periodID}` | Tất cả phiếu lương của kỳ |
 
+OpenAPI JSON (chỉ bật trong Development): `GET /openapi/v1.json`.
+
 ---
 
 ## 10. Hướng dẫn setup và chạy dự án
@@ -839,27 +949,29 @@ Quy tắc chuyển trạng thái:
 
 ### Bước 1: Clone dự án
 
-```bash
+```powershell
 git clone <repository-url>
-cd HRM
+Set-Location HRM
 ```
 
 ### Bước 2: Tạo file .env
 
 Tạo file `.env` ở thư mục gốc (copy từ `.env.example`):
 
-```bash
-cp .env.example .env
+```powershell
+Copy-Item .env.example .env
 ```
 
 Chỉnh sửa `.env` với thông tin database của bạn:
 
 ```env
 ConnectionStrings__PayrollConnection="Host=localhost;Port=5432;Database=Payroll;Username=postgres;Password=YOUR_PASSWORD"
-AttendanceService__BaseUrl="http://localhost:5080/"
+AttendanceService__BaseUrl="http://localhost:5231/"
+HRService__BaseUrl="http://localhost:5012/"
+ProjectService__BaseUrl="http://localhost:5032/"
 ```
 
-> **Lưu ý:** Thay `YOUR_PASSWORD` bằng mật khẩu PostgreSQL thực tế của bạn.
+> **Lưu ý:** Thay `YOUR_PASSWORD` bằng mật khẩu PostgreSQL thực tế của bạn. Ba URL service phía trên đã có mặc định trong `appsettings.Development.json`; chỉ cần khai báo trong `.env` khi muốn ghi đè.
 
 ### Bước 3: Tạo database PostgreSQL
 
@@ -872,10 +984,10 @@ CREATE DATABASE "Payroll";
 
 ```bash
 # Di chuyển vào thư mục Payroll.API
-cd src/Payroll/Payroll.API
+Set-Location src\Payroll\Payroll.API
 
 # Chạy migration
-dotnet ef database update --project ../Payroll.Infrastructure
+dotnet ef database update --project ..\Payroll.Infrastructure
 ```
 
 > **Nếu chưa cài EF CLI:**
@@ -886,7 +998,7 @@ dotnet ef database update --project ../Payroll.Infrastructure
 ### Bước 5: Khởi động Payroll Service
 
 ```bash
-# Vẫn trong thư mục src/Payroll/Payroll.API
+# Vẫn trong thư mục src\Payroll\Payroll.API
 dotnet run
 ```
 
@@ -894,8 +1006,8 @@ Bạn sẽ thấy:
 
 ```
 info: Microsoft.Hosting.Lifetime[14]
-      Now listening on: http://localhost:5178
-      Now listening on: https://localhost:7073
+      Now listening on: http://localhost:5267
+      Now listening on: https://localhost:7043
 ```
 
 ### Bước 6: Kiểm tra hoạt động
@@ -904,17 +1016,17 @@ Mở trình duyệt hoặc dùng `curl`:
 
 ```bash
 # Kiểm tra kết nối database
-curl http://localhost:5178/health/database
+curl.exe http://localhost:5267/health/database
 
-# Xem API documentation (Swagger)
-# Mở: https://localhost:7073/openapi/v1.json
+# Lấy tài liệu OpenAPI (JSON)
+curl.exe https://localhost:7043/openapi/v1.json
 ```
 
 ### Bước 7: Test tạo kỳ lương đầu tiên
 
 ```bash
-curl -X POST http://localhost:5178/api/payroll-periods \
-  -H "Content-Type: application/json" \
+curl.exe -X POST http://localhost:5267/api/payroll-periods `
+  -H "Content-Type: application/json" `
   -d '{"year": 2026, "month": 11}'
 ```
 
@@ -1006,17 +1118,17 @@ public class PayrollReportController : ControllerBase
 ### Bước 6: Test
 
 ```bash
-curl "http://localhost:5178/api/payroll-reports/departments/{departmentID}?periodID={periodID}"
+curl.exe "http://localhost:5267/api/payroll-reports/departments/{departmentID}?periodID={periodID}"
 ```
 
 ---
 
 ## 12. Các vấn đề thường gặp
 
-### ❌ Lỗi: "Cannot find .env in the current directory"
+### ❌ Lỗi: "Cannot find .env in the current directory or its parent directories"
 
-**Nguyên nhân:** Chạy `dotnet run` từ thư mục sai  
-**Giải pháp:** Chạy từ thư mục chứa `Payroll.API.csproj` hoặc đảm bảo file `.env` tồn tại ở thư mục gốc dự án
+**Nguyên nhân:** API tìm `.env` từ current directory và thư mục chứa ứng dụng, đi ngược lên các thư mục cha nhưng không tìm thấy.
+**Giải pháp:** Tạo `.env` trong thư mục gốc repository (copy `.env.example`) hoặc kiểm tra thư mục làm việc của tiến trình.
 
 ```bash
 cd src/Payroll/Payroll.API
@@ -1034,12 +1146,13 @@ ConnectionStrings__PayrollConnection="Host=localhost;Port=5432;Database=Payroll;
 
 ### ❌ Lỗi: "AttendanceService:BaseUrl is missing"
 
-**Nguyên nhân:** Thiếu cấu hình URL của Attendance Service  
-**Giải pháp:** Thêm vào `.env`:
+**Nguyên nhân:** Thiếu cấu hình URL của Attendance Service.
+**Giải pháp:** Mặc định Development là `http://localhost:5231/`; nếu service dùng cổng khác, cập nhật `AttendanceService__BaseUrl` trong `.env` hoặc `AttendanceService:BaseUrl` trong appsettings tương ứng.
 
-```env
-AttendanceService__BaseUrl="http://localhost:5080/"
-```
+### ❌ Lỗi đồng bộ lương: HR API hoặc Project API không truy cập được
+
+**Nguyên nhân:** Payroll cần cả HR API để lấy lương/loại nhân viên và Project API để lấy tổng timesheet đã duyệt. Mặc định Development: HR `http://localhost:5012/`, Project `http://localhost:5032/`.
+**Giải pháp:** Khởi động đúng các API, kiểm tra `HRService:BaseUrl` và `ProjectService:BaseUrl`, rồi thử đồng bộ lại. Lỗi phải được xử lý trước khi người dùng tính lương; không thay BaseUrl bằng URL giả hoặc xem lỗi là phụ cấp bằng 0.
 
 ### ❌ Lỗi: "Only draft payroll can be calculated"
 
@@ -1063,20 +1176,124 @@ Xem field `status`. Nếu không phải `"draft"` thì không thể tính lại.
 **Giải pháp:** Mỗi tháng chỉ tạo 1 kỳ lương. Dùng API query để kiểm tra:
 
 ```bash
-GET /api/payrolls/periods/{periodID}
+GET /api/payroll-periods
 ```
 
 ### ❌ Lỗi migration: "relation already exists"
 
-**Nguyên nhân:** Database đã có bảng nhưng migration chưa được đánh dấu là đã chạy  
-**Giải pháp:**
+**Nguyên nhân:** Schema thực tế không khớp lịch sử migration.
+**Giải pháp:** Kiểm tra log, danh sách migration và bảng `__EFMigrationsHistory`; sao lưu dữ liệu trước khi sửa schema. Không xóa database dùng chung hoặc có dữ liệu cần giữ chỉ để xử lý lỗi này.
 
-```bash
-dotnet ef database drop --project ../Payroll.Infrastructure
-dotnet ef database update --project ../Payroll.Infrastructure
+```powershell
+Set-Location src\Payroll\Payroll.API
+dotnet ef migrations list --project ..\Payroll.Infrastructure
 ```
 
-> ⚠️ **CẢNH BÁO:** Lệnh `database drop` xóa toàn bộ dữ liệu. Chỉ dùng trong môi trường development.
+---
+
+## 13. Tạo một microservice mới từ con số 0
+
+Phần này là quy trình tham khảo để tạo service mới theo cấu trúc Payroll. Hãy thay `NewService` bằng tên nghiệp vụ phù hợp; không sao chép nguyên các entity hay công thức của Payroll.
+
+### Bước 1: Xác định ranh giới và hợp đồng
+
+Trước khi tạo project, ghi rõ:
+
+- Service mới sở hữu nghiệp vụ và dữ liệu nào; service nào là nguồn dữ liệu chuẩn.
+- Entity, trạng thái và quy tắc nghiệp vụ cốt lõi.
+- Ai gọi API, các endpoint cần có, request/response và lỗi nghiệp vụ.
+- Service mới có cần gọi service khác không; chỉ lấy dữ liệu qua API, không truy cập database của service khác.
+- Quy tắc xác thực/phân quyền, log, dữ liệu nhạy cảm và các trường hợp cần giao dịch/đồng bộ.
+
+Chốt API contract và boundary trước khi triển khai để tránh trùng lặp dữ liệu, vòng phụ thuộc hoặc UI tự quyết định nghiệp vụ.
+
+### Bước 2: Tạo projects theo Clean Architecture
+
+Tạo solution/project dưới `src\NewService\` theo convention của repository:
+
+Chạy từ thư mục gốc repository; các template sẽ dùng SDK/TargetFramework đang cài, nên đối chiếu `.csproj` hiện có trước khi giữ kết quả:
+
+```powershell
+dotnet new classlib -n NewService.Domain -o src\NewService\NewService.Domain
+dotnet new classlib -n NewService.Application -o src\NewService\NewService.Application
+dotnet new classlib -n NewService.Infrastructure -o src\NewService\NewService.Infrastructure
+dotnet new webapi -n NewService.API -o src\NewService\NewService.API --use-controllers
+dotnet new xunit -n NewService.Tests -o tests\NewService.Tests
+
+dotnet sln .\HRM.slnx add `
+  .\src\NewService\NewService.Domain\NewService.Domain.csproj `
+  .\src\NewService\NewService.Application\NewService.Application.csproj `
+  .\src\NewService\NewService.Infrastructure\NewService.Infrastructure.csproj `
+  .\src\NewService\NewService.API\NewService.API.csproj `
+  .\tests\NewService.Tests\NewService.Tests.csproj
+
+dotnet add .\src\NewService\NewService.Application\NewService.Application.csproj reference `
+  .\src\NewService\NewService.Domain\NewService.Domain.csproj
+dotnet add .\src\NewService\NewService.Infrastructure\NewService.Infrastructure.csproj reference `
+  .\src\NewService\NewService.Application\NewService.Application.csproj `
+  .\src\NewService\NewService.Domain\NewService.Domain.csproj
+dotnet add .\src\NewService\NewService.API\NewService.API.csproj reference `
+  .\src\NewService\NewService.Application\NewService.Application.csproj `
+  .\src\NewService\NewService.Infrastructure\NewService.Infrastructure.csproj
+dotnet add .\tests\NewService.Tests\NewService.Tests.csproj reference `
+  .\src\NewService\NewService.Application\NewService.Application.csproj
+```
+
+Sau khi scaffolding, điều chỉnh namespace, TargetFramework, nullable settings và packages theo các project hiện có; thêm EF Core/provider phù hợp cho Infrastructure và Design-time package cho migration. Không tham chiếu Payroll.Application để tái sử dụng code nghiệp vụ giữa các service.
+
+```text
+NewService.Domain          Entity, enum, quy tắc thuần
+NewService.Application     DTO, interface, use-case/service nghiệp vụ
+NewService.Infrastructure  DbContext, EF mapping/migration, repository và typed HTTP clients
+NewService.API             Controllers, cấu hình DI, middleware và entry point
+```
+
+Tạo test project riêng dưới `tests\`. Dùng cùng TargetFramework, nullable settings, package versions và naming convention của các service hiện có; kiểm tra `global.json`, `.csproj` và cấu hình chung trước khi scaffolding. Giữ chiều phụ thuộc: Application → Domain; Infrastructure → Application/Domain; API → Application/Infrastructure. Domain/Application không phụ thuộc ASP.NET, EF Core hay UI.
+
+### Bước 3: Xây dựng Domain và schema
+
+1. Tạo entity nhỏ nhất đáp ứng nghiệp vụ; khai báo khóa, quan hệ, giá trị tiền và trạng thái rõ ràng.
+2. Tạo `IApplicationDbContext` ở Application nếu service dùng cùng pattern.
+3. Implement `DbContext`/Fluent configuration ở Infrastructure; cấu hình precision cho decimal, khóa và index.
+4. Đăng ký DbContext và các dịch vụ Infrastructure trong extension DI.
+5. Sinh migration, xem lại migration để xác nhận không xóa/đổi dữ liệu ngoài dự kiến, rồi build.
+6. Cấu hình chuỗi kết nối qua biến môi trường hoặc secret store; không ghi mật khẩu thật vào source control.
+
+Mỗi microservice nên quản lý database/schema của chính nó. Không thêm foreign key trực tiếp sang database của service khác; dùng ID ngoài như giá trị tham chiếu và lấy thông tin cần thiết qua API.
+
+### Bước 4: Tạo use-case và API
+
+1. Định nghĩa request/response DTO và interface nghiệp vụ trong Application.
+2. Implement nghiệp vụ, validation và truy cập dữ liệu; truyền `CancellationToken` qua các thao tác async.
+3. Tạo controller mỏng trong API: nhận/validate request, gọi use-case, trả HTTP status phù hợp.
+4. Đăng ký Application/Infrastructure qua DI; cấu hình OpenAPI, health check, logging và error handling theo convention hiện có.
+5. Dùng HTTP status/error response nhất quán; không trả thành công giả khi dependency thất bại.
+
+### Bước 5: Tích hợp service khác nếu cần
+
+- Tạo interface và response DTO trong Application.
+- Tạo typed `HttpClient` ở Infrastructure, cấu hình timeout/BaseUrl và kiểm tra status code/response.
+- Khai báo BaseUrl theo environment (`appsettings.Development.json` cho local, environment variables/secrets cho triển khai).
+- Xử lý timeout, lỗi HTTP, response rỗng/sai định dạng và hủy request một cách tường minh.
+- Viết unit test nghiệp vụ với dependency giả lập; kiểm tra client qua integration test có kiểm soát nếu phù hợp.
+
+Không thêm fallback mặc định làm dữ liệu sai thành công, đặc biệt với tiền, trạng thái phê duyệt và dữ liệu đồng bộ.
+
+### Bước 6: Nối UI và cấu hình chạy
+
+Nếu có WinForms/Web UI, tạo API client riêng trong UI, dùng DTO tương ứng và hiển thị lỗi API rõ ràng. Cập nhật form/control/Designer khi thêm field; không gọi database trực tiếp và không nhân đôi công thức nghiệp vụ ở UI.
+
+Thiết lập connection string, BaseUrl, cổng và môi trường cho local; thêm service vào solution/compose/launch profiles hoặc cấu hình chạy hiện có khi cần. Kiểm tra migration và quy trình khởi động để không có service phụ thuộc bị bỏ quên.
+
+### Bước 7: Kiểm thử và bàn giao
+
+1. Viết unit tests cho quy tắc nghiệp vụ và edge cases; integration tests cho DB/API khi cần.
+2. Chạy test project liên quan, build service và UI có thay đổi.
+3. Chạy service và xác minh health endpoint, OpenAPI và endpoint chính bằng dữ liệu thử nghiệm.
+4. Kiểm tra cấu hình môi trường, migration, log lỗi và khả năng chạy khi dependency không sẵn sàng.
+5. Cập nhật tài liệu: boundary, sơ đồ luồng, endpoints, cấu hình, cách chạy/test, migration và troubleshooting.
+
+Checklist hoàn tất: service có owner dữ liệu rõ ràng; migration kiểm tra được; lỗi không bị nuốt; API contract có tài liệu; test/build đạt; cấu hình không chứa secret; UI hiển thị lỗi đúng; có hướng dẫn chạy cho người mới.
 
 ---
 

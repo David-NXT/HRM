@@ -255,13 +255,16 @@ public static class ApiConfig
     public const string AttendanceServiceUrl =
         "http://localhost:5231/";
 
-    // Bổ sung URL theo cấu hình thực tế
-    // public const string HrServiceUrl = "...";
-    // public const string PayrollServiceUrl = "...";
+    public const string PayrollServiceUrl =
+        "http://localhost:5267/";
 }
 ```
 
 Không tự đặt port cho các service chưa xác minh.
+
+`Payroll.API` hiện chạy mặc định tại `http://localhost:5267/` theo
+`src/Payroll/Payroll.API/Properties/launchSettings.json`. Có thể ghi đè địa chỉ
+này bằng biến môi trường `Services__Payroll__BaseUrl` khi chạy WinForms.
 
 ### 4.2. ServiceEndpoints.cs
 

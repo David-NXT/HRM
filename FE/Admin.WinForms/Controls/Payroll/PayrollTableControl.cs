@@ -26,7 +26,6 @@ namespace Admin.WinForms.Controls.Payroll
             };
 
             button_NewPeriod.Click += async (s, e) => await OnNewPeriodAsync();
-            button_SyncAttendance.Click += async (s, e) => await OnSyncAttendanceAsync();
             button_SyncSalary.Click += async (s, e) => await OnSyncSalaryAsync();
             button_CreatePayrolls.Click += async (s, e) => await OnCreatePayrollsAsync();
             button_CalculateAll.Click += async (s, e) => await OnCalculateAllAsync();
@@ -44,20 +43,6 @@ namespace Admin.WinForms.Controls.Payroll
             {
                 _periods = await Program.PayrollApi.GetPeriodsAsync();
                 comboBox_Periods.Items.Clear();
-
-                if (_periods.Count == 0)
-                {
-                    // Tự động seed hoặc mở kỳ mẫu tháng hiện tại nếu chưa có
-                    try
-                    {
-                        await Program.PayrollApi.SeedSampleDataAsync();
-                        var current = await Program.PayrollApi.CreatePeriodAsync(2026, 11);
-                        if (current != null) _periods.Add(current);
-                    }
-                    catch { }
-
-                    _periods = await Program.PayrollApi.GetPeriodsAsync();
-                }
 
                 foreach (var p in _periods)
                 {
@@ -111,6 +96,7 @@ namespace Admin.WinForms.Controls.Payroll
                     item.SubItems.Add(p.BaseSalary.ToString("#,##0 đ"));
                     item.SubItems.Add(p.StandardWorkingDay.ToString("0.##"));
                     item.SubItems.Add(p.WorkingDays.ToString("0.##"));
+                    item.SubItems.Add(p.TotalProjectAllowance.ToString("#,##0 đ"));
                     item.SubItems.Add(p.TotalAllowance.ToString("#,##0 đ"));
                     item.SubItems.Add(p.TotalPayCut.ToString("#,##0 đ"));
                     item.SubItems.Add(p.GrossSalary.ToString("#,##0 đ"));
@@ -211,6 +197,11 @@ namespace Admin.WinForms.Controls.Payroll
             }
         }
 
+        private async void button_SyncAttendance_Click(object? sender, EventArgs e)
+        {
+            await OnSyncAttendanceAsync();
+        }
+
         private async Task OnSyncAttendanceAsync()
         {
             if (_selectedPeriod == null)
@@ -250,7 +241,7 @@ namespace Admin.WinForms.Controls.Payroll
             try
             {
                 var count = await Program.PayrollApi.SyncSalaryAsync(_selectedPeriod.PayrollPeriodID);
-                MessageBox.Show($"Đồng bộ mức lương cơ bản thành công! Đã cập nhật lương cho {count} nhân sự.", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show($"Đồng bộ lương cơ bản và phụ cấp dự án thành công! Đã cập nhật lương cho {count} nhân sự.", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 await LoadPayrollsAsync();
             }
             catch (Exception ex)
@@ -275,14 +266,12 @@ namespace Admin.WinForms.Controls.Payroll
 
                 if (empIds.Count == 0)
                 {
-                    // Danh sách nhân viên mẫu nếu DB rỗng
-                    empIds = new List<Guid>
-                    {
-                        Guid.Parse("11111111-1111-1111-1111-111111111111"),
-                        Guid.Parse("22222222-2222-2222-2222-222222222222"),
-                        Guid.Parse("33333333-3333-3333-3333-333333333333"),
-                        Guid.Parse("44444444-4444-4444-4444-444444444444")
-                    };
+                    MessageBox.Show(
+                        "Không tìm thấy nhân viên trong dữ liệu chấm công. Hãy kiểm tra Attendance API trước khi tạo bảng lương.",
+                        "Không có nhân viên",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    return;
                 }
 
                 await Program.PayrollApi.CreatePayrollsAsync(_selectedPeriod.PayrollPeriodID, empIds);
@@ -311,6 +300,7 @@ namespace Admin.WinForms.Controls.Payroll
             }
 
             int success = 0;
+            var failures = new List<string>();
             foreach (var p in payrolls)
             {
                 try
@@ -318,10 +308,23 @@ namespace Admin.WinForms.Controls.Payroll
                     await Program.PayrollApi.CalculatePayrollAsync(p.PayrollID);
                     success++;
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    failures.Add($"{p.EmployeeCode ?? p.EmployeeID.ToString()}: {ex.Message}");
+                }
             }
 
-            MessageBox.Show($"Hoàn tất tính toán bảng lương cho {success}/{payrolls.Count} nhân viên!", "Kết quả tính toán", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            var resultMessage = $"Đã tính lương thành công {success}/{payrolls.Count} nhân viên.";
+            if (failures.Count > 0)
+            {
+                resultMessage += $"{Environment.NewLine}{Environment.NewLine}Lỗi:{Environment.NewLine}{string.Join(Environment.NewLine, failures)}";
+            }
+
+            MessageBox.Show(
+                resultMessage,
+                "Kết quả tính toán",
+                MessageBoxButtons.OK,
+                failures.Count == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
             await LoadPayrollsAsync();
         }
 
