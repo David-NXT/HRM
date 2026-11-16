@@ -75,7 +75,8 @@ public class PayrollCalculationService
             payroll.OTHours.Value,
             payroll.OTMultiplier.Value,
             totalAllowance,
-            totalPayCut);
+            totalPayCut,
+            payroll.TotalProjectAllowance);
 
         // 7. Update payroll.
         payroll.TotalAllowance = result.TotalAllowance;
@@ -111,6 +112,7 @@ public class PayrollCalculationService
             OTPay = result.OTPay,
 
             TotalAllowance = result.TotalAllowance,
+            TotalProjectAllowance = payroll.TotalProjectAllowance,
             TotalPayCut = result.TotalPayCut,
 
             GrossSalary = result.GrossSalary,

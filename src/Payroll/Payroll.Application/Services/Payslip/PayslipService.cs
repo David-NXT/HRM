@@ -54,6 +54,7 @@ public class PayslipService
             StandardWorkingDay = payroll.StandardWorkingDay,
 
             TotalAllowance = payroll.TotalAllowance,
+            TotalProjectAllowance = payroll.TotalProjectAllowance,
             TotalPayCut = payroll.TotalPayCut,
             GrossSalary = payroll.GrossSalary,
             NetSalary = payroll.NetSalary,

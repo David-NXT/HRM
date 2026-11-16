@@ -15,6 +15,7 @@ public class Payroll
     public decimal OTPay { get; set; }
     public decimal StandardWorkingDay { get; set; } = 22m;
     public decimal TotalAllowance { get; set; }
+    public decimal TotalProjectAllowance { get; set; }
     public decimal TotalPayCut { get; set; }
     public decimal GrossSalary { get; set; }
     public decimal NetSalary { get; set; }

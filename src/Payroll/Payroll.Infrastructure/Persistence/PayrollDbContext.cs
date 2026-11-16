@@ -94,6 +94,10 @@ public class PayrollDbContext : DbContext, IApplicationDbContext
             entity.Property(p => p.TotalAllowance)
                 .HasPrecision(18, 2);
 
+            entity.Property(p => p.TotalProjectAllowance)
+                .HasPrecision(18, 2)
+                .HasDefaultValue(0m);
+
             entity.Property(p => p.TotalPayCut)
                 .HasPrecision(18, 2);
 
