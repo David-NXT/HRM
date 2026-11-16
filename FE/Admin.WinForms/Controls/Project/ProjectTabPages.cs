@@ -83,11 +83,11 @@ internal abstract class ProjectPageControl : UserControl
         }
     }
 
-    protected async Task<EmployeeDirectoryPageDto?> TryGetEmployeeDirectoryAsync(CancellationToken cancellationToken)
+    protected async Task<List<EmployeeDirectoryDto>?> TryGetEmployeeDirectoryAsync(CancellationToken cancellationToken)
     {
         try
         {
-            return await Api.GetEmployeesAsync(cancellationToken);
+            return await Api.GetAllEmployeesAsync(cancellationToken);
         }
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.ServiceUnavailable)
         {
@@ -245,7 +245,8 @@ internal sealed class ProjectsPageControl : ProjectPageControl
     private void BuildLayout()
     {
         ConfigureProjectGrid();
-        ProjectUi.AddColumn(_membersGrid, "Employee", "Employee ID", 1F);
+        ProjectUi.AddColumn(_membersGrid, "EmployeeId", "Employee ID", 1F);
+        ProjectUi.AddColumn(_membersGrid, "EmployeeCode", "Employee Code", 1F);
         ProjectUi.AddColumn(_membersGrid, "Name", "Full Name", 1.8F);
         ProjectUi.AddColumn(_membersGrid, "Role", "Project Role", 1.5F);
         ProjectUi.AddColumn(_membersGrid, "HourlyRate", "Hourly Rate", 1F);
@@ -452,7 +453,7 @@ internal sealed class ProjectsPageControl : ProjectPageControl
             await LoadSelectedProjectMembersAsync(token);
             if (_employeeDirectoryUnavailable)
             {
-                StatusLabel.Text = $"Showing {_projectsGrid.Rows.Count} of {_projects.Count} projects. HR employee names are unavailable; employee IDs are shown.";
+                StatusLabel.Text = $"Showing {_projectsGrid.Rows.Count} of {_projects.Count} projects. HR employee codes and names are unavailable; employee IDs are shown.";
                 StatusLabel.ForeColor = Color.FromArgb(180, 115, 0);
             }
             else
@@ -505,8 +506,8 @@ internal sealed class ProjectsPageControl : ProjectPageControl
         var employeePage = await TryGetEmployeeDirectoryAsync(token);
         _members = members;
         _employeeDirectoryUnavailable = employeePage is null;
-        _employeeNames = employeePage?.Items.ToDictionary(employee => employee.EmployeeId, employee => employee.FullName) ?? [];
-        _employeeCodes = employeePage?.Items.ToDictionary(employee => employee.EmployeeId, employee => employee.EmployeeCode) ?? [];
+        _employeeNames = employeePage?.ToDictionary(employee => employee.EmployeeId, employee => employee.FullName) ?? [];
+        _employeeCodes = employeePage?.ToDictionary(employee => employee.EmployeeId, employee => employee.EmployeeCode) ?? [];
         RenderMembers();
     }
 
@@ -551,7 +552,8 @@ internal sealed class ProjectsPageControl : ProjectPageControl
         foreach (var member in _members)
         {
             var row = _membersGrid.Rows.Add(
-                _employeeCodes.GetValueOrDefault(member.EmployeeId, ProjectUi.ShortId(member.EmployeeId)),
+                ProjectUi.ShortId(member.EmployeeId),
+                _employeeCodes.GetValueOrDefault(member.EmployeeId, "—"),
                 _employeeNames.GetValueOrDefault(member.EmployeeId, "—"),
                 member.RoleName,
                 _hourlyRates.TryGetValue(member.ProjectMemberId, out var hourlyRate)
@@ -575,6 +577,8 @@ internal sealed class TasksPageControl : ProjectPageControl
     private List<TaskDto> _tasks = [];
     private List<TimesheetDto> _timesheets = [];
     private List<HourlyRateDto> _hourlyRates = [];
+    private Dictionary<Guid, EmployeeDirectoryDto> _employeeDirectory = [];
+    private bool _employeeDirectoryUnavailable;
     private bool _updatingProjects;
 
     internal TasksPageControl(ProjectApiClient api) : base(api)
@@ -600,7 +604,8 @@ internal sealed class TasksPageControl : ProjectPageControl
         ProjectUi.AddColumn(_tasksGrid, "Due", "Due Date", 1F);
         ProjectUi.AddColumn(_tasksGrid, "Status", "Status", 1F);
         ProjectUi.AddColumn(_tasksGrid, "Priority", "Priority", 0.9F);
-        ProjectUi.AddColumn(_timesheetsGrid, "Employee", "Employee ID", 0.8F);
+        ProjectUi.AddColumn(_timesheetsGrid, "EmployeeId", "Employee ID", 0.8F);
+        ProjectUi.AddColumn(_timesheetsGrid, "EmployeeCode", "Employee Code", 1F);
         ProjectUi.AddColumn(_timesheetsGrid, "Name", "Employee", 1.3F);
         ProjectUi.AddColumn(_timesheetsGrid, "Date", "Work Date", 1F);
         ProjectUi.AddColumn(_timesheetsGrid, "HourlyRate", "Hourly Rate on Date", 1.2F);
@@ -686,6 +691,8 @@ internal sealed class TasksPageControl : ProjectPageControl
             _tasks = [];
             _timesheets = [];
             _hourlyRates = [];
+            _employeeDirectory = [];
+            _employeeDirectoryUnavailable = false;
             RenderTasks();
             RenderTimesheets();
             return;
@@ -698,10 +705,15 @@ internal sealed class TasksPageControl : ProjectPageControl
         _tasks = (await tasksRequest).Where(task => task.ProjectId == projectId.Value).ToList();
         _timesheets = await timesheetsRequest;
         _hourlyRates = await ratesRequest;
+        var employees = await TryGetEmployeeDirectoryAsync(token);
+        _employeeDirectory = employees?.ToDictionary(employee => employee.EmployeeId) ?? [];
+        _employeeDirectoryUnavailable = employees is null;
         RenderTasks();
         RenderTimesheets();
         StatusLabel.ForeColor = ProjectUi.MutedText;
-        StatusLabel.Text = $"Showing {_tasks.Count} tasks.";
+        StatusLabel.Text = _employeeDirectoryUnavailable
+            ? $"Showing {_tasks.Count} tasks. HR employee codes are unavailable; employee IDs are shown."
+            : $"Showing {_tasks.Count} tasks.";
     }
 
     private void RenderTasks()
@@ -737,7 +749,8 @@ internal sealed class TasksPageControl : ProjectPageControl
         {
             var row = _timesheetsGrid.Rows.Add(
                 ProjectUi.ShortId(sheet.EmployeeId),
-                ProjectUi.ShortId(sheet.EmployeeId),
+                _employeeDirectory.GetValueOrDefault(sheet.EmployeeId)?.EmployeeCode ?? "—",
+                _employeeDirectory.GetValueOrDefault(sheet.EmployeeId)?.FullName ?? "—",
                 ProjectUi.Date(sheet.WorkDate),
                 HourlyRateAt(sheet),
                 sheet.HoursWorked.ToString("0.##"),
@@ -898,6 +911,8 @@ internal sealed class TimesheetApprovalPageControl : ProjectPageControl
     private readonly Label _detailLabel = ProjectUi.CreateLabel("Select a timesheet to view its details.");
     private List<ProjectDto> _projects = [];
     private List<TimesheetDto> _timesheets = [];
+    private Dictionary<Guid, EmployeeDirectoryDto> _employeeDirectory = [];
+    private bool _employeeDirectoryUnavailable;
     private bool _updatingFilters;
 
     internal TimesheetApprovalPageControl(ProjectApiClient api) : base(api)
@@ -924,7 +939,8 @@ internal sealed class TimesheetApprovalPageControl : ProjectPageControl
 
     private void BuildLayout()
     {
-        ProjectUi.AddColumn(_grid, "Employee", "Employee ID", 0.8F);
+        ProjectUi.AddColumn(_grid, "EmployeeId", "Employee ID", 0.8F);
+        ProjectUi.AddColumn(_grid, "EmployeeCode", "Employee Code", 1F);
         ProjectUi.AddColumn(_grid, "Name", "Employee", 1.3F);
         ProjectUi.AddColumn(_grid, "Date", "Work Date", 1F);
         ProjectUi.AddColumn(_grid, "Project", "Project", 1.7F);
@@ -1024,9 +1040,14 @@ internal sealed class TimesheetApprovalPageControl : ProjectPageControl
             _ => null
         };
         _timesheets = await Api.GetTimesheetsAsync(SelectedProjectId(_projectCombo), status, token);
+        var employees = await TryGetEmployeeDirectoryAsync(token);
+        _employeeDirectory = employees?.ToDictionary(employee => employee.EmployeeId) ?? [];
+        _employeeDirectoryUnavailable = employees is null;
         RenderTimesheets();
         StatusLabel.ForeColor = ProjectUi.MutedText;
-        StatusLabel.Text = $"Showing {_grid.Rows.Count} timesheets.";
+        StatusLabel.Text = _employeeDirectoryUnavailable
+            ? $"Showing {_grid.Rows.Count} timesheets. HR employee codes are unavailable; employee IDs are shown."
+            : $"Showing {_grid.Rows.Count} timesheets.";
     }
 
     private void RenderTimesheets()
@@ -1036,11 +1057,14 @@ internal sealed class TimesheetApprovalPageControl : ProjectPageControl
         foreach (var sheet in _timesheets.Where(sheet =>
             search.Length == 0
             || sheet.EmployeeId.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)
-            || ProjectUi.ShortId(sheet.EmployeeId).Contains(search, StringComparison.OrdinalIgnoreCase)))
+            || ProjectUi.ShortId(sheet.EmployeeId).Contains(search, StringComparison.OrdinalIgnoreCase)
+            || _employeeDirectory.GetValueOrDefault(sheet.EmployeeId)?.EmployeeCode.Contains(search, StringComparison.OrdinalIgnoreCase) == true
+            || _employeeDirectory.GetValueOrDefault(sheet.EmployeeId)?.FullName.Contains(search, StringComparison.OrdinalIgnoreCase) == true))
         {
             var row = _grid.Rows.Add(
                 ProjectUi.ShortId(sheet.EmployeeId),
-                ProjectUi.ShortId(sheet.EmployeeId),
+                _employeeDirectory.GetValueOrDefault(sheet.EmployeeId)?.EmployeeCode ?? "—",
+                _employeeDirectory.GetValueOrDefault(sheet.EmployeeId)?.FullName ?? "—",
                 ProjectUi.Date(sheet.WorkDate),
                 sheet.ProjectName,
                 sheet.TaskName,
@@ -1062,8 +1086,9 @@ internal sealed class TimesheetApprovalPageControl : ProjectPageControl
             _detailLabel.Text = "Select a timesheet to view its details.";
             return;
         }
+        var employee = _employeeDirectory.GetValueOrDefault(sheet.EmployeeId);
         _detailLabel.Text =
-            $"Employee: {ProjectUi.ShortId(sheet.EmployeeId)}    Work Date: {ProjectUi.Date(sheet.WorkDate)}    Status: {ProjectUi.Status(sheet.Status)}{Environment.NewLine}" +
+            $"Employee: {employee?.EmployeeCode ?? ProjectUi.ShortId(sheet.EmployeeId)} - {employee?.FullName ?? "—"}    Work Date: {ProjectUi.Date(sheet.WorkDate)}    Status: {ProjectUi.Status(sheet.Status)}{Environment.NewLine}" +
             $"Project: {sheet.ProjectName}    Task: {sheet.TaskName}    Hours Submitted: {sheet.HoursWorked:0.##}{Environment.NewLine}" +
             $"Notes: {sheet.Description ?? "—"}";
         if (!string.IsNullOrEmpty(sheet.RejectReason))
@@ -1132,6 +1157,7 @@ internal sealed class LaborCostsPageControl : ProjectPageControl
     private List<ProjectDto> _projects = [];
     private List<ApprovedPayrollDataDto> _payroll = [];
     private Dictionary<Guid, string> _employeeNames = [];
+    private Dictionary<Guid, string> _employeeCodes = [];
     private Dictionary<Guid, string> _employeeRoles = [];
 
     internal LaborCostsPageControl(ProjectApiClient api) : base(api)
@@ -1142,7 +1168,8 @@ internal sealed class LaborCostsPageControl : ProjectPageControl
 
     private void BuildLayout()
     {
-        ProjectUi.AddColumn(_grid, "Employee", "Employee ID", 1.1F);
+        ProjectUi.AddColumn(_grid, "EmployeeId", "Employee ID", 0.8F);
+        ProjectUi.AddColumn(_grid, "EmployeeCode", "Employee Code", 1F);
         ProjectUi.AddColumn(_grid, "Name", "Full Name", 1.8F);
         ProjectUi.AddColumn(_grid, "Role", "Project Role", 1.4F);
         ProjectUi.AddColumn(_grid, "Hours", "Hours", 0.8F);
@@ -1254,7 +1281,8 @@ internal sealed class LaborCostsPageControl : ProjectPageControl
         _payroll = response
             .Where(item => !selectedProjectId.HasValue || item.ProjectId == selectedProjectId.Value)
             .ToList();
-        _employeeNames = employees?.Items.ToDictionary(employee => employee.EmployeeId, employee => employee.FullName) ?? [];
+        _employeeNames = employees?.ToDictionary(employee => employee.EmployeeId, employee => employee.FullName) ?? [];
+        _employeeCodes = employees?.ToDictionary(employee => employee.EmployeeId, employee => employee.EmployeeCode) ?? [];
         _employeeRoles = members
             .GroupBy(member => member.EmployeeId)
             .ToDictionary(group => group.Key, group => group.First().RoleName);
@@ -1263,7 +1291,7 @@ internal sealed class LaborCostsPageControl : ProjectPageControl
         if (employees is null)
         {
             StatusLabel.ForeColor = Color.FromArgb(180, 115, 0);
-            StatusLabel.Text = $"{_payroll.Count} approved timesheet entries. Employee names are unavailable; employee IDs are shown.";
+            StatusLabel.Text = $"{_payroll.Count} approved timesheet entries. HR employee codes and names are unavailable; employee IDs are shown.";
         }
         else
         {
@@ -1282,7 +1310,8 @@ internal sealed class LaborCostsPageControl : ProjectPageControl
             var rate = hours == 0 ? 0 : memberGroup.Sum(item => item.HoursWorked * item.HourlyRate) / hours;
             _grid.Rows.Add(
                 ProjectUi.ShortId(memberGroup.Key),
-                _employeeNames.GetValueOrDefault(memberGroup.Key, ProjectUi.ShortId(memberGroup.Key)),
+                _employeeCodes.GetValueOrDefault(memberGroup.Key, "—"),
+                _employeeNames.GetValueOrDefault(memberGroup.Key, "—"),
                 _employeeRoles.GetValueOrDefault(memberGroup.Key, "—"),
                 hours.ToString("0.##"),
                 ProjectUi.Money(rate),
@@ -1290,6 +1319,7 @@ internal sealed class LaborCostsPageControl : ProjectPageControl
         }
         _grid.Rows.Add(
             "Total",
+            "",
             "",
             "",
             _payroll.Sum(item => item.HoursWorked).ToString("0.##"),
@@ -1321,11 +1351,11 @@ internal sealed class LaborCostsPageControl : ProjectPageControl
         {
             return;
         }
-        var lines = new List<string> { "EmployeeId,Hours,HourlyRate,TotalCost" };
+        var lines = new List<string> { "EmployeeId,EmployeeCode,FullName,Hours,HourlyRate,TotalCost" };
         lines.AddRange(_payroll
             .GroupBy(item => item.EmployeeId)
             .Select(group =>
-                $"{EscapeCsv(_employeeNames.GetValueOrDefault(group.Key, ProjectUi.ShortId(group.Key)))},{group.Sum(item => item.HoursWorked):0.##},{group.Sum(item => item.HoursWorked * item.HourlyRate) / Math.Max(1, group.Sum(item => item.HoursWorked)):0.##},{group.Sum(item => item.TotalProjectIncome):0.##}"));
+                $"{EscapeCsv(ProjectUi.ShortId(group.Key))},{EscapeCsv(_employeeCodes.GetValueOrDefault(group.Key, "—"))},{EscapeCsv(_employeeNames.GetValueOrDefault(group.Key, "—"))},{group.Sum(item => item.HoursWorked):0.##},{group.Sum(item => item.HoursWorked * item.HourlyRate) / Math.Max(1, group.Sum(item => item.HoursWorked)):0.##},{group.Sum(item => item.TotalProjectIncome):0.##}"));
         try
         {
             File.WriteAllLines(dialog.FileName, lines, System.Text.Encoding.UTF8);
@@ -1356,17 +1386,18 @@ internal sealed class LaborCostsPageControl : ProjectPageControl
             y += 38;
             graphics.DrawString($"From {ProjectUi.Date(_fromDate.Value)} to {ProjectUi.Date(_toDate.Value)}", bodyFont, brush, 40, y);
             y += 28;
-            graphics.DrawString("Employee ID                   Full Name                         Role                    Hours       Cost", bodyFont, brush, 40, y);
+            graphics.DrawString("Employee ID    Employee Code       Full Name                         Role                    Hours       Cost", bodyFont, brush, 40, y);
             y += 22;
             while (rowIndex < groups.Length && y < e.MarginBounds.Bottom - 48)
             {
                 var group = groups[rowIndex++];
-                var name = _employeeNames.GetValueOrDefault(group.Key, ProjectUi.ShortId(group.Key));
+                var employeeCode = _employeeCodes.GetValueOrDefault(group.Key, "—");
+                var name = _employeeNames.GetValueOrDefault(group.Key, "—");
                 var role = _employeeRoles.GetValueOrDefault(group.Key, "—");
                 var hours = group.Sum(item => item.HoursWorked);
                 var cost = group.Sum(item => item.TotalProjectIncome);
                 graphics.DrawString(
-                    $"{ProjectUi.ShortId(group.Key),-12} {name,-34} {role,-24} {hours,6:0.##} {ProjectUi.Money(cost),16}",
+                    $"{ProjectUi.ShortId(group.Key),-12} {employeeCode,-18} {name,-28} {role,-24} {hours,6:0.##} {ProjectUi.Money(cost),16}",
                     bodyFont,
                     brush,
                     40,
@@ -1417,6 +1448,8 @@ internal sealed class ProjectStatisticsPageControl : ProjectPageControl
     private List<TaskDto> _tasks = [];
     private List<TimesheetDto> _pending = [];
     private List<ApprovedPayrollDataDto> _payroll = [];
+    private Dictionary<Guid, string> _employeeCodes = [];
+    private bool _employeeDirectoryUnavailable;
 
     internal ProjectStatisticsPageControl(ProjectApiClient api) : base(api)
     {
@@ -1540,9 +1573,14 @@ internal sealed class ProjectStatisticsPageControl : ProjectPageControl
         _payroll = (await payrollRequest)
             .Where(item => !projectId.HasValue || item.ProjectId == projectId.Value)
             .ToList();
+        var employees = await TryGetEmployeeDirectoryAsync(token);
+        _employeeCodes = employees?.ToDictionary(employee => employee.EmployeeId, employee => employee.EmployeeCode) ?? [];
+        _employeeDirectoryUnavailable = employees is null;
         RenderStats();
         StatusLabel.ForeColor = ProjectUi.MutedText;
-        StatusLabel.Text = "Statistics are based on project, task, and approved timesheet data.";
+        StatusLabel.Text = _employeeDirectoryUnavailable
+            ? "Statistics are based on project, task, and approved timesheet data. HR employee codes are unavailable; employee IDs are shown."
+            : "Statistics are based on project, task, and approved timesheet data.";
     }
 
     private void RenderStats()
@@ -1696,20 +1734,20 @@ internal sealed class ProjectStatisticsPageControl : ProjectPageControl
         {
             var name = new Label
             {
-                Text = ProjectUi.ShortId(item.EmployeeId),
+                Text = _employeeCodes.GetValueOrDefault(item.EmployeeId, ProjectUi.ShortId(item.EmployeeId)),
                 Left = 0,
                 Top = y,
-                Width = 110,
+                Width = 160,
                 Height = 25,
                 ForeColor = ProjectUi.Text,
                 TextAlign = ContentAlignment.MiddleLeft
             };
             var bar = new Panel
             {
-                Left = 120,
+                Left = 168,
                 Top = y + 3,
                 Height = 18,
-                Width = Math.Max(18, (int)((_memberPanel.ClientSize.Width - 200) * item.Hours / max)),
+                Width = Math.Max(18, (int)((_memberPanel.ClientSize.Width - 250) * item.Hours / max)),
                 BackColor = Color.FromArgb(48, 126, 212)
             };
             var hours = new Label

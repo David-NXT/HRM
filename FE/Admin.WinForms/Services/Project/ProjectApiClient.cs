@@ -128,13 +128,42 @@ internal sealed class ProjectApiClient
         string? keyword,
         CancellationToken cancellationToken)
     {
-        var path = "api/employees?page=1&pageSize=100";
+        return await GetEmployeesPageAsync(keyword, 1, 100, cancellationToken);
+    }
+
+    public async Task<List<EmployeeDirectoryDto>> GetAllEmployeesAsync(
+        CancellationToken cancellationToken)
+    {
+        const int pageSize = 100;
+        var employees = new List<EmployeeDirectoryDto>();
+        var page = 1;
+
+        while (true)
+        {
+            var result = await GetEmployeesPageAsync(null, page, pageSize, cancellationToken);
+            employees.AddRange(result.Items);
+            if (employees.Count >= result.Total || result.Items.Count == 0)
+            {
+                return employees;
+            }
+
+            page++;
+        }
+    }
+
+    private Task<EmployeeDirectoryPageDto> GetEmployeesPageAsync(
+        string? keyword,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        var path = $"api/employees?page={page}&pageSize={pageSize}";
         if (!string.IsNullOrWhiteSpace(keyword))
         {
             path += $"&keyword={Uri.EscapeDataString(keyword.Trim())}";
         }
 
-        return await GetAsync<EmployeeDirectoryPageDto>(path, cancellationToken);
+        return GetAsync<EmployeeDirectoryPageDto>(path, cancellationToken);
     }
 
     public Task<TimesheetDto> CreateTimesheetAsync(
