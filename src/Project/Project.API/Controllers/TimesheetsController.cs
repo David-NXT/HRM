@@ -109,6 +109,16 @@ public class TimesheetsController : ControllerBase
         {
             return BadRequest(ex.Message);
         }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (HttpRequestException)
+        {
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                "Không thể kiểm tra dữ liệu chấm công. Timesheet chưa được gửi.");
+        }
     }
 [HttpPut("{id:guid}")]
 public async Task<IActionResult> UpdateTimesheet(
