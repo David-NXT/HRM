@@ -13,24 +13,7 @@ namespace Admin.WinForms.Controls.Payroll
         private List<PayrollPeriodDto> _periods = new();
         private List<PayrollListDto> _payrolls = new();
         private PayrollListDto? _selectedPayroll;
-
-        // Dữ liệu loại phụ cấp & lý do khấu trừ mẫu khớp với Database Seeder
-        private static readonly List<AllowanceTypeItemDto> DefaultAllowanceTypes = new()
-        {
-            new() { Id = Guid.Parse("11111111-1111-1111-1111-111111111101"), Name = "Phụ cấp ăn trưa", DefaultAmount = 730000 },
-            new() { Id = Guid.Parse("11111111-1111-1111-1111-111111111102"), Name = "Phụ cấp xăng xe & đi lại", DefaultAmount = 500000 },
-            new() { Id = Guid.Parse("11111111-1111-1111-1111-111111111103"), Name = "Phụ cấp trách nhiệm", DefaultAmount = 1000000 },
-            new() { Id = Guid.Parse("11111111-1111-1111-1111-111111111104"), Name = "Làm thêm giờ (OT)", DefaultAmount = 500000 }
-        };
-
-        private static readonly List<PayCutReasonItemDto> DefaultPayCutReasons = new()
-        {
-            new() { Id = Guid.Parse("22222222-2222-2222-2222-222222222201"), Name = "Bảo hiểm xã hội (BHXH 8%)", DefaultAmount = 800000 },
-            new() { Id = Guid.Parse("22222222-2222-2222-2222-222222222202"), Name = "Bảo hiểm y tế (BHYT 1.5%)", DefaultAmount = 150000 },
-            new() { Id = Guid.Parse("22222222-2222-2222-2222-222222222203"), Name = "Bảo hiểm thất nghiệp (BHTN 1%)", DefaultAmount = 100000 },
-            new() { Id = Guid.Parse("22222222-2222-2222-2222-222222222204"), Name = "Thuế thu nhập cá nhân (TNCN)", DefaultAmount = 300000 },
-            new() { Id = Guid.Parse("22222222-2222-2222-2222-222222222205"), Name = "Phạt đi muộn / về sớm", DefaultAmount = 100000 }
-        };
+        private bool _updatingEmployees;
 
         public PayrollAdjustmentControl()
         {
@@ -39,12 +22,20 @@ namespace Admin.WinForms.Controls.Payroll
             comboBox_Periods.SelectedIndexChanged += async (s, e) => await LoadEmployeesInPeriodAsync();
             comboBox_Employees.SelectedIndexChanged += async (s, e) =>
             {
+                if (_updatingEmployees) return;
                 _selectedPayroll = comboBox_Employees.SelectedItem as PayrollListDto;
+                UpdateAdjustmentButtons();
                 await LoadAdjustmentDetailsAsync();
             };
 
+            button_SearchEmployee.Click += async (s, e) => await FilterEmployeesAsync();
             button_AddAllowance.Click += async (s, e) => await OnAddAllowanceAsync();
             button_AddPayCut.Click += async (s, e) => await OnAddPayCutAsync();
+            button_ManageCatalog.Click += (s, e) =>
+            {
+                using var dialog = new PayrollCatalogDialog();
+                dialog.ShowDialog(this);
+            };
             button_Reload.Click += async (s, e) => await LoadAdjustmentDetailsAsync();
 
             Load += async (s, e) => await LoadPeriodsAsync();
@@ -81,6 +72,8 @@ namespace Admin.WinForms.Controls.Payroll
             if (comboBox_Periods.SelectedItem is not PayrollPeriodDto period)
             {
                 comboBox_Employees.Items.Clear();
+                _selectedPayroll = null;
+                UpdateAdjustmentButtons();
                 return;
             }
 
@@ -96,7 +89,7 @@ namespace Admin.WinForms.Controls.Payroll
                     comboBox_Employees.Items.Add(p);
                 }
 
-                comboBox_Employees.DisplayMember = "EmployeeName";
+                comboBox_Employees.DisplayMember = "EmployeeDisplayName";
                 comboBox_Employees.ValueMember = "PayrollID";
 
                 if (comboBox_Employees.Items.Count > 0)
@@ -109,11 +102,98 @@ namespace Admin.WinForms.Controls.Payroll
                     listView_PayCuts.Items.Clear();
                     label_Summary.Text = "Chưa có dữ liệu bảng lương cho kỳ này.";
                 }
+
+                UpdateAdjustmentButtons();
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Lỗi tải danh sách nhân viên: {ex.Message}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        private async Task FilterEmployeesAsync()
+        {
+            var keyword = textBox_EmployeeSearch.Text.Trim();
+            var selectedPayrollId = _selectedPayroll?.PayrollID;
+            List<PayrollListDto> matches;
+            if (string.IsNullOrWhiteSpace(keyword))
+            {
+                matches = _payrolls;
+            }
+            else
+            {
+                try
+                {
+                    var directoryMatches = await Program.AttendanceApi.SearchEmployeesAsync(keyword);
+                    foreach (var employee in directoryMatches)
+                    {
+                        var payroll = _payrolls.FirstOrDefault(item => item.EmployeeID == employee.EmployeeId);
+                        if (payroll != null)
+                        {
+                            payroll.EmployeeCode = employee.EmployeeCode;
+                            payroll.EmployeeName = employee.FullName;
+                        }
+                    }
+
+                    var matchingIds = directoryMatches.Select(employee => employee.EmployeeId).ToHashSet();
+                    matches = _payrolls.Where(payroll =>
+                        matchingIds.Contains(payroll.EmployeeID)
+                        || (payroll.EmployeeCode?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false)
+                        || (payroll.EmployeeName?.Contains(keyword, StringComparison.OrdinalIgnoreCase) ?? false)
+                        || payroll.EmployeeID.ToString().Contains(keyword, StringComparison.OrdinalIgnoreCase)
+                        || payroll.EmployeeID.ToString()[..8].Contains(keyword, StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Lỗi tìm nhân viên: {ex.Message}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+            }
+
+            _updatingEmployees = true;
+            try
+            {
+                comboBox_Employees.Items.Clear();
+                foreach (var payroll in matches)
+                {
+                    comboBox_Employees.Items.Add(payroll);
+                }
+
+                comboBox_Employees.DisplayMember = "EmployeeDisplayName";
+                comboBox_Employees.ValueMember = "PayrollID";
+                var selectedIndex = matches.FindIndex(payroll => payroll.PayrollID == selectedPayrollId);
+                if (selectedIndex < 0 && (string.IsNullOrWhiteSpace(keyword) || matches.Count == 1) && matches.Count > 0)
+                {
+                    selectedIndex = 0;
+                }
+                comboBox_Employees.SelectedIndex = selectedIndex;
+            }
+            finally
+            {
+                _updatingEmployees = false;
+            }
+
+            _selectedPayroll = comboBox_Employees.SelectedItem as PayrollListDto;
+            UpdateAdjustmentButtons();
+            await LoadAdjustmentDetailsAsync();
+
+            if (matches.Count == 0)
+            {
+                MessageBox.Show("Không tìm thấy nhân viên trong kỳ lương này.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else if (matches.Count > 1 && _selectedPayroll == null)
+            {
+                MessageBox.Show($"Tìm thấy {matches.Count} nhân viên. Vui lòng chọn đúng nhân viên trong danh sách.", "Chọn nhân viên", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
+        private void UpdateAdjustmentButtons()
+        {
+            var hasDraftPayroll = _payrolls.Any(payroll =>
+                string.Equals(payroll.Status, "draft", StringComparison.OrdinalIgnoreCase));
+            button_AddAllowance.Enabled = hasDraftPayroll;
+            button_AddPayCut.Enabled = hasDraftPayroll;
         }
 
         private async Task LoadAdjustmentDetailsAsync()
@@ -169,7 +249,7 @@ namespace Admin.WinForms.Controls.Payroll
                 listView_PayCuts.EndUpdate();
 
                 // 3. Update summary
-                label_Summary.Text = $"Nhân sự: {_selectedPayroll.EmployeeName} | Tổng phụ cấp: {totalAllowance:#,##0 đ} | Tổng giảm trừ/phạt: {totalPayCut:#,##0 đ} | Chênh lệch: {(totalAllowance - totalPayCut):+#,##0 đ;-#,##0 đ;0 đ}";
+                label_Summary.Text = $"Nhân sự: {_selectedPayroll.EmployeeDisplayName} | Phụ cấp dự án: {detail?.TotalProjectAllowance ?? 0:#,##0 đ} | Phụ cấp khác: {totalAllowance:#,##0 đ} | Khấu trừ: {totalPayCut:#,##0 đ} | Chênh lệch: {(totalAllowance - totalPayCut):+#,##0 đ;-#,##0 đ;0 đ}";
             }
             catch (Exception ex)
             {
@@ -179,146 +259,120 @@ namespace Admin.WinForms.Controls.Payroll
 
         private async Task OnAddAllowanceAsync()
         {
-            if (_selectedPayroll == null)
-            {
-                MessageBox.Show("Vui lòng chọn nhân viên.", "Chú ý", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            using var form = new Form
-            {
-                Text = "Thêm Phụ Cấp Cho Nhân Viên",
-                Size = new Size(500, 360),
-                StartPosition = FormStartPosition.CenterParent,
-                FormBorderStyle = FormBorderStyle.FixedDialog,
-                MaximizeBox = false,
-                MinimizeBox = false
-            };
-
-            var labelType = new Label { Text = "Loại phụ cấp:", Location = new Point(30, 30), AutoSize = true };
-            var cmbType = new ComboBox { Location = new Point(150, 26), Width = 300, DropDownStyle = ComboBoxStyle.DropDownList };
-            foreach (var t in DefaultAllowanceTypes) cmbType.Items.Add(t);
-            cmbType.DisplayMember = "Name";
-            cmbType.ValueMember = "Id";
-            if (cmbType.Items.Count > 0) cmbType.SelectedIndex = 0;
-
-            var labelAmount = new Label { Text = "Số tiền (VNĐ):", Location = new Point(30, 80), AutoSize = true };
-            var numAmount = new NumericUpDown { Location = new Point(150, 76), Minimum = 1000, Maximum = 100000000, Increment = 50000, Width = 200 };
-            numAmount.Value = DefaultAllowanceTypes[0].DefaultAmount;
-
-            cmbType.SelectedIndexChanged += (s, e) =>
-            {
-                if (cmbType.SelectedItem is AllowanceTypeItemDto sel && sel.DefaultAmount > 0)
-                {
-                    numAmount.Value = sel.DefaultAmount;
-                }
-            };
-
-            var labelDesc = new Label { Text = "Ghi chú / Lý do:", Location = new Point(30, 130), AutoSize = true };
-            var txtDesc = new TextBox { Location = new Point(150, 126), Width = 300, Height = 60, Multiline = true };
-
-            var btnOk = new Button { Text = "Lưu Phụ Cấp", DialogResult = DialogResult.OK, Location = new Point(150, 220), Width = 140, BackColor = Color.FromArgb(16, 185, 129), ForeColor = Color.White };
-            var btnCancel = new Button { Text = "Hủy", DialogResult = DialogResult.Cancel, Location = new Point(310, 220), Width = 100 };
-
-            form.Controls.AddRange(new Control[] { labelType, cmbType, labelAmount, numAmount, labelDesc, txtDesc, btnOk, btnCancel });
-            form.AcceptButton = btnOk;
-            form.CancelButton = btnCancel;
-
-            if (form.ShowDialog() == DialogResult.OK)
-            {
-                if (cmbType.SelectedItem is not AllowanceTypeItemDto selectedType) return;
-
-                try
-                {
-                    var dto = new CreateAllowanceDto
-                    {
-                        AllowanceTypeID = selectedType.Id,
-                        Amount = numAmount.Value,
-                        RateApplied = 1,
-                        Description = string.IsNullOrWhiteSpace(txtDesc.Text) ? selectedType.Name : txtDesc.Text.Trim()
-                    };
-
-                    await Program.PayrollApi.AddAllowanceAsync(_selectedPayroll.PayrollID, dto);
-                    MessageBox.Show("Thêm phụ cấp thành công!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    await LoadAdjustmentDetailsAsync();
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show(ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
+            await AddPayrollAdjustmentAsync(isAllowance: true);
         }
 
         private async Task OnAddPayCutAsync()
         {
-            if (_selectedPayroll == null)
+            await AddPayrollAdjustmentAsync(isAllowance: false);
+        }
+
+        private async Task AddPayrollAdjustmentAsync(bool isAllowance)
+        {
+            var targets = _payrolls
+                .Where(payroll => string.Equals(payroll.Status, "draft", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            if (targets.Count == 0)
             {
-                MessageBox.Show("Vui lòng chọn nhân viên.", "Chú ý", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Kỳ lương không có bảng lương ở trạng thái nháp để điều chỉnh.", "Chú ý", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            using var form = new Form
+            List<PayrollCatalogItemDto> catalogItems;
+            try
             {
-                Text = "Thêm Khoản Khấu Trừ / Phạt",
-                Size = new Size(500, 360),
-                StartPosition = FormStartPosition.CenterParent,
-                FormBorderStyle = FormBorderStyle.FixedDialog,
-                MaximizeBox = false,
-                MinimizeBox = false
-            };
-
-            var labelReason = new Label { Text = "Lý do giảm trừ:", Location = new Point(30, 30), AutoSize = true };
-            var cmbReason = new ComboBox { Location = new Point(150, 26), Width = 300, DropDownStyle = ComboBoxStyle.DropDownList };
-            foreach (var r in DefaultPayCutReasons) cmbReason.Items.Add(r);
-            cmbReason.DisplayMember = "Name";
-            cmbReason.ValueMember = "Id";
-            if (cmbReason.Items.Count > 0) cmbReason.SelectedIndex = 0;
-
-            var labelAmount = new Label { Text = "Số tiền (VNĐ):", Location = new Point(30, 80), AutoSize = true };
-            var numAmount = new NumericUpDown { Location = new Point(150, 76), Minimum = 1000, Maximum = 100000000, Increment = 50000, Width = 200 };
-            numAmount.Value = DefaultPayCutReasons[0].DefaultAmount;
-
-            cmbReason.SelectedIndexChanged += (s, e) =>
+                catalogItems = isAllowance
+                    ? await Program.PayrollApi.GetAllowanceTypesAsync(activeOnly: true)
+                    : await Program.PayrollApi.GetPayCutReasonsAsync(activeOnly: true);
+            }
+            catch (Exception ex)
             {
-                if (cmbReason.SelectedItem is PayCutReasonItemDto sel && sel.DefaultAmount > 0)
-                {
-                    numAmount.Value = sel.DefaultAmount;
-                }
-            };
+                MessageBox.Show($"Lỗi tải danh mục: {ex.Message}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
 
-            var labelDesc = new Label { Text = "Ghi chú / Lý do:", Location = new Point(30, 130), AutoSize = true };
-            var txtDesc = new TextBox { Location = new Point(150, 126), Width = 300, Height = 60, Multiline = true };
-
-            var btnOk = new Button { Text = "Lưu Khấu Trừ", DialogResult = DialogResult.OK, Location = new Point(150, 220), Width = 140, BackColor = Color.FromArgb(239, 68, 68), ForeColor = Color.White };
-            var btnCancel = new Button { Text = "Hủy", DialogResult = DialogResult.Cancel, Location = new Point(310, 220), Width = 100 };
-
-            form.Controls.AddRange(new Control[] { labelReason, cmbReason, labelAmount, numAmount, labelDesc, txtDesc, btnOk, btnCancel });
-            form.AcceptButton = btnOk;
-            form.CancelButton = btnCancel;
-
-            if (form.ShowDialog() == DialogResult.OK)
+            if (catalogItems.Count == 0)
             {
-                if (cmbReason.SelectedItem is not PayCutReasonItemDto selectedReason) return;
+                MessageBox.Show("Danh mục đang trống. Hãy mở Quản lý danh mục để thêm khoản trước.", "Chưa có danh mục", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
 
+            using var dialog = new PayrollAdjustmentEditorDialog(
+                isAllowance ? "Chọn phụ cấp và nhân viên" : "Chọn khoản khấu trừ và nhân viên",
+                targets,
+                catalogItems);
+            if (dialog.ShowDialog(this) != DialogResult.OK || dialog.SelectedCatalogItem == null)
+            {
+                return;
+            }
+
+            var selectedPayrolls = dialog.SelectedPayrolls.ToList();
+            if (selectedPayrolls.Count == 0)
+            {
+                MessageBox.Show("Vui lòng chọn nhân viên để tiếp tục.", "Thiếu thông tin", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (selectedPayrolls.Count > 1
+                && MessageBox.Show(
+                    $"Xác nhận thêm “{dialog.SelectedCatalogItem.Name}” cho {selectedPayrolls.Count} nhân viên?",
+                    "Xác nhận áp dụng hàng loạt",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question) != DialogResult.Yes)
+            {
+                return;
+            }
+
+            var failures = new List<string>();
+            var succeeded = 0;
+            foreach (var payroll in selectedPayrolls)
+            {
                 try
                 {
-                    var dto = new CreatePayCutDto
+                    if (isAllowance)
                     {
-                        PayCutReasonID = selectedReason.Id,
-                        Amount = numAmount.Value,
-                        RateApplied = 1,
-                        Description = string.IsNullOrWhiteSpace(txtDesc.Text) ? selectedReason.Name : txtDesc.Text.Trim()
-                    };
+                        await Program.PayrollApi.AddAllowanceAsync(payroll.PayrollID, new CreateAllowanceDto
+                        {
+                            AllowanceTypeID = dialog.SelectedCatalogItem.ID,
+                            Amount = dialog.GetAmount(payroll),
+                            RateApplied = dialog.RateApplied,
+                            Description = string.IsNullOrWhiteSpace(dialog.AdjustmentDescription)
+                                ? dialog.SelectedCatalogItem.Name
+                                : dialog.AdjustmentDescription
+                        });
+                    }
+                    else
+                    {
+                        await Program.PayrollApi.AddPayCutAsync(payroll.PayrollID, new CreatePayCutDto
+                        {
+                            PayCutReasonID = dialog.SelectedCatalogItem.ID,
+                            Amount = dialog.GetAmount(payroll),
+                            RateApplied = dialog.RateApplied,
+                            Description = string.IsNullOrWhiteSpace(dialog.AdjustmentDescription)
+                                ? dialog.SelectedCatalogItem.Name
+                                : dialog.AdjustmentDescription
+                        });
+                    }
 
-                    await Program.PayrollApi.AddPayCutAsync(_selectedPayroll.PayrollID, dto);
-                    MessageBox.Show("Thêm khoản khấu trừ thành công!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    await LoadAdjustmentDetailsAsync();
+                    succeeded++;
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    failures.Add($"{payroll.EmployeeCode ?? payroll.EmployeeID.ToString()}: {ex.Message}");
                 }
             }
+
+            var result = $"Đã thêm khoản thành công cho {succeeded}/{selectedPayrolls.Count} nhân viên.";
+            if (failures.Count > 0)
+            {
+                result += $"{Environment.NewLine}{Environment.NewLine}Các trường hợp lỗi:{Environment.NewLine}{string.Join(Environment.NewLine, failures)}";
+            }
+            MessageBox.Show(
+                result,
+                failures.Count == 0 ? "Thành công" : "Kết quả một phần",
+                MessageBoxButtons.OK,
+                failures.Count == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+            await LoadAdjustmentDetailsAsync();
         }
     }
 }

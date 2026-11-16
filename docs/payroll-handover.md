@@ -966,12 +966,14 @@ Chỉnh sửa `.env` với thông tin database của bạn:
 
 ```env
 ConnectionStrings__PayrollConnection="Host=localhost;Port=5432;Database=Payroll;Username=postgres;Password=YOUR_PASSWORD"
+ConnectionStrings__ProjectConnection="Host=localhost;Port=5432;Database=YOUR_PROJECT_DATABASE;Username=postgres;Password=YOUR_PASSWORD"
 AttendanceService__BaseUrl="http://localhost:5231/"
 HRService__BaseUrl="http://localhost:5012/"
 ProjectService__BaseUrl="http://localhost:5032/"
 ```
 
 > **Lưu ý:** Thay `YOUR_PASSWORD` bằng mật khẩu PostgreSQL thực tế của bạn. Ba URL service phía trên đã có mặc định trong `appsettings.Development.json`; chỉ cần khai báo trong `.env` khi muốn ghi đè.
+> Project API cần một database có các bảng timesheet/dự án và phải dùng `ConnectionStrings__ProjectConnection` riêng; không dùng database Payroll nếu database đó chưa có các bảng của Project API. `DB_HOST`, `DB_PORT`, `DB_NAME` và `DB_USER` vẫn được hỗ trợ cho cấu hình cũ.
 
 ### Bước 3: Tạo database PostgreSQL
 

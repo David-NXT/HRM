@@ -43,6 +43,8 @@ namespace Admin.WinForms.Controls.Payroll
             label_StandardDays = new Label();
             label_ActualDays = new Label();
             label_GrossSalary = new Label();
+            label_ProjectAllowance = new Label();
+            label_TotalAllowance = new Label();
 
             groupBox_Allowances = new GroupBox();
             listView_Allowances = new ListView();
@@ -230,11 +232,13 @@ namespace Admin.WinForms.Controls.Payroll
             groupBox_SalaryWork.Controls.Add(label_StandardDays);
             groupBox_SalaryWork.Controls.Add(label_ActualDays);
             groupBox_SalaryWork.Controls.Add(label_GrossSalary);
+            groupBox_SalaryWork.Controls.Add(label_ProjectAllowance);
+            groupBox_SalaryWork.Controls.Add(label_TotalAllowance);
             groupBox_SalaryWork.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             groupBox_SalaryWork.ForeColor = Color.FromArgb(55, 65, 81);
             groupBox_SalaryWork.Location = new Point(30, 190);
             groupBox_SalaryWork.Name = "groupBox_SalaryWork";
-            groupBox_SalaryWork.Size = new Size(940, 110);
+            groupBox_SalaryWork.Size = new Size(940, 130);
             groupBox_SalaryWork.TabIndex = 1;
             groupBox_SalaryWork.TabStop = false;
             groupBox_SalaryWork.Text = "1. Lương & Ngày công";
@@ -268,11 +272,27 @@ namespace Admin.WinForms.Controls.Payroll
             label_GrossSalary.Size = new Size(160, 25);
             label_GrossSalary.Text = "Lương Gross: 0 đ";
 
+            label_ProjectAllowance.AutoSize = true;
+            label_ProjectAllowance.Font = new Font("Segoe UI", 9.5F, FontStyle.Bold);
+            label_ProjectAllowance.ForeColor = Color.FromArgb(16, 149, 74);
+            label_ProjectAllowance.Location = new Point(20, 100);
+            label_ProjectAllowance.Name = "label_ProjectAllowance";
+            label_ProjectAllowance.Size = new Size(240, 25);
+            label_ProjectAllowance.Text = "Tổng phụ cấp dự án: 0 đ";
+
+            label_TotalAllowance.AutoSize = true;
+            label_TotalAllowance.Font = new Font("Segoe UI", 9.5F, FontStyle.Bold);
+            label_TotalAllowance.ForeColor = Color.FromArgb(16, 149, 74);
+            label_TotalAllowance.Location = new Point(480, 100);
+            label_TotalAllowance.Name = "label_TotalAllowance";
+            label_TotalAllowance.Size = new Size(200, 25);
+            label_TotalAllowance.Text = "Tổng phụ cấp: 0 đ";
+
             // Allowances
             groupBox_Allowances.Controls.Add(listView_Allowances);
             groupBox_Allowances.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             groupBox_Allowances.ForeColor = Color.FromArgb(16, 149, 74);
-            groupBox_Allowances.Location = new Point(30, 315);
+            groupBox_Allowances.Location = new Point(30, 330);
             groupBox_Allowances.Name = "groupBox_Allowances";
             groupBox_Allowances.Size = new Size(460, 270);
             groupBox_Allowances.TabIndex = 2;
@@ -303,7 +323,7 @@ namespace Admin.WinForms.Controls.Payroll
             groupBox_PayCuts.Controls.Add(listView_PayCuts);
             groupBox_PayCuts.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             groupBox_PayCuts.ForeColor = Color.FromArgb(220, 38, 38);
-            groupBox_PayCuts.Location = new Point(510, 315);
+            groupBox_PayCuts.Location = new Point(510, 330);
             groupBox_PayCuts.Name = "groupBox_PayCuts";
             groupBox_PayCuts.Size = new Size(460, 270);
             groupBox_PayCuts.TabIndex = 3;
@@ -409,6 +429,8 @@ namespace Admin.WinForms.Controls.Payroll
         private Label label_StandardDays;
         private Label label_ActualDays;
         private Label label_GrossSalary;
+        private Label label_ProjectAllowance;
+        private Label label_TotalAllowance;
 
         private GroupBox groupBox_Allowances;
         private ListView listView_Allowances;
