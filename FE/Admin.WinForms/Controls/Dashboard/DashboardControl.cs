@@ -245,8 +245,8 @@ namespace Admin.WinForms.Controls.Dashboard
 
                 bool hrOk = await checkHealth("http://localhost:5012/employees");
                 bool attOk = await checkHealth("http://localhost:5231/api/attendance");
-                bool payOk = await checkHealth("http://localhost:5037/api/payrollperiods");
-                bool projOk = await checkHealth("http://localhost:5207/api/Projects");
+                bool payOk = await checkHealth("http://localhost:5267/api/payrollperiods");
+                bool projOk = await checkHealth("http://localhost:5032/api/Projects");
 
                 if (!IsHandleCreated) return;
 
@@ -263,13 +263,13 @@ namespace Admin.WinForms.Controls.Dashboard
                     lblStatus_Attendance.ForeColor = attOk ? Color.FromArgb(22, 101, 52) : Color.FromArgb(220, 38, 38);
 
                     lblStatus_Payroll.Text = payOk
-                        ? "🟢 Payroll Service (localhost:5037) — Hoạt động bình thường"
-                        : "🔴 Payroll Service (localhost:5037) — Mất kết nối";
+                        ? "🟢 Payroll Service (localhost:5267) — Hoạt động bình thường"
+                        : "🔴 Payroll Service (localhost:5267) — Mất kết nối";
                     lblStatus_Payroll.ForeColor = payOk ? Color.FromArgb(22, 101, 52) : Color.FromArgb(220, 38, 38);
 
                     lblStatus_Project.Text = projOk
-                        ? "🟢 Project Service (localhost:5207) — Hoạt động bình thường"
-                        : "🔴 Project Service (localhost:5207) — Mất kết nối";
+                        ? "🟢 Project Service (localhost:5032) — Hoạt động bình thường"
+                        : "🔴 Project Service (localhost:5032) — Mất kết nối";
                     lblStatus_Project.ForeColor = projOk ? Color.FromArgb(22, 101, 52) : Color.FromArgb(220, 38, 38);
                 });
             }, token);

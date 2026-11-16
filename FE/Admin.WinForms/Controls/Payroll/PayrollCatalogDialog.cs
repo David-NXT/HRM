@@ -293,7 +293,7 @@ internal sealed class CatalogItemEditDialog : Form
         _rateLabel.Location = new Point(25, 200);
         _rateLabel.AutoSize = true;
         Controls.Add(_rateLabel);
-        _defaultRate.Location = new Point(175, 195);
+        _defaultRate.Location = new Point(300, 195);
         _defaultRate.Size = new Size(200, 30);
         _defaultRate.Minimum = 0;
         _defaultRate.Maximum = 100_000_000;
