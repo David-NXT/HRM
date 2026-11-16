@@ -26,7 +26,7 @@ public class PayslipController : ControllerBase
             cancellationToken);
 
         if (response == null)
-            return NotFound("Payroll does not exist.");
+            return NotFound("Payslip is not available for this payroll.");
 
         return Ok(response);
     }
