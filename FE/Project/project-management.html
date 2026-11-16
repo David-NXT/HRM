@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản lý dự án | HRM</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --blue: #2353a6;
+      --blue-dark: #193f81;
+      --blue-light: #eaf1fc;
+      --ink: #25304a;
+      --muted: #68758a;
+      --line: #e1e6ee;
+      --canvas: #f5f7fa;
+      --white: #fff;
+      --green: #23845b;
+      --amber: #a9680c;
+      --red: #b54747;
+      font-family: "Segoe UI", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 760px; min-height: 100vh; color: var(--ink); background: var(--canvas); font-size: 14px; }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .app { display: flex; min-height: 100vh; }
+    .sidebar { display: flex; flex: 0 0 232px; flex-direction: column; padding: 22px 14px; color: #eaf0fb; background: #1d3458; }
+    .brand { display: flex; align-items: center; gap: 11px; padding: 0 10px 24px; border-bottom: 1px solid #ffffff20; }
+    .brand-mark { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 9px; color: white; background: #3b70c3; font-weight: 700; }
+    .brand-name { font-size: 17px; font-weight: 650; letter-spacing: .2px; }
+    .brand-caption { margin-top: 2px; color: #aebdd4; font-size: 11px; }
+    .nav-label { margin: 25px 10px 9px; color: #9cacc4; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+    .nav { display: grid; gap: 4px; }
+    .nav button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 12px; border: 0; border-radius: 6px; color: #d3deef; background: transparent; text-align: left; }
+    .nav button:hover { background: #ffffff12; }
+    .nav button.active { color: #fff; background: #31568e; box-shadow: inset 3px 0 #83b1ff; }
+    .nav-icon { width: 18px; color: #b8c8df; text-align: center; font-size: 16px; }
+    .nav-count { margin-left: auto; padding: 2px 7px; border-radius: 10px; color: #dbe8fb; background: #ffffff1b; font-size: 11px; }
+    .sidebar-bottom { margin-top: auto; padding: 16px 10px 0; border-top: 1px solid #ffffff20; color: #aebdd4; font-size: 12px; }
+    .user { display: flex; align-items: center; gap: 10px; color: #f0f4fb; }
+    .avatar { display: grid; width: 32px; height: 32px; flex: 0 0 32px; place-items: center; border-radius: 50%; color: #214578; background: #dce8f9; font-size: 12px; font-weight: 700; }
+
+    .workspace { display: flex; min-width: 0; flex: 1; flex-direction: column; }
+    .topbar { display: flex; height: 62px; align-items: center; justify-content: space-between; padding: 0 30px; border-bottom: 1px solid var(--line); background: var(--white); }
+    .breadcrumb { color: var(--muted); font-size: 13px; }
+    .breadcrumb strong { color: var(--ink); font-weight: 600; }
+    .top-actions { display: flex; align-items: center; gap: 17px; }
+    .icon-button { position: relative; display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid transparent; border-radius: 5px; color: #58677d; background: transparent; font-size: 17px; }
+    .icon-button:hover { border-color: var(--line); background: #f8faff; }
+    .bell-dot { position: absolute; top: 5px; right: 6px; width: 7px; height: 7px; border: 1px solid white; border-radius: 50%; background: #dc5d5d; }
+    .top-user { display: flex; align-items: center; gap: 9px; }
+    .top-user-name { font-size: 12px; font-weight: 600; }
+    .top-user-role { margin-top: 2px; color: var(--muted); font-size: 11px; }
+    main { width: 100%; max-width: 1500px; margin: 0 auto; padding: 27px 30px 34px; }
+    .page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 21px; }
+    h1 { margin: 0; font-size: 24px; font-weight: 650; letter-spacing: -.3px; }
+    .subtitle { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+    .heading-actions { display: flex; gap: 9px; }
+    .button { display: inline-flex; min-height: 36px; align-items: center; justify-content: center; gap: 7px; padding: 0 13px; border: 1px solid #cfd7e3; border-radius: 5px; color: var(--ink); background: white; font-size: 13px; font-weight: 550; }
+    .button:hover { background: #f5f8fc; }
+    .button.primary { border-color: var(--blue); color: white; background: var(--blue); }
+    .button.primary:hover { background: var(--blue-dark); }
+    .button.small { min-height: 30px; padding: 0 10px; font-size: 12px; }
+    .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 15px; margin-bottom: 20px; }
+    .metric { padding: 16px 18px; border: 1px solid var(--line); border-radius: 7px; background: white; }
+    .metric-top { display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: 12px; }
+    .metric-symbol { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 6px; color: var(--blue); background: var(--blue-light); font-size: 15px; }
+    .metric-value { margin-top: 9px; font-size: 25px; font-weight: 650; letter-spacing: -.5px; }
+    .metric-note { margin-top: 3px; color: var(--muted); font-size: 11px; }
+    .metric-note .positive { color: var(--green); font-weight: 600; }
+    .panel { overflow: hidden; border: 1px solid var(--line); border-radius: 7px; background: white; }
+    .panel-header { display: flex; min-height: 56px; align-items: center; justify-content: space-between; gap: 15px; padding: 11px 17px; border-bottom: 1px solid var(--line); }
+    .panel-title { font-size: 14px; font-weight: 650; }
+    .panel-subtitle { margin-top: 3px; color: var(--muted); font-size: 11px; }
+    .filters { display: flex; align-items: center; gap: 8px; }
+    .search { width: 230px; height: 34px; padding: 0 10px; border: 1px solid #d6dde7; border-radius: 5px; outline: none; }
+    .search:focus, select:focus, input:focus, textarea:focus { border-color: #7aa4e6; box-shadow: 0 0 0 2px #2353a61c; outline: none; }
+    select.filter { height: 34px; padding: 0 27px 0 9px; border: 1px solid #d6dde7; border-radius: 5px; color: var(--ink); background: white; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+    th { height: 39px; padding: 0 14px; border-bottom: 1px solid var(--line); color: #66748a; background: #fbfcfe; font-size: 11px; font-weight: 650; text-align: left; }
+    td { height: 56px; padding: 7px 14px; border-bottom: 1px solid #edf0f4; font-size: 12px; }
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: #fbfcff; }
+    .project-name { font-size: 12px; font-weight: 600; }
+    .project-code { margin-top: 4px; color: #8290a3; font-size: 10px; }
+    .owner { display: flex; align-items: center; gap: 8px; }
+    .owner .avatar { width: 27px; height: 27px; flex-basis: 27px; font-size: 10px; }
+    .muted { color: var(--muted); }
+    .status { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; }
+    .status::before { width: 6px; height: 6px; border-radius: 50%; background: currentColor; content: ""; }
+    .status.active { color: #208052; background: #e7f5ed; }
+    .status.planning { color: #9a690d; background: #fff4d9; }
+    .status.hold { color: #69758a; background: #edf0f4; }
+    .status.done { color: #426ab0; background: #e9f0fd; }
+    .progress-cell { min-width: 130px; }
+    .progress-label { display: flex; justify-content: space-between; margin-bottom: 6px; color: #657187; font-size: 10px; }
+    .progress { overflow: hidden; height: 5px; border-radius: 5px; background: #e9edf3; }
+    .progress span { display: block; height: 100%; border-radius: inherit; background: #4a7dca; }
+    .row-action { border: 0; color: #66758a; background: transparent; font-size: 19px; line-height: 1; }
+    .row-action:hover { color: var(--blue); }
+    .panel-footer { display: flex; min-height: 46px; align-items: center; justify-content: space-between; padding: 0 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+    .pagination { display: flex; align-items: center; gap: 5px; }
+    .page-num { display: grid; width: 26px; height: 25px; place-items: center; border: 1px solid transparent; border-radius: 4px; color: var(--muted); background: white; font-size: 11px; }
+    .page-num.selected { border-color: #d7e3f7; color: var(--blue); background: var(--blue-light); }
+    .empty { padding: 30px; color: var(--muted); text-align: center; }
+    .lower-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 15px; margin-top: 16px; }
+    .task-list { padding: 0 16px; }
+    .task-row { display: flex; align-items: center; gap: 11px; min-height: 53px; border-bottom: 1px solid #edf0f4; }
+    .task-row:last-child { border-bottom: 0; }
+    .check { width: 15px; height: 15px; border: 1px solid #c5cfdd; border-radius: 4px; }
+    .task-title { flex: 1; font-size: 11px; font-weight: 550; }
+    .task-meta { color: var(--muted); font-size: 10px; }
+    .due { color: var(--amber); font-size: 10px; }
+    .activity-item { display: flex; gap: 10px; padding: 13px 16px; border-bottom: 1px solid #edf0f4; }
+    .activity-item:last-child { border: 0; }
+    .activity-dot { width: 8px; height: 8px; flex: 0 0 8px; margin-top: 4px; border-radius: 50%; background: #4a7dca; }
+    .activity-text { font-size: 11px; line-height: 1.5; }
+    .activity-time { margin-top: 3px; color: #8a96a7; font-size: 10px; }
+    .section-tabs { display: flex; gap: 3px; margin-bottom: 17px; border-bottom: 1px solid var(--line); }
+    .section-tabs button { padding: 10px 13px; border: 0; border-bottom: 2px solid transparent; color: var(--muted); background: transparent; font-size: 12px; }
+    .section-tabs button.active { border-bottom-color: var(--blue); color: var(--blue); font-weight: 600; }
+    .report-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+    .report-card { padding: 17px; border: 1px solid var(--line); border-radius: 7px; background: white; }
+    .report-card h3 { margin: 0 0 13px; font-size: 13px; }
+    .bar-row { display: grid; grid-template-columns: 90px 1fr 30px; align-items: center; gap: 8px; margin: 11px 0; color: var(--muted); font-size: 10px; }
+    .bar-row .progress { height: 7px; }
+    .budget-summary { display: flex; align-items: baseline; gap: 8px; margin: 6px 0 14px; }
+    .budget-summary strong { font-size: 24px; }
+    .budget-summary span { color: var(--muted); font-size: 11px; }
+
+    .modal-backdrop { position: fixed; z-index: 4; inset: 0; display: none; align-items: center; justify-content: center; padding: 20px; background: #17243b66; }
+    .modal-backdrop.open { display: flex; }
+    .modal { width: min(520px, 100%); max-height: calc(100vh - 40px); overflow-y: auto; border: 1px solid #dce2eb; border-radius: 8px; background: white; box-shadow: 0 18px 60px #10213b38; }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 17px 20px; border-bottom: 1px solid var(--line); }
+    .modal-header h2 { margin: 0; font-size: 17px; }
+    .close { border: 0; color: var(--muted); background: none; font-size: 22px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px 14px; padding: 18px 20px; }
+    .field { display: grid; gap: 6px; }
+    .field.full { grid-column: 1 / -1; }
+    .field label { color: #536176; font-size: 11px; font-weight: 600; }
+    .field input, .field select, .field textarea { width: 100%; min-height: 35px; padding: 7px 9px; border: 1px solid #d6dde7; border-radius: 5px; color: var(--ink); background: white; }
+    .field textarea { min-height: 65px; resize: vertical; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 13px 20px; border-top: 1px solid var(--line); background: #fbfcfe; }
+    .toast { position: fixed; z-index: 6; right: 24px; bottom: 24px; padding: 12px 17px; border: 1px solid #b9dfc8; border-radius: 6px; color: #1d6946; background: #f0faf4; box-shadow: 0 8px 24px #1c34451a; opacity: 0; pointer-events: none; transform: translateY(8px); transition: .2s ease; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .api-connection { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; }
+    .api-connection::before { width: 7px; height: 7px; border-radius: 50%; background: #9aa5b5; content: ""; }
+    .api-connection.online::before { background: #23845b; }
+    .api-connection.offline::before { background: #c24949; }
+    .connection-banner { margin: 0 0 16px; padding: 10px 13px; border: 1px solid #d5e0f0; border-radius: 5px; color: #3e577b; background: #f0f5fc; font-size: 12px; }
+    .connection-banner.error { border-color: #efcaca; color: #8c3232; background: #fff3f3; }
+    .connection-banner:empty { display: none; }
+    @media (max-width: 1050px) {
+      .sidebar { flex-basis: 190px; }
+      main { padding-right: 20px; padding-left: 20px; }
+      .metrics { grid-template-columns: repeat(2, 1fr); }
+      .lower-grid { grid-template-columns: 1fr; }
+      .filters .search { width: 170px; }
+    }
+    @media (max-width: 790px) {
+      .sidebar { flex-basis: 62px; padding: 18px 8px; }
+      .brand { justify-content: center; padding: 0 0 20px; }
+      .brand-copy, .nav-label, .nav-text, .nav-count, .sidebar-bottom .user > div:last-child { display: none; }
+      .nav button { justify-content: center; padding: 12px 7px; }
+      .sidebar-bottom { padding: 14px 5px 0; }
+      .sidebar-bottom .user { justify-content: center; }
+      .topbar { padding: 0 16px; }
+      main { padding: 20px 14px; }
+      .page-heading { align-items: flex-start; }
+      .filters { flex-wrap: wrap; justify-content: flex-end; }
+      .filters .search { width: 140px; }
+      .report-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">H</div>
+        <div class="brand-copy"><div class="brand-name">HRM Portal</div><div class="brand-caption">Quản trị nhân sự</div></div>
+      </div>
+      <div class="nav-label">Không gian làm việc</div>
+      <nav class="nav" aria-label="Điều hướng chính">
+        <button data-page="projects" class="active"><span class="nav-icon">▦</span><span class="nav-text">Dự án</span><span id="project-count" class="nav-count">0</span></button>
+        <button data-page="tasks"><span class="nav-icon">☷</span><span class="nav-text">Công việc</span><span class="nav-count">0</span></button>
+        <button data-page="timesheets"><span class="nav-icon">◷</span><span class="nav-text">Timesheet</span><span class="nav-count">0</span></button>
+        <button data-page="costs"><span class="nav-icon">₫</span><span class="nav-text">Chi phí nhân công</span></button>
+        <button data-page="reports"><span class="nav-icon">▤</span><span class="nav-text">Thống kê</span></button>
+      </nav>
+      <div class="nav-label">Hệ thống</div>
+      <nav class="nav">
+        <button id="help-button"><span class="nav-icon">?</span><span class="nav-text">Trợ giúp</span></button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="user"><div class="avatar">NA</div><div><div>Nguyễn An</div><div style="margin-top:3px">Quản lý dự án</div></div></div>
+      </div>
+    </aside>
+    <section class="workspace">
+      <header class="topbar">
+        <div class="breadcrumb">HRM <span style="padding:0 7px;color:#a6afbd">/</span> <strong id="breadcrumb">Dự án</strong></div>
+        <div class="top-actions">
+          <span id="api-connection" class="api-connection">API chưa kết nối</span>
+          <button class="icon-button" id="help-top" aria-label="Trợ giúp">?</button>
+          <button class="icon-button" aria-label="Thông báo">♧<span class="bell-dot"></span></button>
+          <div class="top-user"><div class="avatar">NA</div><div><div class="top-user-name">Nguyễn An</div><div class="top-user-role">Quản lý dự án</div></div></div>
+        </div>
+      </header>
+      <main id="main-content"></main>
+    </section>
+  </div>
+  <div class="modal-backdrop" id="project-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <form class="modal" id="project-form">
+      <div class="modal-header"><h2 id="modal-title">Tạo dự án mới</h2><button class="close" type="button" aria-label="Đóng" id="close-modal">×</button></div>
+      <div class="form-grid" id="modal-fields"></div>
+      <div class="modal-footer"><button class="button" type="button" id="cancel-modal">Hủy</button><button class="button primary" type="submit" id="modal-submit">Lưu</button></div>
+    </form>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+  <script>
+    const API_BASE_URL = (window.PROJECT_API_BASE_URL || "http://localhost:5032").replace(/\/+$/, "");
+    const pageNames = { projects: "Dự án", tasks: "Công việc", timesheets: "Timesheet", costs: "Chi phí nhân công", reports: "Thống kê" };
+    const main = document.getElementById("main-content");
+    const projects = [];
+    const tasks = [];
+    const timesheets = [];
+    let activePage = "projects";
+    let modalMode = "project";
+    let editingItem = null;
+    let payrollRows = null;
+    let toastTimer;
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, character => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      })[character]);
+    }
+    function money(value) { return new Intl.NumberFormat("vi-VN").format(Number(value) || 0) + " ₫"; }
+    function dateValue(value) { return value ? String(value).slice(0, 10) : ""; }
+    function dateLabel(value) {
+      const date = dateValue(value);
+      if (!date) return "—";
+      const [year, month, day] = date.split("-");
+      return `${day}/${month}/${year}`;
+    }
+    function projectStatus(status) {
+      const value = String(status || "").trim().toLowerCase();
+      if (["active", "in progress", "running", "đang chạy", "đang thực hiện"].includes(value)) return "Đang thực hiện";
+      if (["completed", "done", "hoàn thành"].includes(value)) return "Hoàn thành";
+      if (["on hold", "tạm dừng"].includes(value)) return "Tạm dừng";
+      if (["cancelled", "canceled", "đã hủy"].includes(value)) return "Đã hủy";
+      return "Lập kế hoạch";
+    }
+    function taskStatus(status) {
+      const value = String(status || "").trim().toLowerCase();
+      if (["completed", "done", "hoàn thành"].includes(value)) return "Hoàn thành";
+      if (["in progress", "inprogress", "doing", "đang làm"].includes(value)) return "Đang làm";
+      if (["on hold", "tạm dừng"].includes(value)) return "Tạm dừng";
+      return "Chưa bắt đầu";
+    }
+    function sheetStatus(status) {
+      const value = String(status || "").trim().toLowerCase();
+      if (["approved", "đã duyệt"].includes(value)) return "Đã duyệt";
+      if (["rejected", "từ chối"].includes(value)) return "Từ chối";
+      return "Chờ duyệt";
+    }
+    function statusClass(status) {
+      if (["Đang thực hiện", "Đang làm", "Đã duyệt"].includes(status)) return "active";
+      if (["Lập kế hoạch", "Chờ duyệt", "Cao"].includes(status)) return "planning";
+      if (["Tạm dừng", "Từ chối", "Chưa bắt đầu"].includes(status)) return "hold";
+      return "done";
+    }
+    function badge(text, kind) { return `<span class="status ${kind}">${escapeHtml(text)}</span>`; }
+    function heading(title, description, action = "") {
+      return `<div class="page-heading"><div><h1>${title}</h1><p class="subtitle">${description}</p></div><div class="heading-actions"><button class="button" id="refresh-data">⟳ &nbsp; Tải lại</button>${action}</div></div><div id="data-message" class="connection-banner"></div>`;
+    }
+    async function apiRequest(path, options = {}) {
+      const headers = new Headers(options.headers || {});
+      if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+      let response;
+      try {
+        response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+      } catch (error) {
+        throw new Error(`Không kết nối được Project API tại ${API_BASE_URL}. Hãy kiểm tra API và CORS. ${error.message}`);
+      }
+      const text = response.status === 204 ? "" : await response.text();
+      let data = null;
+      if (text) {
+        try { data = JSON.parse(text); } catch { data = text; }
+      }
+      if (!response.ok) {
+        const detail = typeof data === "string" ? data : (data?.message || data?.title || JSON.stringify(data));
+        throw new Error(`HTTP ${response.status}: ${detail || response.statusText}`);
+      }
+      return data;
+    }
+    function setConnection(state, text) {
+      const label = document.getElementById("api-connection");
+      label.className = `api-connection ${state}`;
+      label.textContent = text;
+    }
+    function showDataError(message) {
+      setConnection("offline", "API chưa kết nối");
+      main.innerHTML = `${heading("Không tải được dữ liệu", "Trang cần kết nối Project API để đọc và ghi dữ liệu dự án.", '<button class="button primary" id="retry-data">Thử lại</button>')}
+        <div class="connection-banner error">${escapeHtml(message)}</div>
+        <section class="panel" style="margin-top:16px;padding:20px"><div class="panel-title">Cách kết nối</div><p class="subtitle">Chạy Project.API tại <code>${escapeHtml(API_BASE_URL)}</code> và mở file này qua VS Code Live Server (localhost), không mở trực tiếp bằng file://.</p></section>`;
+      document.getElementById("retry-data").addEventListener("click", refreshData);
+    }
+    function normalizeProject(project) {
+      return {
+        id: project.projectId,
+        code: String(project.projectId || "").replaceAll("-", "").slice(0, 8).toUpperCase(),
+        name: project.projectName || "",
+        description: project.description || "",
+        startDate: dateValue(project.startDate),
+        endDate: dateValue(project.endDate),
+        apiStatus: project.status || "Planning",
+        status: projectStatus(project.status),
+        budget: Number(project.budget) || 0
+      };
+    }
+    function normalizeTask(task) {
+      return {
+        id: task.taskId,
+        name: task.taskName || "",
+        description: task.description || "",
+        startDate: dateValue(task.startDate),
+        dueDate: dateValue(task.dueDate),
+        apiStatus: task.status || "Pending",
+        status: taskStatus(task.status),
+        priority: task.priority || "Medium",
+        projectId: task.projectId
+      };
+    }
+    function normalizeTimesheet(sheet) {
+      return {
+        id: sheet.timesheetId,
+        projectId: sheet.projectId,
+        employeeId: sheet.employeeId,
+        taskId: sheet.taskId,
+        project: sheet.projectName || "—",
+        task: sheet.taskName || "—",
+        date: dateValue(sheet.workDate),
+        hours: Number(sheet.hoursWorked) || 0,
+        description: sheet.description || "",
+        rejectReason: sheet.rejectReason || "",
+        apiStatus: sheet.status || "Pending",
+        status: sheetStatus(sheet.status)
+      };
+    }
+    async function refreshData() {
+      if (location.protocol === "file:") {
+        showDataError("Trình duyệt chặn kết nối API khi mở trang bằng file://. Hãy mở thư mục FE/Project bằng VS Code Live Server rồi truy cập địa chỉ localhost.");
+        return false;
+      }
+      setConnection("", "Đang kết nối API...");
+      main.innerHTML = `${heading("Đang tải dữ liệu", "Đang đọc dữ liệu từ Project API...")}`;
+      try {
+        const [projectData, taskData, timesheetData] = await Promise.all([
+          apiRequest("/api/Projects"),
+          apiRequest("/api/Tasks"),
+          apiRequest("/api/Timesheets")
+        ]);
+        if (!Array.isArray(projectData) || !Array.isArray(taskData) || !Array.isArray(timesheetData)) {
+          throw new Error("Project API trả về dữ liệu không đúng định dạng.");
+        }
+        projects.splice(0, projects.length, ...projectData.map(normalizeProject));
+        tasks.splice(0, tasks.length, ...taskData.map(normalizeTask));
+        timesheets.splice(0, timesheets.length, ...timesheetData.map(normalizeTimesheet));
+        payrollRows = null;
+        setConnection("online", `Đã kết nối · ${API_BASE_URL}`);
+        updateNavigationCounts();
+        showPage(activePage);
+        return true;
+      } catch (error) {
+        showDataError(error.message);
+        return false;
+      }
+    }
+    function updateNavigationCounts() {
+      document.getElementById("project-count").textContent = projects.length;
+      document.querySelector('[data-page="tasks"] .nav-count').textContent = tasks.length;
+      document.querySelector('[data-page="timesheets"] .nav-count').textContent = timesheets.length;
+    }
+    function progressFor(projectId) {
+      const projectTasks = tasks.filter(task => task.projectId === projectId);
+      if (!projectTasks.length) return 0;
+      const completed = projectTasks.filter(task => task.status === "Hoàn thành").length;
+      return Math.round(completed / projectTasks.length * 100);
+    }
+    function projectRows(query = "", filter = "Tất cả trạng thái") {
+      const lowered = query.toLocaleLowerCase("vi");
+      const result = projects.filter(project =>
+        (filter === "Tất cả trạng thái" || project.status === filter)
+        && `${project.code} ${project.name} ${project.description}`.toLocaleLowerCase("vi").includes(lowered)
+      );
+      if (!result.length) return '<tr><td class="empty" colspan="8">Không tìm thấy dự án phù hợp.</td></tr>';
+      return result.map(project => {
+        const progress = progressFor(project.id);
+        return `<tr>
+          <td><div class="project-name">${escapeHtml(project.name)}</div><div class="project-code">${escapeHtml(project.code)}</div></td>
+          <td class="muted">${escapeHtml(project.description || "—")}</td>
+          <td>${dateLabel(project.startDate)}</td><td>${dateLabel(project.endDate)}</td>
+          <td>${badge(project.status, statusClass(project.status))}</td>
+          <td class="progress-cell"><div class="progress-label"><span>Task hoàn thành</span><strong>${progress}%</strong></div><div class="progress"><span style="width:${progress}%"></span></div></td>
+          <td>${money(project.budget)}</td>
+          <td><button class="button small" data-project-action="edit" data-id="${escapeHtml(project.id)}">Sửa</button> <button class="button small" data-project-action="delete" data-id="${escapeHtml(project.id)}">Xóa</button></td>
+        </tr>`;
+      }).join("");
+    }
+    function renderProjects() {
+      const active = projects.filter(project => project.status === "Đang thực hiện").length;
+      const activeBudget = projects.filter(project => project.status !== "Hoàn thành" && project.status !== "Đã hủy")
+        .reduce((sum, project) => sum + project.budget, 0);
+      const openTasks = tasks.filter(task => task.status !== "Hoàn thành").length;
+      const pendingSheets = timesheets.filter(sheet => sheet.status === "Chờ duyệt").length;
+      main.innerHTML = `${heading("Quản lý dự án", "Dữ liệu dự án và công việc được tải trực tiếp từ Project API.", '<button class="button" id="export-button">⇩ &nbsp; Xuất CSV</button><button class="button primary" id="new-project">＋ &nbsp; Tạo dự án</button>')}
+        <section class="metrics">
+          <div class="metric"><div class="metric-top">Tổng số dự án <span class="metric-symbol">▦</span></div><div class="metric-value">${projects.length}</div><div class="metric-note">${active} dự án đang thực hiện</div></div>
+          <div class="metric"><div class="metric-top">Công việc chưa hoàn thành <span class="metric-symbol">☷</span></div><div class="metric-value">${openTasks}</div><div class="metric-note">Theo dữ liệu task hiện có</div></div>
+          <div class="metric"><div class="metric-top">Chờ duyệt timesheet <span class="metric-symbol">◷</span></div><div class="metric-value">${pendingSheets}</div><div class="metric-note">Đọc từ API timesheet</div></div>
+          <div class="metric"><div class="metric-top">Ngân sách dự án mở <span class="metric-symbol">₫</span></div><div class="metric-value" style="font-size:20px">${money(activeBudget)}</div><div class="metric-note">Tổng ngân sách trên database</div></div>
+        </section>
+        <section class="panel">
+          <div class="panel-header"><div><div class="panel-title">Danh sách dự án</div><div class="panel-subtitle">Thông tin và tiến độ task trên các dự án</div></div>
+            <div class="filters"><input id="project-search" class="search" type="search" placeholder="⌕  Tìm tên, mã dự án..." aria-label="Tìm dự án"><select id="project-filter" class="filter" aria-label="Lọc trạng thái"><option>Tất cả trạng thái</option><option>Đang thực hiện</option><option>Lập kế hoạch</option><option>Tạm dừng</option><option>Hoàn thành</option><option>Đã hủy</option></select></div>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>TÊN DỰ ÁN</th><th>MÔ TẢ</th><th>NGÀY BẮT ĐẦU</th><th>NGÀY KẾT THÚC</th><th>TRẠNG THÁI</th><th>TIẾN ĐỘ TASK</th><th>NGÂN SÁCH</th><th>THAO TÁC</th></tr></thead><tbody id="projects-body">${projectRows()}</tbody></table></div>
+          <div class="panel-footer"><span id="project-summary">Hiển thị ${projects.length} dự án</span><span>Tiến độ được tính từ task đã hoàn thành.</span></div>
+        </section>
+        <div class="lower-grid">
+          <section class="panel"><div class="panel-header"><div><div class="panel-title">Công việc cần theo dõi</div><div class="panel-subtitle">Đầu việc chưa hoàn thành từ Project API</div></div><button class="button small" data-go="tasks">Xem tất cả</button></div><div class="task-list">${dashboardTasks()}</div></section>
+          <section class="panel"><div class="panel-header"><div><div class="panel-title">Tình hình database</div><div class="panel-subtitle">Tổng hợp dữ liệu hiện tại</div></div></div>
+            <div class="activity-item"><span class="activity-dot"></span><div class="activity-text"><strong>${projects.length}</strong> dự án đã tải từ database</div></div>
+            <div class="activity-item"><span class="activity-dot" style="background:#2a9d72"></span><div class="activity-text"><strong>${tasks.length}</strong> công việc đã tải từ database</div></div>
+            <div class="activity-item"><span class="activity-dot" style="background:#d59a38"></span><div class="activity-text"><strong>${timesheets.length}</strong> timesheet đã tải từ database</div></div>
+          </section>
+        </div>`;
+      bindRefresh();
+      document.getElementById("new-project").addEventListener("click", () => openProjectModal());
+      document.getElementById("export-button").addEventListener("click", exportProjects);
+      document.getElementById("project-search").addEventListener("input", updateProjectTable);
+      document.getElementById("project-filter").addEventListener("change", updateProjectTable);
+      document.getElementById("projects-body").addEventListener("click", handleProjectAction);
+      main.querySelectorAll("[data-go]").forEach(button => button.addEventListener("click", () => showPage(button.dataset.go)));
+    }
+    function dashboardTasks() {
+      const openTasks = tasks.filter(task => task.status !== "Hoàn thành").slice(0, 4);
+      if (!openTasks.length) return '<div class="empty">Không có công việc đang mở.</div>';
+      return openTasks.map(task => `<div class="task-row"><span class="check"></span><span class="task-title">${escapeHtml(task.name)}<div class="task-meta">${escapeHtml(projectName(task.projectId))}</div></span><span class="due">${dateLabel(task.dueDate)}</span></div>`).join("");
+    }
+    function updateProjectTable() {
+      const query = document.getElementById("project-search").value;
+      const filter = document.getElementById("project-filter").value;
+      const count = projects.filter(project =>
+        (filter === "Tất cả trạng thái" || project.status === filter)
+        && `${project.code} ${project.name} ${project.description}`.toLocaleLowerCase("vi").includes(query.toLocaleLowerCase("vi"))
+      ).length;
+      document.getElementById("projects-body").innerHTML = projectRows(query, filter);
+      document.getElementById("project-summary").textContent = `Hiển thị ${count} / ${projects.length} dự án`;
+    }
+    async function handleProjectAction(event) {
+      const button = event.target.closest("[data-project-action]");
+      if (!button) return;
+      const project = projects.find(item => item.id === button.dataset.id);
+      if (!project) return;
+      if (button.dataset.projectAction === "edit") {
+        openProjectModal(project);
+        return;
+      }
+      if (!confirm(`Xóa dự án "${project.name}" khỏi database?`)) return;
+      try {
+        await apiRequest(`/api/Projects/${encodeURIComponent(project.id)}`, { method: "DELETE" });
+        const refreshed = await refreshData();
+        showToast(refreshed ? "Đã xóa dự án." : "Đã xóa nhưng không tải lại được dữ liệu; hãy thử tải lại.", !refreshed);
+      } catch (error) { showToast(error.message, true); }
+    }
+    function taskRows(rows) {
+      if (!rows.length) return '<tr><td class="empty" colspan="7">Không tìm thấy công việc phù hợp.</td></tr>';
+      return rows.map(task => `<tr>
+        <td><div class="project-name">${escapeHtml(task.name)}</div><div class="project-code">ID ${escapeHtml(String(task.id).slice(0, 8).toUpperCase())}</div></td>
+        <td>${escapeHtml(projectName(task.projectId))}</td><td>${dateLabel(task.startDate)}</td><td>${dateLabel(task.dueDate)}</td>
+        <td>${badge(priorityLabel(task.priority), task.priority === "High" ? "planning" : "hold")}</td>
+        <td>${badge(task.status, statusClass(task.status))}</td>
+        <td><button class="button small" data-task-action="edit" data-id="${escapeHtml(task.id)}">Sửa</button> <button class="button small" data-task-action="delete" data-id="${escapeHtml(task.id)}">Xóa</button></td>
+      </tr>`).join("");
+    }
+    function renderTasks(query = "", projectId = "") {
+      const lowered = query.toLocaleLowerCase("vi");
+      const rows = tasks.filter(task => (!projectId || task.projectId === projectId)
+        && `${task.name} ${projectName(task.projectId)}`.toLocaleLowerCase("vi").includes(lowered));
+      main.innerHTML = `${heading("Quản lý công việc", "Thêm, sửa và xóa task trực tiếp qua Project API.", '<button class="button primary" id="task-add">＋ &nbsp; Tạo công việc</button>')}
+        <section class="panel"><div class="panel-header"><div><div class="panel-title">Danh sách công việc</div><div class="panel-subtitle">${rows.length} / ${tasks.length} công việc</div></div><div class="filters"><input class="search" id="task-search" placeholder="⌕  Tìm công việc..."><select class="filter" id="task-project-filter"><option value="">Tất cả dự án</option>${projects.map(project => `<option value="${escapeHtml(project.id)}">${escapeHtml(project.name)}</option>`).join("")}</select></div></div>
+        <div class="table-wrap"><table><thead><tr><th>CÔNG VIỆC</th><th>DỰ ÁN</th><th>NGÀY BẮT ĐẦU</th><th>HẠN HOÀN THÀNH</th><th>ƯU TIÊN</th><th>TRẠNG THÁI</th><th>THAO TÁC</th></tr></thead><tbody id="tasks-body">${taskRows(rows)}</tbody></table></div><div class="panel-footer"><span id="task-summary">Hiển thị ${rows.length} / ${tasks.length} công việc</span><span>Công việc được lưu trực tiếp vào database qua API.</span></div></section>`;
+      bindRefresh();
+      document.getElementById("task-add").addEventListener("click", () => openTaskModal());
+      const update = () => renderTasks(document.getElementById("task-search").value, document.getElementById("task-project-filter").value);
+      document.getElementById("task-search").addEventListener("input", event => {
+        const filter = document.getElementById("task-project-filter").value;
+        const found = tasks.filter(task => (!filter || task.projectId === filter)
+          && `${task.name} ${projectName(task.projectId)}`.toLocaleLowerCase("vi").includes(event.target.value.toLocaleLowerCase("vi")));
+        document.getElementById("tasks-body").innerHTML = taskRows(found);
+        document.getElementById("task-summary").textContent = `Hiển thị ${found.length} / ${tasks.length} công việc`;
+      });
+      document.getElementById("task-project-filter").addEventListener("change", update);
+      document.getElementById("tasks-body").addEventListener("click", handleTaskAction);
+    }
+    async function handleTaskAction(event) {
+      const button = event.target.closest("[data-task-action]");
+      if (!button) return;
+      const task = tasks.find(item => item.id === button.dataset.id);
+      if (!task) return;
+      if (button.dataset.taskAction === "edit") {
+        openTaskModal(task);
+        return;
+      }
+      if (!confirm(`Xóa công việc "${task.name}" khỏi database?`)) return;
+      try {
+        await apiRequest(`/api/Tasks/${encodeURIComponent(task.id)}`, { method: "DELETE" });
+        await refreshData();
+        showToast("Đã xóa công việc.");
+      } catch (error) { showToast(error.message, true); }
+    }
+    function sheetRows(rows) {
+      if (!rows.length) return '<tr><td class="empty" colspan="7">Không có timesheet phù hợp.</td></tr>';
+      return rows.map(sheet => {
+        const kind = statusClass(sheet.status);
+        const initials = String(sheet.employeeId).replaceAll("-", "").slice(0, 2).toUpperCase();
+        const action = sheet.status === "Chờ duyệt"
+          ? `<button class="button small" data-sheet-action="approve" data-id="${escapeHtml(sheet.id)}">Duyệt</button> <button class="button small" data-sheet-action="reject" data-id="${escapeHtml(sheet.id)}">Từ chối</button>`
+          : '<span class="muted">—</span>';
+        return `<tr><td><div class="owner"><span class="avatar">${escapeHtml(initials)}</span><strong>${escapeHtml(initials)}-${escapeHtml(String(sheet.employeeId).slice(0, 8))}</strong></div></td>
+          <td>${escapeHtml(sheet.project)}</td><td>${escapeHtml(sheet.task)}</td><td>${dateLabel(sheet.date)}</td><td>${sheet.hours} giờ</td><td>${badge(sheet.status, kind)}</td><td>${action}</td></tr>`;
+      }).join("");
+    }
+    function renderTimesheets(query = "", filter = "") {
+      const lowered = query.toLocaleLowerCase("vi");
+      const rows = timesheets.filter(sheet => (!filter || sheet.status === filter)
+        && `${sheet.employeeId} ${sheet.project} ${sheet.task}`.toLocaleLowerCase("vi").includes(lowered));
+      const pending = timesheets.filter(sheet => sheet.status === "Chờ duyệt").length;
+      const approved = timesheets.filter(sheet => sheet.status === "Đã duyệt").length;
+      const totalHours = timesheets.reduce((sum, sheet) => sum + sheet.hours, 0);
+      main.innerHTML = `${heading("Timesheet", "Timesheet và trạng thái phê duyệt được đọc từ Project API.", '<button class="button" id="timesheet-export">⇩ &nbsp; Xuất CSV</button>')}
+        <section class="metrics" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="metric"><div class="metric-top">Chờ duyệt <span class="metric-symbol">◷</span></div><div class="metric-value">${pending}</div><div class="metric-note">Trạng thái từ database</div></div><div class="metric"><div class="metric-top">Đã duyệt <span class="metric-symbol">✓</span></div><div class="metric-value">${approved}</div><div class="metric-note">Trạng thái từ database</div></div><div class="metric"><div class="metric-top">Tổng giờ khai báo <span class="metric-symbol">◴</span></div><div class="metric-value">${totalHours}<span style="font-size:13px;font-weight:500"> giờ</span></div><div class="metric-note">Tổng số ${timesheets.length} timesheet</div></div></section>
+        <section class="panel"><div class="panel-header"><div><div class="panel-title">Danh sách timesheet</div><div class="panel-subtitle">${rows.length} / ${timesheets.length} khai báo</div></div><div class="filters"><input class="search" id="sheet-search" placeholder="⌕  Tìm nhân viên, dự án..."><select class="filter" id="sheet-filter"><option value="">Tất cả trạng thái</option><option>Chờ duyệt</option><option>Đã duyệt</option><option>Từ chối</option></select></div></div>
+        <div class="table-wrap"><table><thead><tr><th>NHÂN VIÊN (ID)</th><th>DỰ ÁN</th><th>CÔNG VIỆC</th><th>NGÀY LÀM</th><th>SỐ GIỜ</th><th>TRẠNG THÁI</th><th>THAO TÁC</th></tr></thead><tbody id="sheets-body">${sheetRows(rows)}</tbody></table></div><div class="panel-footer"><span id="sheet-summary">Hiển thị ${rows.length} / ${timesheets.length} timesheet</span><span>Phê duyệt yêu cầu mã hoặc ID nhân viên đang hoạt động.</span></div></section>`;
+      bindRefresh();
+      const update = () => {
+        const search = document.getElementById("sheet-search").value.toLocaleLowerCase("vi");
+        const status = document.getElementById("sheet-filter").value;
+        const filtered = timesheets.filter(sheet => (!status || sheet.status === status)
+          && `${sheet.employeeId} ${sheet.project} ${sheet.task}`.toLocaleLowerCase("vi").includes(search));
+        document.getElementById("sheets-body").innerHTML = sheetRows(filtered);
+        document.getElementById("sheet-summary").textContent = `Hiển thị ${filtered.length} / ${timesheets.length} timesheet`;
+      };
+      document.getElementById("sheet-search").addEventListener("input", update);
+      document.getElementById("sheet-filter").addEventListener("change", update);
+      document.getElementById("timesheet-export").addEventListener("click", () => exportCsv(
+        "timesheets.csv",
+        ["Nhân viên ID", "Dự án", "Công việc", "Ngày làm", "Số giờ", "Trạng thái"],
+        timesheets.map(sheet => [sheet.employeeId, sheet.project, sheet.task, dateLabel(sheet.date), sheet.hours, sheet.apiStatus])
+      ));
+      document.getElementById("sheets-body").addEventListener("click", handleTimesheetAction);
+    }
+    async function handleTimesheetAction(event) {
+      const button = event.target.closest("[data-sheet-action]");
+      if (!button) return;
+      const sheet = timesheets.find(item => item.id === button.dataset.id);
+      if (!sheet) return;
+      const identifier = prompt("Nhập mã nhân viên hoặc ID nhân viên phê duyệt:");
+      if (!identifier?.trim()) return;
+      let reason = "";
+      if (button.dataset.sheetAction === "reject") {
+        reason = prompt("Nhập lý do từ chối (bắt buộc):")?.trim() || "";
+        if (!reason) return;
+      }
+      try {
+        const approverId = await resolveApproverId(identifier.trim());
+        const approved = button.dataset.sheetAction === "approve";
+        const query = new URLSearchParams({ approved: String(approved), approvedBy: approverId });
+        if (!approved) query.set("reason", reason);
+        await apiRequest(`/api/Timesheets/${encodeURIComponent(sheet.id)}/review?${query}`, {
+          method: "PUT",
+          body: "{}"
+        });
+        const refreshed = await refreshData();
+        showToast(refreshed
+          ? (approved ? "Đã duyệt timesheet trên database." : "Đã từ chối timesheet trên database.")
+          : "Đã ghi thay đổi nhưng không tải lại được dữ liệu; hãy thử tải lại.", !refreshed);
+      } catch (error) { showToast(error.message, true); }
+    }
+    async function resolveApproverId(identifier) {
+      if (/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(identifier)) {
+        const employee = await apiRequest(`/api/employees/${encodeURIComponent(identifier)}`);
+        return employee.employeeId;
+      }
+      const page = await apiRequest(`/api/employees?keyword=${encodeURIComponent(identifier)}&page=1&pageSize=100`);
+      const matches = (page.items || []).filter(employee =>
+        employee.employeeCode?.toLowerCase() === identifier.toLowerCase()
+        || employee.fullName?.toLowerCase() === identifier.toLowerCase()
+        || employee.employeeId?.toLowerCase() === identifier.toLowerCase()
+      );
+      if (matches.length !== 1) throw new Error(matches.length ? "Tìm thấy nhiều nhân viên trùng khớp; hãy nhập ID nhân viên." : "Không tìm thấy nhân viên đang hoạt động.");
+      return matches[0].employeeId;
+    }
+    async function renderCosts() {
+      main.innerHTML = `${heading("Chi phí nhân công", "Chi phí được tính từ timesheet đã duyệt trong Project API.")}<section class="panel"><div class="empty">Đang tải chi phí payroll...</div></section>`;
+      bindRefresh();
+      try {
+        if (!payrollRows) {
+          const today = new Date().toISOString().slice(0, 10);
+          const fromDate = `${today.slice(0, 4)}-01-01`;
+          payrollRows = await apiRequest(`/api/PayrollData?fromDate=${fromDate}&toDate=${today}`);
+          if (!Array.isArray(payrollRows)) throw new Error("Payroll API trả về dữ liệu không đúng định dạng.");
+        }
+        const totals = new Map();
+        for (const row of payrollRows) {
+          const current = totals.get(row.projectId) || { amount: 0, hours: 0 };
+          current.amount += Number(row.totalProjectIncome) || 0;
+          current.hours += Number(row.hoursWorked) || 0;
+          totals.set(row.projectId, current);
+        }
+        const totalCost = [...totals.values()].reduce((sum, row) => sum + row.amount, 0);
+        const totalHours = [...totals.values()].reduce((sum, row) => sum + row.hours, 0);
+        const totalBudget = projects.reduce((sum, project) => sum + project.budget, 0);
+        main.innerHTML = `${heading("Chi phí nhân công", "Chi phí lấy từ dữ liệu payroll đã duyệt trong database.", '<button class="button" id="cost-export">⇩ &nbsp; Xuất CSV</button>')}
+          <section class="metrics" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="metric"><div class="metric-top">Chi phí nhân công từ đầu năm <span class="metric-symbol">₫</span></div><div class="metric-value" style="font-size:21px">${money(totalCost)}</div><div class="metric-note">Timesheet đã duyệt</div></div><div class="metric"><div class="metric-top">Tổng giờ đã duyệt <span class="metric-symbol">◷</span></div><div class="metric-value">${totalHours}<span style="font-size:13px;font-weight:500"> giờ</span></div><div class="metric-note">${payrollRows.length} dòng payroll</div></div><div class="metric"><div class="metric-top">Ngân sách còn lại <span class="metric-symbol">◫</span></div><div class="metric-value" style="font-size:21px">${money(totalBudget - totalCost)}</div><div class="metric-note">Ngân sách dự án trừ chi phí đã duyệt</div></div></section>
+          <section class="panel"><div class="panel-header"><div><div class="panel-title">Ngân sách theo dự án</div><div class="panel-subtitle">Số liệu thực từ Project API, kỳ từ ${dateLabel(`${new Date().getFullYear()}-01-01`)} đến ${dateLabel(new Date().toISOString())}</div></div><input id="cost-search" class="search" placeholder="⌕  Tìm dự án..."></div><div class="table-wrap"><table><thead><tr><th>DỰ ÁN</th><th>NGÂN SÁCH</th><th>CHI PHÍ NHÂN CÔNG</th><th>NGÂN SÁCH CÒN LẠI</th><th>SỬ DỤNG</th></tr></thead><tbody id="cost-body">${costRows(totals)}</tbody></table></div><div class="panel-footer"><span>Đơn vị tiền tệ: VND</span><span>Chi phí tính từ hệ số và đơn giá payroll.</span></div></section>`;
+        bindRefresh();
+        document.getElementById("cost-search").addEventListener("input", event => {
+          document.getElementById("cost-body").innerHTML = costRows(totals, event.target.value);
+        });
+        document.getElementById("cost-export").addEventListener("click", () => exportCsv(
+          "chi-phi-du-an.csv",
+          ["Dự án", "Ngân sách", "Chi phí đã duyệt", "Còn lại"],
+          projects.map(project => {
+            const total = totals.get(project.id)?.amount || 0;
+            return [project.name, project.budget, total, project.budget - total];
+          })
+        ));
+      } catch (error) {
+        const message = `<div class="connection-banner error">${escapeHtml(error.message)}</div>`;
+        main.insertAdjacentHTML("beforeend", message);
+      }
+    }
+    function costRows(totals, query = "") {
+      const filtered = projects.filter(project => project.name.toLocaleLowerCase("vi").includes(query.toLocaleLowerCase("vi")));
+      if (!filtered.length) return '<tr><td class="empty" colspan="5">Không tìm thấy dự án.</td></tr>';
+      return filtered.map(project => {
+        const cost = totals.get(project.id)?.amount || 0;
+        const utilization = project.budget > 0 ? Math.round(cost / project.budget * 100) : 0;
+        return `<tr><td><div class="project-name">${escapeHtml(project.name)}</div><div class="project-code">${escapeHtml(project.code)}</div></td><td>${money(project.budget)}</td><td>${money(cost)}</td><td>${money(project.budget - cost)}</td><td class="progress-cell"><div class="progress-label"><strong>${utilization}%</strong></div><div class="progress"><span style="width:${Math.max(0, Math.min(100, utilization))}%"></span></div></td></tr>`;
+      }).join("");
+    }
+    function renderReports() {
+      const completeProjects = projects.filter(project => project.status === "Hoàn thành").length;
+      const completedTasks = tasks.filter(task => task.status === "Hoàn thành").length;
+      const pending = timesheets.filter(sheet => sheet.status === "Chờ duyệt").length;
+      const avgProgress = projects.length ? Math.round(projects.reduce((sum, project) => sum + progressFor(project.id), 0) / projects.length) : 0;
+      const statuses = ["Đang thực hiện", "Lập kế hoạch", "Tạm dừng", "Hoàn thành", "Đã hủy"];
+      main.innerHTML = `${heading("Thống kê dự án", "Các chỉ số được tổng hợp từ dữ liệu dự án, task và timesheet.")}<section class="metrics">
+          <div class="metric"><div class="metric-top">Dự án hoàn thành <span class="metric-symbol">✓</span></div><div class="metric-value">${completeProjects}</div><div class="metric-note">Trên ${projects.length} dự án</div></div>
+          <div class="metric"><div class="metric-top">Task hoàn thành <span class="metric-symbol">☷</span></div><div class="metric-value">${completedTasks}<span style="font-size:14px"> / ${tasks.length}</span></div><div class="metric-note">Trên toàn bộ dự án</div></div>
+          <div class="metric"><div class="metric-top">Tiến độ task trung bình <span class="metric-symbol">◴</span></div><div class="metric-value">${avgProgress}<span style="font-size:14px">%</span></div><div class="metric-note">Tính từ task hoàn thành</div></div>
+          <div class="metric"><div class="metric-top">Timesheet chờ duyệt <span class="metric-symbol">◷</span></div><div class="metric-value">${pending}</div><div class="metric-note">Trạng thái từ database</div></div>
+        </section><div class="report-grid">
+          <section class="report-card"><h3>Trạng thái dự án</h3>${statuses.map(status => {
+            const count = projects.filter(project => project.status === status).length;
+            const width = projects.length ? Math.max(count ? 7 : 0, count / projects.length * 100) : 0;
+            return `<div class="bar-row"><span>${status}</span><div class="progress"><span style="width:${width}%"></span></div><strong>${count}</strong></div>`;
+          }).join("")}</section>
+          <section class="report-card"><h3>Tiến độ task theo dự án</h3>${projects.length ? projects.slice(0, 8).map(project => {
+            const progress = progressFor(project.id);
+            return `<div class="bar-row"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(project.name)}</span><div class="progress"><span style="width:${progress}%"></span></div><strong>${progress}%</strong></div>`;
+          }).join("") : '<div class="empty">Chưa có dự án.</div>'}</section>
+          <section class="report-card"><h3>Tổng ngân sách dự án</h3><div class="budget-summary"><strong>${money(projects.reduce((sum, project) => sum + project.budget, 0))}</strong></div><div style="margin-top:25px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:11px">Dữ liệu được đọc trực tiếp từ Project API.</div></section>
+        </div>`;
+      bindRefresh();
+    }
+    function showPage(page) {
+      activePage = page;
+      document.querySelectorAll(".nav button[data-page]").forEach(button => button.classList.toggle("active", button.dataset.page === page));
+      document.getElementById("breadcrumb").textContent = pageNames[page];
+      if (page === "projects") renderProjects();
+      else if (page === "tasks") renderTasks();
+      else if (page === "timesheets") renderTimesheets();
+      else if (page === "costs") renderCosts();
+      else renderReports();
+    }
+    function bindRefresh() {
+      const button = document.getElementById("refresh-data");
+      if (button) button.addEventListener("click", refreshData);
+    }
+    function projectName(projectId) {
+      return projects.find(project => project.id === projectId)?.name || "Dự án không tồn tại";
+    }
+    function priorityLabel(priority) {
+      return ({ High: "Cao", Medium: "Trung bình", Low: "Thấp" })[priority] || priority || "—";
+    }
+    function field(name, label, type, value = "", required = false, extra = "") {
+      const requiredAttr = required ? " required" : "";
+      if (type === "textarea") return `<div class="field full"><label for="${name}">${label}</label><textarea id="${name}" name="${name}"${requiredAttr}>${escapeHtml(value)}</textarea></div>`;
+      return `<div class="field${extra.includes("full") ? " full" : ""}"><label for="${name}">${label}</label><input id="${name}" name="${name}" type="${type}" value="${escapeHtml(value)}"${requiredAttr} ${extra}></div>`;
+    }
+    function selectField(name, label, value, options, full = false) {
+      return `<div class="field${full ? " full" : ""}"><label for="${name}">${label}</label><select id="${name}" name="${name}" required>${options.map(option => `<option value="${escapeHtml(option.value)}"${option.value === value ? " selected" : ""}>${escapeHtml(option.label)}</option>`).join("")}</select></div>`;
+    }
+    function openProjectModal(project = null) {
+      modalMode = "project";
+      editingItem = project;
+      document.getElementById("modal-title").textContent = project ? "Cập nhật dự án" : "Tạo dự án mới";
+      document.getElementById("modal-submit").textContent = project ? "Lưu thay đổi" : "Tạo dự án";
+      const statuses = ["Planning", "Active", "In Progress", "Completed", "On Hold"];
+      document.getElementById("modal-fields").innerHTML =
+        field("projectName", "Tên dự án *", "text", project?.name || "", true, 'maxlength="200" class="text-field"')
+        + field("description", "Mô tả", "textarea", project?.description || "")
+        + field("startDate", "Ngày bắt đầu *", "date", project?.startDate || new Date().toISOString().slice(0, 10), true)
+        + field("endDate", "Ngày kết thúc *", "date", project?.endDate || "", true)
+        + selectField("status", "Trạng thái", project?.apiStatus || "Planning", statuses.map(status => ({ value: status, label: projectStatus(status) })))
+        + field("budget", "Ngân sách (₫)", "number", project?.budget ?? 0, true, 'min="0" step="1"');
+      document.getElementById("project-modal").classList.add("open");
+      document.getElementById("projectName").focus();
+    }
+    function openTaskModal(task = null) {
+      if (!projects.length) { showToast("Cần tạo ít nhất một dự án trước khi thêm task.", true); return; }
+      modalMode = "task";
+      editingItem = task;
+      document.getElementById("modal-title").textContent = task ? "Cập nhật công việc" : "Tạo công việc";
+      document.getElementById("modal-submit").textContent = task ? "Lưu thay đổi" : "Tạo công việc";
+      const projectOptions = projects.map(project => ({ value: project.id, label: project.name }));
+      const statuses = [
+        { value: "Pending", label: "Chưa bắt đầu" },
+        { value: "In Progress", label: "Đang làm" },
+        { value: "Completed", label: "Hoàn thành" },
+        { value: "On Hold", label: "Tạm dừng" }
+      ];
+      const priorities = [{ value: "High", label: "Cao" }, { value: "Medium", label: "Trung bình" }, { value: "Low", label: "Thấp" }];
+      document.getElementById("modal-fields").innerHTML =
+        field("taskName", "Tên công việc *", "text", task?.name || "", true, 'maxlength="200"')
+        + selectField("projectId", "Dự án *", task?.projectId || projects[0].id, projectOptions, true)
+        + field("description", "Mô tả", "textarea", task?.description || "")
+        + field("startDate", "Ngày bắt đầu *", "date", task?.startDate || new Date().toISOString().slice(0, 10), true)
+        + field("dueDate", "Hạn hoàn thành", "date", task?.dueDate || "")
+        + selectField("status", "Trạng thái", task?.apiStatus || "Pending", statuses)
+        + selectField("priority", "Ưu tiên", task?.priority || "Medium", priorities);
+      document.getElementById("project-modal").classList.add("open");
+      document.getElementById("taskName").focus();
+    }
+    function closeModal() {
+      document.getElementById("project-modal").classList.remove("open");
+      document.getElementById("project-form").reset();
+      editingItem = null;
+    }
+    async function saveModal(event) {
+      event.preventDefault();
+      const values = Object.fromEntries(new FormData(event.currentTarget).entries());
+      try {
+        if (modalMode === "project") {
+          if (values.endDate < values.startDate) throw new Error("Ngày kết thúc phải bằng hoặc sau ngày bắt đầu.");
+          const payload = {
+            projectName: String(values.projectName).trim(),
+            description: String(values.description || "").trim() || null,
+            startDate: values.startDate,
+            endDate: values.endDate,
+            status: values.status,
+            budget: Number(values.budget)
+          };
+          const path = editingItem ? `/api/Projects/${encodeURIComponent(editingItem.id)}` : "/api/Projects";
+          await apiRequest(path, { method: editingItem ? "PUT" : "POST", body: JSON.stringify(payload) });
+        } else {
+          if (values.dueDate && values.dueDate < values.startDate) throw new Error("Hạn hoàn thành phải bằng hoặc sau ngày bắt đầu.");
+          const payload = {
+            taskName: String(values.taskName).trim(),
+            description: String(values.description || "").trim() || null,
+            startDate: `${values.startDate}T00:00:00`,
+            dueDate: values.dueDate ? `${values.dueDate}T00:00:00` : null,
+            status: values.status,
+            priority: values.priority,
+            projectId: values.projectId
+          };
+          const path = editingItem ? `/api/Tasks/${encodeURIComponent(editingItem.id)}` : "/api/Tasks";
+          await apiRequest(path, { method: editingItem ? "PUT" : "POST", body: JSON.stringify(payload) });
+        }
+        const savedMode = modalMode;
+        closeModal();
+        const refreshed = await refreshData();
+        showToast(refreshed
+          ? (savedMode === "project" ? "Đã lưu dự án vào database." : "Đã lưu công việc vào database.")
+          : "Đã ghi thay đổi nhưng không tải lại được dữ liệu; hãy thử tải lại.", !refreshed);
+      } catch (error) { showToast(error.message, true); }
+    }
+    function showToast(message, isError = false) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.style.borderColor = isError ? "#efcaca" : "";
+      toast.style.color = isError ? "#8c3232" : "";
+      toast.style.background = isError ? "#fff3f3" : "";
+      toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove("show"), 4000);
+    }
+    function exportProjects() {
+      exportCsv("danh-sach-du-an.csv",
+        ["Project ID", "Tên dự án", "Mô tả", "Ngày bắt đầu", "Ngày kết thúc", "Trạng thái", "Ngân sách"],
+        projects.map(project => [project.id, project.name, project.description, project.startDate, project.endDate, project.apiStatus, project.budget]));
+    }
+    function exportCsv(filename, header, rows) {
+      const csv = [header, ...rows].map(row => row.map(cell => `"${String(cell ?? "").replaceAll('"', '""')}"`).join(",")).join("\r\n");
+      const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+      showToast("Đã xuất CSV từ dữ liệu đang hiển thị.");
+    }
+    document.querySelectorAll(".nav button[data-page]").forEach(button => button.addEventListener("click", () => showPage(button.dataset.page)));
+    document.getElementById("project-form").addEventListener("submit", saveModal);
+    document.getElementById("close-modal").addEventListener("click", closeModal);
+    document.getElementById("cancel-modal").addEventListener("click", closeModal);
+    document.getElementById("project-modal").addEventListener("click", event => { if (event.target.id === "project-modal") closeModal(); });
+    document.getElementById("help-button").addEventListener("click", () => showToast("API dự án: " + API_BASE_URL));
+    document.getElementById("help-top").addEventListener("click", () => showToast("API dự án: " + API_BASE_URL));
+    document.addEventListener("keydown", event => { if (event.key === "Escape") closeModal(); });
+    refreshData();
+  </script>
+</body>
+</html>
