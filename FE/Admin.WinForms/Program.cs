@@ -21,9 +21,22 @@ namespace Admin.WinForms
                 Timeout = TimeSpan.FromSeconds(30)
             };
 
+            var payrollServiceUrl = Environment.GetEnvironmentVariable("Services__Payroll__BaseUrl");
+            if (string.IsNullOrWhiteSpace(payrollServiceUrl))
+            {
+                payrollServiceUrl = ApiConfig.PayrollServiceUrl;
+            }
+
+            if (!Uri.TryCreate(payrollServiceUrl, UriKind.Absolute, out var payrollUri)
+                || payrollUri.Scheme is not ("http" or "https"))
+            {
+                throw new InvalidOperationException(
+                    "Payroll API URL không hợp lệ. Kiểm tra Services__Payroll__BaseUrl.");
+            }
+
             var payrollClient = new HttpClient
             {
-                BaseAddress = new Uri(ApiConfig.PayrollServiceUrl),
+                BaseAddress = new Uri(payrollUri.AbsoluteUri.TrimEnd('/') + "/"),
                 Timeout = TimeSpan.FromSeconds(30)
             };
 

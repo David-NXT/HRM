@@ -164,8 +164,13 @@ namespace Admin.WinForms
         private void LoadPlaceholder(string title, string description)
         {
             var page = new UserControl();
-            page.Controls.Add(new Label { Text = title + Environment.NewLine + Environment.NewLine + description,
-                Dock = DockStyle.Fill, Padding = new Padding(30), Font = new Font("Segoe UI", 12F) });
+            page.Controls.Add(new Label
+            {
+                Text = title + Environment.NewLine + Environment.NewLine + description,
+                Dock = DockStyle.Fill,
+                Padding = new Padding(30),
+                Font = new Font("Segoe UI", 12F)
+            });
             LoadControl(page);
         }
 
@@ -185,6 +190,11 @@ namespace Admin.WinForms
             {
                 panel_Content.ResumeLayout();
             }
+        }
+
+        private void panel_Content_Paint(object sender, PaintEventArgs e)
+        {
+
         }
     }
 }

@@ -117,20 +117,12 @@ namespace Admin.WinForms.Controls.Payroll
 
                 if (_currentPayslip == null)
                 {
-                    // Fallback lấy từ bảng lương
-                    _currentPayslip = new PayslipDto
-                    {
-                        PayrollID = _selectedPayroll.PayrollID,
-                        EmployeeID = _selectedPayroll.EmployeeID,
-                        EmployeeCode = _selectedPayroll.EmployeeCode,
-                        EmployeeName = _selectedPayroll.EmployeeName,
-                        BaseSalary = _selectedPayroll.BaseSalary,
-                        StandardWorkingDay = _selectedPayroll.StandardWorkingDay,
-                        WorkingDays = _selectedPayroll.WorkingDays,
-                        GrossSalary = _selectedPayroll.GrossSalary,
-                        NetSalary = _selectedPayroll.NetSalary,
-                        Status = _selectedPayroll.Status
-                    };
+                    ClearSlip();
+                    label_SlipTitle.Text = "PHIẾU LƯƠNG CHƯA ĐƯỢC PHÁT HÀNH";
+                    label_EmpCodeVal.Text = $"Mã NV: {_selectedPayroll.EmployeeCode}";
+                    label_EmpNameVal.Text = $"Họ và Tên: {_selectedPayroll.EmployeeName}";
+                    label_StatusVal.Text = "Trạng thái: Chưa phát hành";
+                    return;
                 }
 
                 // Render dữ liệu lên phiếu
@@ -147,6 +139,14 @@ namespace Admin.WinForms.Controls.Payroll
                 // Allowances
                 listView_Allowances.BeginUpdate();
                 listView_Allowances.Items.Clear();
+                if (_currentPayslip.TotalProjectAllowance > 0)
+                {
+                    var projectAllowance = new ListViewItem("Phụ cấp dự án");
+                    projectAllowance.SubItems.Add(
+                        _currentPayslip.TotalProjectAllowance.ToString("#,##0 đ"));
+                    listView_Allowances.Items.Add(projectAllowance);
+                }
+
                 if (_currentPayslip.Allowances != null)
                 {
                     foreach (var a in _currentPayslip.Allowances)
