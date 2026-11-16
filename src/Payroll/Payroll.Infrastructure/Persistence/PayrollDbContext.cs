@@ -149,6 +149,7 @@ public class PayrollDbContext : DbContext, IApplicationDbContext
         // Pay cut configuration
         modelBuilder.Entity<PayCutReason>(entity =>
         {
+            entity.Property(pr => pr.Description).IsRequired();
             entity.Property(pr => pr.DefaultRate).HasPrecision(18, 4);
         });
 

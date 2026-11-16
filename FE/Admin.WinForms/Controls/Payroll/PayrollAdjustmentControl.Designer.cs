@@ -21,9 +21,12 @@ namespace Admin.WinForms.Controls.Payroll
             label_Period = new Label();
             comboBox_Periods = new ComboBox();
             label_Employee = new Label();
+            textBox_EmployeeSearch = new TextBox();
+            button_SearchEmployee = new Button();
             comboBox_Employees = new ComboBox();
             button_AddAllowance = new Button();
             button_AddPayCut = new Button();
+            button_ManageCatalog = new Button();
             button_Reload = new Button();
 
             splitContainer_Main = new SplitContainer();
@@ -60,9 +63,12 @@ namespace Admin.WinForms.Controls.Payroll
             panel_Top.Controls.Add(label_Period);
             panel_Top.Controls.Add(comboBox_Periods);
             panel_Top.Controls.Add(label_Employee);
+            panel_Top.Controls.Add(textBox_EmployeeSearch);
+            panel_Top.Controls.Add(button_SearchEmployee);
             panel_Top.Controls.Add(comboBox_Employees);
             panel_Top.Controls.Add(button_AddAllowance);
             panel_Top.Controls.Add(button_AddPayCut);
+            panel_Top.Controls.Add(button_ManageCatalog);
             panel_Top.Controls.Add(button_Reload);
             panel_Top.Dock = DockStyle.Top;
             panel_Top.Location = new Point(0, 0);
@@ -91,39 +97,62 @@ namespace Admin.WinForms.Controls.Payroll
             label_Employee.Size = new Size(116, 28);
             label_Employee.Text = "Nhân viên:";
 
+            textBox_EmployeeSearch.Font = new Font("Segoe UI", 9F);
+            textBox_EmployeeSearch.Location = new Point(565, 20);
+            textBox_EmployeeSearch.Name = "textBox_EmployeeSearch";
+            textBox_EmployeeSearch.PlaceholderText = "Tìm mã / tên / ID";
+            textBox_EmployeeSearch.Size = new Size(170, 32);
+            textBox_EmployeeSearch.TabIndex = 1;
+
+            button_SearchEmployee.Font = new Font("Segoe UI", 9F);
+            button_SearchEmployee.Location = new Point(740, 16);
+            button_SearchEmployee.Name = "button_SearchEmployee";
+            button_SearchEmployee.Size = new Size(75, 42);
+            button_SearchEmployee.TabIndex = 2;
+            button_SearchEmployee.Text = "Tìm";
+            button_SearchEmployee.UseVisualStyleBackColor = true;
+
             comboBox_Employees.DropDownStyle = ComboBoxStyle.DropDownList;
             comboBox_Employees.Font = new Font("Segoe UI", 10F);
-            comboBox_Employees.Location = new Point(565, 19);
+            comboBox_Employees.Location = new Point(825, 19);
             comboBox_Employees.Name = "comboBox_Employees";
-            comboBox_Employees.Size = new Size(350, 36);
-            comboBox_Employees.TabIndex = 1;
+            comboBox_Employees.Size = new Size(220, 36);
+            comboBox_Employees.TabIndex = 3;
 
             button_AddAllowance.BackColor = Color.FromArgb(16, 185, 129);
             button_AddAllowance.ForeColor = Color.White;
             button_AddAllowance.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-            button_AddAllowance.Location = new Point(935, 16);
+            button_AddAllowance.Location = new Point(1055, 16);
             button_AddAllowance.Name = "button_AddAllowance";
             button_AddAllowance.Size = new Size(180, 42);
-            button_AddAllowance.TabIndex = 2;
+            button_AddAllowance.TabIndex = 4;
             button_AddAllowance.Text = "+ Thêm Phụ Cấp";
             button_AddAllowance.UseVisualStyleBackColor = false;
 
             button_AddPayCut.BackColor = Color.FromArgb(239, 68, 68);
             button_AddPayCut.ForeColor = Color.White;
             button_AddPayCut.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-            button_AddPayCut.Location = new Point(1125, 16);
+            button_AddPayCut.Location = new Point(1245, 16);
             button_AddPayCut.Name = "button_AddPayCut";
             button_AddPayCut.Size = new Size(200, 42);
-            button_AddPayCut.TabIndex = 3;
+            button_AddPayCut.TabIndex = 5;
             button_AddPayCut.Text = "- Thêm Khấu Trừ/Phạt";
             button_AddPayCut.UseVisualStyleBackColor = false;
+
+            button_ManageCatalog.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            button_ManageCatalog.Location = new Point(1455, 16);
+            button_ManageCatalog.Name = "button_ManageCatalog";
+            button_ManageCatalog.Size = new Size(200, 42);
+            button_ManageCatalog.TabIndex = 6;
+            button_ManageCatalog.Text = "Quản lý danh mục";
+            button_ManageCatalog.UseVisualStyleBackColor = true;
 
             button_Reload.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             button_Reload.Font = new Font("Segoe UI", 9F);
             button_Reload.Location = new Point(1670, 16);
             button_Reload.Name = "button_Reload";
             button_Reload.Size = new Size(110, 42);
-            button_Reload.TabIndex = 4;
+            button_Reload.TabIndex = 7;
             button_Reload.Text = "Reload";
             button_Reload.UseVisualStyleBackColor = true;
 
@@ -272,9 +301,12 @@ namespace Admin.WinForms.Controls.Payroll
         private Label label_Period;
         private ComboBox comboBox_Periods;
         private Label label_Employee;
+        private TextBox textBox_EmployeeSearch;
+        private Button button_SearchEmployee;
         private ComboBox comboBox_Employees;
         private Button button_AddAllowance;
         private Button button_AddPayCut;
+        private Button button_ManageCatalog;
         private Button button_Reload;
 
         private SplitContainer splitContainer_Main;

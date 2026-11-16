@@ -49,6 +49,14 @@ if (string.IsNullOrWhiteSpace(connectionString))
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
+const string payrollWebClientPolicy = "PayrollWebClient";
+builder.Services.AddCors(options => options.AddPolicy(
+    payrollWebClientPolicy,
+    policy => policy
+        .WithOrigins("http://localhost:5500", "http://127.0.0.1:5500")
+        .AllowAnyHeader()
+        .AllowAnyMethod()));
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
@@ -59,6 +67,8 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
+
+app.UseCors(payrollWebClientPolicy);
 
 // Auto seed default and sample data
 using (var scope = app.Services.CreateScope())

@@ -10,6 +10,7 @@ using Payroll.Application.Services.PayrollPayment;
 using Payroll.Application.Services.PayrollPeriodManagement;
 using Payroll.Application.Services.Payslip;
 using Payroll.Application.Services.PayrollSalarySync;
+using Payroll.Application.Services.PayrollCatalog;
 
 namespace Payroll.Application;
 
@@ -22,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped<PayrollManagementService>();
 
         services.AddScoped<PayrollAdjustmentService>();
+        services.AddScoped<PayrollCatalogService>();
 
         services.AddScoped<PayrollCalculator>();
         services.AddScoped<PayrollCalculationService>();

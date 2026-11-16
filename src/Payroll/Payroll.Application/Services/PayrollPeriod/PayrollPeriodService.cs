@@ -70,6 +70,7 @@ public class PayrollPeriodService
     public async Task<List<PayrollPeriodResponse>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         var periods = await _context.PayrollPeriods
+            .Include(p => p.Payrolls)
             .OrderByDescending(p => p.Year)
             .ThenByDescending(p => p.Month)
             .ToListAsync(cancellationToken);
@@ -79,8 +80,30 @@ public class PayrollPeriodService
             PayrollPeriodID = p.PayrollPeriodID,
             Year = p.Year,
             Month = p.Month,
-            Status = p.Status,
+            Status = GetCurrentStatus(p),
             CreatedAt = p.CreatedAt
         }).ToList();
+    }
+
+    private static string GetCurrentStatus(PayrollPeriodEntity period)
+    {
+        if (period.Payrolls.Count == 0)
+        {
+            return period.Status;
+        }
+
+        var statuses = period.Payrolls
+            .Select(payroll => payroll.Status)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (statuses.Count == 1)
+        {
+            return statuses[0];
+        }
+
+        return statuses.Contains("draft", StringComparer.OrdinalIgnoreCase)
+            ? "draft"
+            : "in_progress";
     }
 }

@@ -26,6 +26,8 @@ namespace Admin.WinForms.Controls.Attendance
             InitializeComponent();
 
             button_Generate.Click += button_Generate_Click;
+            button_CreateMonthlySummary.Click += async (s, e) => await CreateMonthlySummaryAsync();
+            button_LockTimesheetPeriod.Click += async (s, e) => await LockMonthlyTimesheetPeriodAsync();
             button_ExportExcel.Click += button_ExportExcel_Click;
             button_ExportPDF.Click += (s, e) => MessageBox.Show("Tính năng xuất PDF đang sẵn sàng.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
             dateTimePicker1.ValueChanged += async (s, e) =>
@@ -403,6 +405,193 @@ namespace Admin.WinForms.Controls.Attendance
         {
             await LoadReportDataAsync();
             await LoadAnalyticsChartsAsync();
+        }
+
+        private async Task CreateMonthlySummaryAsync()
+        {
+            var month = dateTimePicker1.Value.Month;
+            var year = dateTimePicker1.Value.Year;
+            var confirm = MessageBox.Show(
+                $"Tạo hoặc tính lại summary kỳ công tháng {month:D2}/{year} cho tất cả nhân viên đang hoạt động?",
+                "Xác nhận tạo summary kỳ công",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+            if (confirm != DialogResult.Yes)
+            {
+                return;
+            }
+
+            var originalText = button_CreateMonthlySummary.Text;
+            button_CreateMonthlySummary.Enabled = false;
+
+            try
+            {
+                button_CreateMonthlySummary.Text = "Đang chuẩn bị...";
+                var employees = await Program.AttendanceApi.GetAllEmployeesAsync();
+                if (employees.Count == 0)
+                {
+                    throw new InvalidOperationException("Không tìm thấy nhân viên đang hoạt động để tạo summary.");
+                }
+
+                var periods = await Program.AttendanceApi.GetTimesheetPeriodsAsync(year);
+                var period = periods.FirstOrDefault(item => item.Month == month && item.Year == year);
+                var createdPeriod = false;
+
+                if (period == null)
+                {
+                    var startDate = new DateOnly(year, month, 1);
+                    period = await Program.AttendanceApi.CreateTimesheetPeriodAsync(new CreateTimesheetPeriodDto
+                    {
+                        Name = $"Kỳ công Tháng {month:D2}/{year}",
+                        Month = month,
+                        Year = year,
+                        StartDate = startDate,
+                        EndDate = startDate.AddMonths(1).AddDays(-1)
+                    });
+                    createdPeriod = true;
+                }
+
+                if (string.Equals(period.Status, "LOCKED", StringComparison.OrdinalIgnoreCase))
+                {
+                    MessageBox.Show(
+                        $"Kỳ công {period.Name} đã khóa và không thể tạo lại summary.",
+                        "Kỳ công đã khóa",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    return;
+                }
+
+                var succeeded = 0;
+                var failures = new List<string>();
+                for (var index = 0; index < employees.Count; index++)
+                {
+                    var employee = employees[index];
+                    button_CreateMonthlySummary.Text = $"Đang tổng hợp {index + 1}/{employees.Count}...";
+
+                    try
+                    {
+                        await Program.AttendanceApi.GenerateTimesheetSummaryAsync(period.Id, employee.EmployeeId);
+                        succeeded++;
+                    }
+                    catch (Exception ex)
+                    {
+                        failures.Add($"{employee.EmployeeCode}: {ex.Message}");
+                    }
+                }
+
+                var summaries = await Program.AttendanceApi.GetTimesheetSummariesByPeriodAsync(period.Id);
+                DisplayReportSummaries(summaries, period.Name);
+
+                var message = $"Đã tạo/tính lại summary cho {succeeded}/{employees.Count} nhân viên trong {period.Name}.";
+                if (createdPeriod)
+                {
+                    message += Environment.NewLine + "Hệ thống đã tạo kỳ công mới cho tháng này.";
+                }
+                if (failures.Count > 0)
+                {
+                    var displayedFailures = failures.Take(5).ToList();
+                    message += Environment.NewLine + Environment.NewLine
+                        + $"Không thành công {failures.Count} nhân viên:"
+                        + Environment.NewLine
+                        + string.Join(Environment.NewLine, displayedFailures);
+                    if (failures.Count > displayedFailures.Count)
+                    {
+                        message += Environment.NewLine + $"... và {failures.Count - displayedFailures.Count} lỗi khác.";
+                    }
+                }
+
+                MessageBox.Show(
+                    message,
+                    failures.Count == 0 ? "Hoàn tất" : "Kết quả một phần",
+                    MessageBoxButtons.OK,
+                    failures.Count == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Không thể tạo summary kỳ công: {ex.Message}",
+                    "Lỗi",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            finally
+            {
+                button_CreateMonthlySummary.Text = originalText;
+                button_CreateMonthlySummary.Enabled = true;
+            }
+        }
+
+        private async Task LockMonthlyTimesheetPeriodAsync()
+        {
+            var month = dateTimePicker1.Value.Month;
+            var year = dateTimePicker1.Value.Year;
+
+            try
+            {
+                var periods = await Program.AttendanceApi.GetTimesheetPeriodsAsync(year);
+                var period = periods.FirstOrDefault(item => item.Month == month && item.Year == year);
+                if (period == null)
+                {
+                    MessageBox.Show(
+                        $"Chưa có kỳ công tháng {month:D2}/{year}. Hãy tạo summary kỳ công trước.",
+                        "Chưa có kỳ công",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    return;
+                }
+
+                if (string.Equals(period.Status, "LOCKED", StringComparison.OrdinalIgnoreCase))
+                {
+                    MessageBox.Show(
+                        $"Kỳ công {period.Name} đã được khóa lúc {period.LockedAt?.ToLocalTime():dd/MM/yyyy HH:mm}.",
+                        "Kỳ công đã khóa",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+                    return;
+                }
+
+                var summaries = await Program.AttendanceApi.GetTimesheetSummariesByPeriodAsync(period.Id);
+                if (summaries.Count == 0)
+                {
+                    MessageBox.Show(
+                        $"Kỳ công {period.Name} chưa có summary. Hãy tạo summary trước khi khóa.",
+                        "Chưa có summary",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    return;
+                }
+
+                var confirm = MessageBox.Show(
+                    $"Khóa kỳ công {period.Name} với {summaries.Count} summary? Sau khi khóa, không thể tính lại summary.",
+                    "Xác nhận khóa kỳ công",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning);
+                if (confirm != DialogResult.Yes)
+                {
+                    return;
+                }
+
+                button_LockTimesheetPeriod.Enabled = false;
+                var lockedPeriod = await Program.AttendanceApi.LockTimesheetPeriodAsync(period.Id, "HR Manager");
+                MessageBox.Show(
+                    $"Đã khóa {lockedPeriod.Name} thành công.",
+                    "Hoàn tất",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                await LoadReportDataAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Không thể khóa kỳ công: {ex.Message}",
+                    "Lỗi",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            finally
+            {
+                button_LockTimesheetPeriod.Enabled = true;
+            }
         }
 
         private void button_ExportExcel_Click(object? sender, EventArgs e)

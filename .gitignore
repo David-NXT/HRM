@@ -7,6 +7,7 @@
 *.user
 *.userosscache
 *.sln.docstates
+.vs
 
 # Test and publish output
 TestResults/
@@ -21,3 +22,5 @@ publish/
 .env
 .env.*
 !.env.example
+
+run.ps1

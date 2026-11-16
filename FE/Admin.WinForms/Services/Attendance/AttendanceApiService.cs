@@ -74,6 +74,33 @@ public class AttendanceApiService
         return response ?? new List<TimesheetPeriodDto>();
     }
 
+    public async Task<TimesheetPeriodDto> CreateTimesheetPeriodAsync(CreateTimesheetPeriodDto dto)
+    {
+        using var response = await _httpClient.PostAsJsonAsync("api/Timesheets/periods", dto);
+        await EnsureSuccessAsync(response, "Không thể tạo kỳ công");
+        return await response.Content.ReadFromJsonAsync<TimesheetPeriodDto>()
+            ?? throw new InvalidDataException("Attendance API trả về kỳ công rỗng hoặc không hợp lệ.");
+    }
+
+    public async Task<TimesheetPeriodDto> LockTimesheetPeriodAsync(Guid periodId, string lockedBy)
+    {
+        var path = $"api/Timesheets/periods/{periodId}/lock?lockedBy={Uri.EscapeDataString(lockedBy)}";
+        using var response = await _httpClient.PutAsync(path, null);
+        await EnsureSuccessAsync(response, "Không thể khóa kỳ công");
+        return await response.Content.ReadFromJsonAsync<TimesheetPeriodDto>()
+            ?? throw new InvalidDataException("Attendance API trả về kỳ công đã khóa rỗng hoặc không hợp lệ.");
+    }
+
+    public async Task<TimesheetSummaryDto> GenerateTimesheetSummaryAsync(Guid periodId, Guid employeeId)
+    {
+        using var response = await _httpClient.PostAsync(
+            $"api/Timesheets/periods/{periodId}/employees/{employeeId}/calculate",
+            null);
+        await EnsureSuccessAsync(response, "Không thể tạo summary kỳ công");
+        return await response.Content.ReadFromJsonAsync<TimesheetSummaryDto>()
+            ?? throw new InvalidDataException("Attendance API trả về summary rỗng hoặc không hợp lệ.");
+    }
+
     // GET: api/Timesheets/periods/{periodId}/summaries
     public async Task<List<TimesheetSummaryDto>> GetTimesheetSummariesByPeriodAsync(Guid periodId)
     {
@@ -308,6 +335,61 @@ public class AttendanceApiService
         }
     }
 
+    public async Task<List<EmployeeDirectoryDto>> GetAllEmployeesAsync()
+    {
+        const int pageSize = 500;
+        var employees = new List<EmployeeDirectoryDto>();
+        var pageNumber = 1;
+
+        while (true)
+        {
+            var path = $"api/employees?page={pageNumber}&pageSize={pageSize}";
+            using var response = await _httpClient.GetAsync(path);
+            await EnsureSuccessAsync(response, "Không thể tải danh sách nhân viên");
+
+            var result = await response.Content.ReadFromJsonAsync<EmployeeDirectoryPageDto>()
+                ?? throw new InvalidDataException("Attendance API trả về danh sách nhân viên rỗng hoặc không hợp lệ.");
+            var pageItems = result.Items ?? new List<EmployeeDirectoryDto>();
+            if (pageItems.Count == 0)
+            {
+                break;
+            }
+
+            employees.AddRange(pageItems);
+            if (employees.Count >= result.Total)
+            {
+                break;
+            }
+
+            pageNumber++;
+        }
+
+        return employees
+            .GroupBy(employee => employee.EmployeeId)
+            .Select(group => group.First())
+            .ToList();
+    }
+
+    public async Task<List<EmployeeDirectoryDto>> SearchEmployeesAsync(string keyword)
+    {
+        var path = $"api/employees?keyword={Uri.EscapeDataString(keyword.Trim())}&page=1&pageSize=100";
+        using var response = await _httpClient.GetAsync(path);
+        if (!response.IsSuccessStatusCode)
+        {
+            var details = await response.Content.ReadAsStringAsync();
+            throw new HttpRequestException(
+                string.IsNullOrWhiteSpace(details)
+                    ? $"Attendance API trả về HTTP {(int)response.StatusCode} khi tìm nhân viên."
+                    : $"Attendance API trả về HTTP {(int)response.StatusCode}: {details}",
+                null,
+                response.StatusCode);
+        }
+
+        var page = await response.Content.ReadFromJsonAsync<EmployeeDirectoryPageDto>()
+            ?? throw new InvalidDataException("Attendance API trả về dữ liệu tìm kiếm nhân viên rỗng.");
+        return page.Items;
+    }
+
     public async Task<EmployeeDirectoryDto?> GetEmployeeByIdAsync(Guid id)
     {
         try
@@ -420,5 +502,19 @@ public class AttendanceApiService
         }
         var err = await response.Content.ReadAsStringAsync();
         throw new Exception($"Gửi đơn giải trình thất bại: {err}");
+    }
+
+    private static async Task EnsureSuccessAsync(HttpResponseMessage response, string operation)
+    {
+        if (response.IsSuccessStatusCode)
+        {
+            return;
+        }
+
+        var details = await response.Content.ReadAsStringAsync();
+        var message = string.IsNullOrWhiteSpace(details)
+            ? $"Attendance API trả về HTTP {(int)response.StatusCode}."
+            : details;
+        throw new HttpRequestException($"{operation}: {message}", null, response.StatusCode);
     }
 }
