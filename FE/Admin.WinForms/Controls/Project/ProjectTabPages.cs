@@ -375,7 +375,11 @@ internal sealed class ProjectsPageControl : ProjectPageControl
         await LoadSafelyAsync(async token =>
         {
             var roles = await Api.GetProjectRolesAsync(token);
-            using var dialog = new ProjectMemberEditorDialog(project, roles, member);
+            using var dialog = new ProjectMemberEditorDialog(
+                project,
+                roles,
+                member,
+                () => Api.GetAllEmployeesAsync(token));
             if (dialog.ShowDialog(this) != DialogResult.OK)
             {
                 return;
@@ -845,7 +849,9 @@ internal sealed class TasksPageControl : ProjectPageControl
         await LoadSafelyAsync(async token =>
         {
             var members = await Api.GetProjectMembersAsync(task.ProjectId, token);
-            using var dialog = new TimesheetEditorDialog(task, members, null);
+            var employees = await TryGetEmployeeDirectoryAsync(token);
+            var employeeDirectory = employees?.ToDictionary(employee => employee.EmployeeId);
+            using var dialog = new TimesheetEditorDialog(task, members, null, employeeDirectory);
             if (dialog.ShowDialog(this) != DialogResult.OK)
             {
                 return;
@@ -1114,7 +1120,8 @@ internal sealed class TimesheetApprovalPageControl : ProjectPageControl
             MessageBox.Show("The rejection reason cannot exceed 500 characters.", "Timesheet Approval", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
-        using var dialog = new ApproverIdDialog();
+        using var dialog = new ApproverIdDialog(
+            () => Api.GetAllEmployeesAsync(LifetimeToken));
         if (dialog.ShowDialog(this) != DialogResult.OK)
         {
             return;

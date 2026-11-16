@@ -732,6 +732,101 @@
         border-top: 1px solid var(--line);
         background: #fbfcfe;
       }
+      .employee-input-with-action {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 40px;
+        gap: 7px;
+      }
+      .employee-input-with-action .button {
+        min-height: 35px;
+        padding: 0;
+        font-size: 19px;
+      }
+      .lookup-backdrop {
+        position: fixed;
+        z-index: 8;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: #17243b66;
+      }
+      .lookup-backdrop.open {
+        display: flex;
+      }
+      .lookup-modal {
+        display: flex;
+        width: min(820px, 100%);
+        max-height: calc(100vh - 40px);
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid #dce2eb;
+        border-radius: 8px;
+        background: white;
+        box-shadow: 0 18px 60px #10213b38;
+      }
+      .lookup-modal .modal-header {
+        flex: 0 0 auto;
+      }
+      .lookup-search {
+        width: calc(100% - 36px);
+        min-height: 38px;
+        margin: 14px 18px 10px;
+        padding: 8px 10px;
+        border: 1px solid #d6dde7;
+        border-radius: 5px;
+      }
+      .lookup-table-wrap {
+        min-height: 180px;
+        flex: 1 1 auto;
+        overflow: auto;
+        margin: 0 18px 12px;
+        border: 1px solid var(--line);
+        border-radius: 5px;
+      }
+      .lookup-table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+      }
+      .lookup-table th,
+      .lookup-table td {
+        padding: 9px 10px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: middle;
+      }
+      .lookup-table th {
+        position: sticky;
+        top: 0;
+        color: var(--muted);
+        background: #f8faff;
+        font-size: 11px;
+      }
+      .lookup-table td:nth-child(3) {
+        max-width: 250px;
+        overflow-wrap: anywhere;
+        font-size: 12px;
+      }
+      .lookup-table tbody tr:hover {
+        background: #f5f8fc;
+      }
+      .lookup-table .empty {
+        padding: 24px;
+      }
+      .lookup-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 18px;
+        border-top: 1px solid var(--line);
+        background: #fbfcfe;
+      }
+      .lookup-summary {
+        color: var(--muted);
+        font-size: 12px;
+      }
       .toast {
         position: fixed;
         z-index: 6;
@@ -952,6 +1047,39 @@
         </div>
       </form>
     </div>
+    <div
+      class="lookup-backdrop"
+      id="employee-lookup-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="employee-lookup-title"
+    >
+      <section class="lookup-modal">
+        <div class="modal-header">
+          <h2 id="employee-lookup-title">Chọn nhân viên</h2>
+          <button class="close" type="button" aria-label="Đóng" id="close-employee-lookup">×</button>
+        </div>
+        <input
+          class="lookup-search"
+          id="employee-lookup-search"
+          type="search"
+          placeholder="Tìm theo tên, mã nhân viên hoặc ID..."
+          aria-label="Tìm nhân viên"
+        />
+        <div class="lookup-table-wrap">
+          <table class="lookup-table">
+            <thead>
+              <tr><th>NHÂN VIÊN</th><th>MÃ NHÂN VIÊN</th><th>ID NHÂN VIÊN</th><th></th></tr>
+            </thead>
+            <tbody id="employee-lookup-body"></tbody>
+          </table>
+        </div>
+        <div class="lookup-footer">
+          <span class="lookup-summary" id="employee-lookup-summary"></span>
+          <button class="button" type="button" id="cancel-employee-lookup">Đóng</button>
+        </div>
+      </section>
+    </div>
     <div class="toast" id="toast" role="status"></div>
     <script>
       const API_BASE_URL = (
@@ -978,6 +1106,8 @@
       let payrollRows = null;
       let employeeDirectory = new Map();
       let employeeDirectoryPromise = null;
+      let employeeLookupItems = [];
+      let employeeLookupResolve = null;
       let toastTimer;
 
       function escapeHtml(value) {
@@ -1797,14 +1927,11 @@
           !confirm(`Duyệt ${timesheetIds.length} timesheet đã chọn?`)
         )
           return;
-        const identifier = prompt(
-          "Nhập mã nhân viên hoặc ID nhân viên phê duyệt:",
-        );
-        if (!identifier?.trim()) return;
+        const approverId = await chooseApproverFromDirectory();
+        if (!approverId) return;
         const button = document.getElementById("sheet-bulk-approve");
         button.disabled = true;
         try {
-          const approverId = await resolveEmployeeId(identifier.trim());
           const result = await apiRequest(
             "/api/Timesheets/review/bulk-approve",
             {
@@ -1850,17 +1977,14 @@
         if (!button) return;
         const sheet = timesheets.find((item) => item.id === button.dataset.id);
         if (!sheet) return;
-        const identifier = prompt(
-          "Nhập mã nhân viên hoặc ID nhân viên phê duyệt:",
-        );
-        if (!identifier?.trim()) return;
+        const approverId = await chooseApproverFromDirectory();
+        if (!approverId) return;
         let reason = "";
         if (button.dataset.sheetAction === "reject") {
           reason = prompt("Nhập lý do từ chối (bắt buộc):")?.trim() || "";
           if (!reason) return;
         }
         try {
-          const approverId = await resolveEmployeeId(identifier.trim());
           const approved = button.dataset.sheetAction === "approve";
           const query = new URLSearchParams({
             approved: String(approved),
@@ -2101,6 +2225,82 @@
           return `<div class="field full"><label for="${name}">${label}</label><textarea id="${name}" name="${name}"${requiredAttr}>${escapeHtml(value)}</textarea></div>`;
         return `<div class="field${extra.includes("full") ? " full" : ""}"><label for="${name}">${label}</label><input id="${name}" name="${name}" type="${type}" value="${escapeHtml(value)}"${requiredAttr} ${extra}></div>`;
       }
+      function employeeIdentifierField(value = "") {
+        return `<div class="field"><label for="employeeIdentifier">Mã hoặc ID nhân viên *</label><div class="employee-input-with-action"><input id="employeeIdentifier" name="employeeIdentifier" type="text" value="${escapeHtml(value)}" required autocomplete="off" placeholder="Ví dụ: NV001 hoặc GUID"><button class="button" type="button" id="employee-lookup-open" aria-label="Chọn nhân viên" title="Chọn nhân viên">⋯</button></div></div>`;
+      }
+      function renderEmployeeLookup(query = "") {
+        const search = query.trim().toLocaleLowerCase("vi");
+        const filtered = employeeLookupItems.filter((employee) =>
+          `${employee.name} ${employee.code} ${employee.id}`
+            .toLocaleLowerCase("vi")
+            .includes(search),
+        );
+        document.getElementById("employee-lookup-body").innerHTML =
+          filtered.length
+            ? filtered
+                .map(
+                  (employee) => `<tr><td>${escapeHtml(employee.name || "—")}</td><td>${escapeHtml(employee.code || "—")}</td><td>${escapeHtml(employee.id)}</td><td><button class="button small" type="button" data-pick-employee="${escapeHtml(employee.id)}">Chọn</button></td></tr>`,
+                )
+                .join("")
+            : '<tr><td class="empty" colspan="4">Không tìm thấy nhân viên phù hợp.</td></tr>';
+        document.getElementById("employee-lookup-summary").textContent =
+          `Hiển thị ${filtered.length} / ${employeeLookupItems.length} nhân viên`;
+      }
+      async function openEmployeePicker(
+        onSelect = null,
+        title = "Chọn nhân viên",
+      ) {
+        const lookupModal = document.getElementById("employee-lookup-modal");
+        employeeLookupResolve = onSelect;
+        document.getElementById("employee-lookup-title").textContent = title;
+        lookupModal.classList.add("open");
+        document.getElementById("employee-lookup-body").innerHTML =
+          '<tr><td class="empty" colspan="4">Đang tải danh bạ nhân viên...</td></tr>';
+        document.getElementById("employee-lookup-summary").textContent = "";
+        try {
+          const directory = await loadEmployeeDirectory();
+          if (!lookupModal.classList.contains("open")) return;
+          employeeLookupItems = Array.from(directory, ([id, employee]) => ({
+            id,
+            code: employee.code,
+            name: employee.name,
+          })).sort((left, right) =>
+            left.name.localeCompare(right.name, "vi"),
+          );
+          const searchInput = document.getElementById("employee-lookup-search");
+          searchInput.value = "";
+          renderEmployeeLookup();
+          searchInput.focus();
+        } catch (error) {
+          closeEmployeePicker();
+          showToast(error.message || "Không thể tải danh bạ nhân viên.", true);
+        }
+      }
+      function chooseApproverFromDirectory() {
+        return new Promise((resolve) =>
+          openEmployeePicker(resolve, "Chọn người phê duyệt"),
+        );
+      }
+      function closeEmployeePicker() {
+        document.getElementById("employee-lookup-modal").classList.remove("open");
+        const resolve = employeeLookupResolve;
+        employeeLookupResolve = null;
+        if (resolve) resolve(null);
+      }
+      function pickEmployee(employeeId) {
+        const resolve = employeeLookupResolve;
+        employeeLookupResolve = null;
+        closeEmployeePicker();
+        if (resolve) {
+          resolve(employeeId);
+          return;
+        }
+        const employeeInput = document.getElementById("employeeIdentifier");
+        if (employeeInput) {
+          employeeInput.value = employeeId;
+          employeeInput.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+      }
       function selectField(name, label, value, options, full = false) {
         return `<div class="field${full ? " full" : ""}"><label for="${name}">${label}</label><select id="${name}" name="${name}" required>${options.map((option) => `<option value="${escapeHtml(option.value)}"${option.value === value ? " selected" : ""}>${escapeHtml(option.label)}</option>`).join("")}</select></div>`;
       }
@@ -2278,14 +2478,7 @@
             })),
             true,
           ) +
-          field(
-            "employeeIdentifier",
-            "Mã hoặc ID nhân viên *",
-            "text",
-            member?.employeeId || "",
-            true,
-            'autocomplete="off" placeholder="Ví dụ: NV001 hoặc GUID"',
-          ) +
+          employeeIdentifierField(member?.employeeId || "") +
           field(
             "memberRoleName",
             "Vai trò dự án *",
@@ -2401,9 +2594,13 @@
         document.getElementById("memberLeaveDate").max =
           initialProject?.endDate || "";
         document.getElementById("project-modal").classList.add("open");
+        document
+          .getElementById("employee-lookup-open")
+          .addEventListener("click", () => openEmployeePicker());
         document.getElementById("memberProjectId").focus();
       }
       function closeModal() {
+        closeEmployeePicker();
         document.getElementById("project-modal").classList.remove("open");
         document.getElementById("project-form").reset();
         editingItem = null;
@@ -2631,6 +2828,29 @@
         .getElementById("cancel-modal")
         .addEventListener("click", closeModal);
       document
+        .getElementById("employee-lookup-search")
+        .addEventListener("input", (event) =>
+          renderEmployeeLookup(event.currentTarget.value),
+        );
+      document
+        .getElementById("employee-lookup-body")
+        .addEventListener("click", (event) => {
+          const button = event.target.closest("[data-pick-employee]");
+          if (button) pickEmployee(button.dataset.pickEmployee);
+        });
+      document
+        .getElementById("close-employee-lookup")
+        .addEventListener("click", closeEmployeePicker);
+      document
+        .getElementById("cancel-employee-lookup")
+        .addEventListener("click", closeEmployeePicker);
+      document
+        .getElementById("employee-lookup-modal")
+        .addEventListener("click", (event) => {
+          if (event.target.id === "employee-lookup-modal")
+            closeEmployeePicker();
+        });
+      document
         .getElementById("project-modal")
         .addEventListener("click", (event) => {
           if (event.target.id === "project-modal") closeModal();
@@ -2646,7 +2866,17 @@
           showToast("API dự án: " + API_BASE_URL),
         );
       document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") closeModal();
+        if (event.key === "Escape") {
+          if (
+            document
+              .getElementById("employee-lookup-modal")
+              .classList.contains("open")
+          ) {
+            closeEmployeePicker();
+          } else {
+            closeModal();
+          }
+        }
       });
       refreshData();
     </script>
