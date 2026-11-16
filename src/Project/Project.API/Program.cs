@@ -35,6 +35,14 @@ builder.Services.AddDbContext<ProjectManagementDbContext>(options =>
 // Add services to the container
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
+builder.Services.AddCors(options => options.AddPolicy("LocalProjectUi", policy =>
+    policy
+        .SetIsOriginAllowed(origin =>
+            Uri.TryCreate(origin, UriKind.Absolute, out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+            && uri.IsLoopback)
+        .AllowAnyHeader()
+        .AllowAnyMethod()));
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<IProjectMemberService, ProjectMemberService>();
@@ -118,6 +126,7 @@ await using (var scope = app.Services.CreateAsyncScope())
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.UseCors("LocalProjectUi");
 }
 
 //app.UseHttpsRedirection();
