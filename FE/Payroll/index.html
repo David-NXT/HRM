@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản lý lương | HRM</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --navy: #1d3458;
+      --blue: #2353a6;
+      --blue-dark: #193f81;
+      --blue-light: #eaf1fc;
+      --ink: #25304a;
+      --muted: #68758a;
+      --line: #e1e6ee;
+      --canvas: #f5f7fa;
+      --white: #fff;
+      --green: #23845b;
+      --amber: #a9680c;
+      --red: #b54747;
+      font-family: "Segoe UI", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body { min-width: 760px; min-height: 100vh; margin: 0; color: var(--ink); background: var(--canvas); font-size: 14px; }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: .48; }
+    .app { display: flex; min-height: 100vh; }
+    .sidebar { display: flex; width: 238px; flex: 0 0 238px; flex-direction: column; padding: 22px 14px; color: #eaf0fb; background: var(--navy); }
+    .brand { display: flex; align-items: center; gap: 11px; padding: 0 10px 24px; border-bottom: 1px solid #ffffff20; }
+    .brand-mark { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 9px; color: white; background: #3b70c3; font-weight: 700; }
+    .brand-name { font-size: 17px; font-weight: 650; }
+    .brand-caption { margin-top: 3px; color: #aebdd4; font-size: 11px; }
+    .nav-label { margin: 25px 10px 9px; color: #9cacc4; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+    .nav { display: grid; gap: 5px; }
+    .nav button { display: flex; align-items: center; gap: 11px; width: 100%; padding: 12px; border: 0; border-radius: 6px; color: #d3deef; background: transparent; text-align: left; }
+    .nav button:hover { background: #ffffff12; }
+    .nav button.active { color: #fff; background: #31568e; box-shadow: inset 3px 0 #83b1ff; }
+    .nav-icon { width: 19px; color: #b8c8df; text-align: center; font-size: 16px; }
+    .sidebar-bottom { margin-top: auto; padding: 15px 10px 0; border-top: 1px solid #ffffff20; color: #aebdd4; font-size: 11px; line-height: 1.6; }
+    .workspace { display: flex; min-width: 0; flex: 1; flex-direction: column; }
+    .topbar { display: flex; min-height: 62px; align-items: center; justify-content: space-between; gap: 15px; padding: 0 28px; border-bottom: 1px solid var(--line); background: var(--white); }
+    .breadcrumb { color: var(--muted); font-size: 13px; }
+    .breadcrumb strong { color: var(--ink); font-weight: 600; }
+    .connection { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+    .connection-dot { width: 8px; height: 8px; border-radius: 50%; background: #b9c3d0; }
+    .connection.online .connection-dot { background: var(--green); }
+    .connection.offline .connection-dot { background: var(--red); }
+    main { width: 100%; max-width: 1600px; margin: 0 auto; padding: 26px 28px 36px; }
+    .page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 20px; }
+    h1 { margin: 0; font-size: 24px; font-weight: 650; letter-spacing: -.3px; }
+    h2 { margin: 0; font-size: 15px; font-weight: 650; }
+    h3 { margin: 0; font-size: 13px; font-weight: 650; }
+    .subtitle { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+    .heading-actions, .toolbar, .filters, .button-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .button { display: inline-flex; min-height: 35px; align-items: center; justify-content: center; gap: 7px; padding: 0 12px; border: 1px solid #cfd7e3; border-radius: 5px; color: var(--ink); background: white; font-size: 12px; font-weight: 550; white-space: nowrap; }
+    .button:hover { background: #f5f8fc; }
+    .button.primary { border-color: var(--blue); color: white; background: var(--blue); }
+    .button.primary:hover { background: var(--blue-dark); }
+    .button.danger { border-color: #e8caca; color: var(--red); }
+    .button.small { min-height: 29px; padding: 0 9px; font-size: 11px; }
+    .toolbar { padding: 13px; border: 1px solid var(--line); border-radius: 7px; background: white; }
+    .toolbar-label { margin-right: 2px; color: var(--muted); font-size: 12px; }
+    .field, .select, .input { min-height: 35px; padding: 0 10px; border: 1px solid #d6dde7; border-radius: 5px; color: var(--ink); background: white; outline: none; }
+    .field:focus, .select:focus, .input:focus, textarea:focus { border-color: #7aa4e6; box-shadow: 0 0 0 2px #2353a61c; outline: none; }
+    .select.period-select { min-width: 210px; }
+    .search { width: 230px; }
+    .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 13px; margin: 15px 0; }
+    .metric { min-height: 93px; padding: 15px 17px; border: 1px solid var(--line); border-radius: 7px; background: white; }
+    .metric-label { color: var(--muted); font-size: 11px; }
+    .metric-value { margin-top: 9px; font-size: 22px; font-weight: 650; letter-spacing: -.4px; }
+    .metric-value.blue { color: var(--blue); }
+    .metric-value.green { color: var(--green); }
+    .metric-value.amber { color: var(--amber); }
+    .metric-value.red { color: var(--red); }
+    .panel { overflow: hidden; border: 1px solid var(--line); border-radius: 7px; background: white; }
+    .panel + .panel { margin-top: 15px; }
+    .panel-header { display: flex; min-height: 54px; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 15px; border-bottom: 1px solid var(--line); }
+    .panel-subtitle { margin-top: 3px; color: var(--muted); font-size: 11px; }
+    .table-wrap { overflow: auto; }
+    table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+    th { height: 39px; padding: 0 12px; border-bottom: 1px solid var(--line); color: #66748a; background: #fbfcfe; font-size: 10px; font-weight: 650; text-align: left; }
+    td { height: 48px; padding: 7px 12px; border-bottom: 1px solid #edf0f4; font-size: 11px; }
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: #fbfcff; }
+    .amount { text-align: right; font-variant-numeric: tabular-nums; }
+    .emp-name { font-weight: 600; }
+    .emp-code { margin-top: 3px; color: #8290a3; font-size: 10px; }
+    .status { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; }
+    .status::before { width: 6px; height: 6px; border-radius: 50%; background: currentColor; content: ""; }
+    .status.draft { color: #69758a; background: #edf0f4; }
+    .status.calculated { color: #9a690d; background: #fff4d9; }
+    .status.approved { color: #426ab0; background: #e9f0fd; }
+    .status.paid { color: #208052; background: #e7f5ed; }
+    .status.other { color: #68758a; background: #edf0f4; }
+    .empty { padding: 28px 15px; color: var(--muted); text-align: center; }
+    .muted { color: var(--muted); }
+    .toolbar-spacer { flex: 1; }
+    .section-note { margin: 12px 2px 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
+    .split { display: grid; grid-template-columns: minmax(300px, .75fr) minmax(0, 1.55fr); gap: 15px; margin-top: 15px; }
+    .detail-box { padding: 15px; }
+    .detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .summary { padding: 11px 13px; border-radius: 5px; color: #42526b; background: #f4f7fb; font-size: 11px; line-height: 1.6; }
+    .payslip { max-width: 820px; margin: 18px auto 0; padding: 30px 34px; border: 1px solid var(--line); border-radius: 8px; background: white; box-shadow: 0 4px 16px #1d34580a; }
+    .slip-heading { padding-bottom: 18px; border-bottom: 1px dashed #d5dce7; text-align: center; }
+    .slip-heading h2 { margin-bottom: 7px; color: var(--blue); font-size: 19px; }
+    .slip-employee { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; padding: 17px 0; font-size: 12px; }
+    .slip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .slip-section { padding: 14px; border: 1px solid #edf0f4; border-radius: 6px; }
+    .slip-section h3 { margin-bottom: 11px; color: #50617a; }
+    .slip-line { display: flex; justify-content: space-between; gap: 15px; padding: 6px 0; border-bottom: 1px solid #f0f2f5; font-size: 11px; }
+    .slip-line:last-child { border-bottom: 0; }
+    .slip-net { display: flex; align-items: center; justify-content: space-between; margin-top: 15px; padding: 15px 17px; border-radius: 6px; color: #17653f; background: #e9f7ef; font-size: 14px; font-weight: 700; }
+    .toast-region { position: fixed; z-index: 20; top: 16px; right: 18px; display: grid; width: min(390px, calc(100vw - 36px)); gap: 8px; }
+    .toast { padding: 12px 14px; border: 1px solid #d7e3f7; border-radius: 6px; color: #23416e; background: white; box-shadow: 0 6px 20px #1d34581a; font-size: 12px; line-height: 1.5; }
+    .toast.error { border-color: #f0d2d2; color: #8d3434; }
+    .toast.success { border-color: #cce8d7; color: #17653f; }
+    dialog { width: min(620px, calc(100vw - 30px)); max-height: min(86vh, 760px); padding: 0; border: 1px solid var(--line); border-radius: 9px; color: var(--ink); box-shadow: 0 16px 55px #142b4b35; }
+    dialog.wide { width: min(960px, calc(100vw - 30px)); }
+    dialog::backdrop { background: #15264070; }
+    .dialog-header { display: flex; align-items: center; justify-content: space-between; padding: 15px 18px; border-bottom: 1px solid var(--line); }
+    .dialog-body { max-height: calc(86vh - 130px); overflow: auto; padding: 17px 18px; }
+    .dialog-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--line); }
+    .icon-close { width: 30px; height: 30px; border: 0; border-radius: 5px; color: var(--muted); background: transparent; font-size: 19px; }
+    .icon-close:hover { background: #f1f3f6; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+    .form-field { display: grid; gap: 6px; }
+    .form-field.full { grid-column: 1 / -1; }
+    .form-field label { color: #53627a; font-size: 11px; font-weight: 600; }
+    .form-field input, .form-field select, .form-field textarea { width: 100%; }
+    .form-field textarea { min-height: 75px; padding: 9px 10px; resize: vertical; border: 1px solid #d6dde7; border-radius: 5px; }
+    .form-hint { color: var(--muted); font-size: 10px; line-height: 1.5; }
+    .check-line { display: flex; align-items: center; gap: 8px; color: #53627a; font-size: 11px; }
+    .check-line input { width: auto; }
+    .tabs { display: flex; gap: 5px; padding: 10px 15px 0; border-bottom: 1px solid var(--line); }
+    .tabs button { padding: 9px 12px; border: 0; border-bottom: 2px solid transparent; color: var(--muted); background: transparent; font-size: 12px; }
+    .tabs button.active { border-bottom-color: var(--blue); color: var(--blue); font-weight: 650; }
+    .catalog-table td { height: 43px; }
+    .catalog-actions { display: flex; justify-content: flex-end; gap: 5px; }
+    .notice { padding: 10px 12px; border: 1px solid #f1dfb8; border-radius: 5px; color: #785a1d; background: #fff9eb; font-size: 11px; line-height: 1.5; }
+    @media (max-width: 1050px) {
+      .sidebar { width: 205px; flex-basis: 205px; }
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .split { grid-template-columns: 1fr; }
+      main { padding-right: 18px; padding-left: 18px; }
+      .topbar { padding-right: 18px; padding-left: 18px; }
+    }
+    @media (max-width: 780px) {
+      body { min-width: 360px; }
+      .app { display: block; }
+      .sidebar { width: auto; padding: 12px; }
+      .brand { padding-bottom: 10px; }
+      .nav-label, .sidebar-bottom { display: none; }
+      .nav { display: flex; overflow-x: auto; margin-top: 10px; }
+      .nav button { min-width: max-content; }
+      .topbar { min-height: 48px; }
+      .page-heading { display: block; }
+      .heading-actions { margin-top: 12px; }
+      .metrics { gap: 8px; }
+      .metric { padding: 11px; }
+      .metric-value { font-size: 18px; }
+      .slip-grid { grid-template-columns: 1fr; }
+      .payslip { padding: 19px; }
+    }
+    @media print {
+      body { min-width: 0; background: white; }
+      .sidebar, .topbar, .page-heading, #page-table, #page-adjustments, #page-approval, .toast-region, .slip-toolbar { display: none !important; }
+      main { max-width: none; padding: 0; }
+      #page-payslip { display: block !important; }
+      .payslip { max-width: none; margin: 0; border: 0; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">HR</div>
+        <div>
+          <div class="brand-name">HRM Workspace</div>
+          <div class="brand-caption">QUẢN TRỊ NHÂN SỰ</div>
+        </div>
+      </div>
+      <div class="nav-label">Phân hệ tiền lương</div>
+      <nav class="nav" aria-label="Điều hướng bảng lương">
+        <button class="active" data-page="table"><span class="nav-icon">▤</span>Bảng lương &amp; tính toán</button>
+        <button data-page="adjustments"><span class="nav-icon">＋</span>Phụ cấp &amp; khấu trừ</button>
+        <button data-page="approval"><span class="nav-icon">✓</span>Phê duyệt &amp; chi trả</button>
+        <button data-page="payslip"><span class="nav-icon">▧</span>Phiếu lương</button>
+      </nav>
+      <div class="sidebar-bottom">
+        Quản lý lương theo kỳ<br>
+        Dữ liệu được tải trực tiếp từ Payroll API.
+      </div>
+    </aside>
+
+    <div class="workspace">
+      <header class="topbar">
+        <div class="breadcrumb">HRM <span aria-hidden="true">/</span> <strong id="breadcrumb-current">Bảng lương</strong></div>
+        <div id="connection-state" class="connection"><span class="connection-dot"></span><span>Đang kiểm tra API</span></div>
+      </header>
+
+      <main>
+        <div class="page-heading">
+          <div>
+            <h1 id="page-title">Bảng lương &amp; tính toán</h1>
+            <p class="subtitle" id="page-subtitle">Mở kỳ, đồng bộ công và lương, khởi tạo và tính bảng lương.</p>
+          </div>
+          <div class="heading-actions">
+            <button class="button" id="refresh-page">↻ Tải lại dữ liệu</button>
+          </div>
+        </div>
+
+        <section id="page-table">
+          <div class="toolbar">
+            <span class="toolbar-label">Kỳ lương</span>
+            <select class="select period-select" aria-label="Chọn kỳ lương"></select>
+            <button class="button" id="new-period">＋ Mở kỳ mới</button>
+            <span class="toolbar-spacer"></span>
+            <button class="button" id="sync-attendance">Đồng bộ công</button>
+            <button class="button" id="sync-salary">Đồng bộ lương</button>
+            <button class="button" id="create-payrolls">Tạo bảng lương</button>
+            <button class="button primary" id="calculate-all">Tính lương toàn kỳ</button>
+            <button class="button" id="export-payrolls">Xuất CSV</button>
+          </div>
+          <div class="metrics">
+            <article class="metric"><div class="metric-label">Tổng quỹ lương thực lĩnh</div><div class="metric-value green" id="metric-net">0 ₫</div></article>
+            <article class="metric"><div class="metric-label">Nhân sự trong kỳ</div><div class="metric-value blue" id="metric-count">0</div></article>
+            <article class="metric"><div class="metric-label">Tổng phụ cấp</div><div class="metric-value amber" id="metric-allowance">0 ₫</div></article>
+            <article class="metric"><div class="metric-label">Tổng khấu trừ</div><div class="metric-value red" id="metric-paycut">0 ₫</div></article>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <div><h2>Chi tiết bảng lương</h2><div class="panel-subtitle" id="payroll-period-caption">Chọn kỳ lương để xem dữ liệu.</div></div>
+              <input class="field search" id="payroll-search" type="search" placeholder="Tìm mã hoặc tên nhân viên">
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th>Nhân viên</th><th class="amount">Lương cơ bản</th><th class="amount">Công</th><th class="amount">PC dự án</th>
+                  <th class="amount">Phụ cấp</th><th class="amount">Khấu trừ</th><th class="amount">Gross</th><th class="amount">Thực lĩnh</th><th>Trạng thái</th><th>Thời điểm tính</th>
+                </tr></thead>
+                <tbody id="payroll-rows"><tr><td class="empty" colspan="10">Đang tải dữ liệu...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+          <p class="section-note">Chỉ tạo, đồng bộ hoặc tính lương sau khi đã chọn đúng kỳ. Đồng bộ công lấy dữ liệu từ Attendance API; tạo bảng lương lấy danh sách nhân viên từ danh bạ Attendance.</p>
+        </section>
+
+        <section id="page-adjustments" hidden>
+          <div class="toolbar">
+            <span class="toolbar-label">Kỳ lương</span>
+            <select class="select period-select" aria-label="Chọn kỳ lương điều chỉnh"></select>
+            <input class="field search" id="adjustment-search" type="search" placeholder="Tìm nhân viên trong kỳ">
+            <select class="select" id="adjustment-employee" aria-label="Chọn nhân viên"></select>
+            <span class="toolbar-spacer"></span>
+            <button class="button" id="manage-catalog">Quản lý danh mục</button>
+            <button class="button" id="add-allowance">＋ Thêm phụ cấp</button>
+            <button class="button primary" id="add-paycut">－ Thêm khấu trừ</button>
+          </div>
+          <div class="split">
+            <div class="panel">
+              <div class="panel-header"><div><h2>Thông tin nhân viên</h2><div class="panel-subtitle">Chỉ nhân viên có bảng lương nháp mới được điều chỉnh.</div></div></div>
+              <div class="detail-box"><div class="summary" id="adjustment-summary">Chọn kỳ lương và nhân viên để xem chi tiết.</div></div>
+            </div>
+            <div class="panel">
+              <div class="panel-header"><div><h2>Chi tiết phụ cấp &amp; khấu trừ</h2><div class="panel-subtitle">Các khoản đã ghi nhận trong bảng lương được chọn.</div></div><button class="button small" id="reload-adjustments">↻ Tải chi tiết</button></div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Loại khoản</th><th>Mô tả</th><th class="amount">Tỷ lệ</th><th class="amount">Số tiền</th></tr></thead>
+                  <tbody id="adjustment-rows"><tr><td class="empty" colspan="4">Chọn nhân viên để xem các khoản.</td></tr></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <p class="section-note">Có thể thêm phụ cấp/khấu trừ cho một nhân viên hoặc áp dụng hàng loạt cho tất cả bảng lương nháp trong kỳ. Tỷ lệ phần trăm được tính trên lương cơ bản của từng nhân viên.</p>
+        </section>
+
+        <section id="page-approval" hidden>
+          <div class="toolbar">
+            <span class="toolbar-label">Kỳ lương</span>
+            <select class="select period-select" aria-label="Chọn kỳ lương phê duyệt"></select>
+            <span class="toolbar-spacer"></span>
+            <button class="button" id="approve-selected">Phê duyệt đã chọn</button>
+            <button class="button" id="pay-selected">Xác nhận chi trả đã chọn</button>
+            <button class="button primary" id="approve-all">Phê duyệt toàn kỳ</button>
+            <button class="button primary" id="pay-all">Chi trả toàn kỳ</button>
+            <button class="button danger" id="lock-period">Khóa kỳ lương</button>
+          </div>
+          <div class="metrics">
+            <article class="metric"><div class="metric-label">Chờ phê duyệt</div><div class="metric-value amber" id="approval-calculated">0</div></article>
+            <article class="metric"><div class="metric-label">Đã phê duyệt</div><div class="metric-value blue" id="approval-approved">0</div></article>
+            <article class="metric"><div class="metric-label">Đã chi trả</div><div class="metric-value green" id="approval-paid">0</div></article>
+            <article class="metric"><div class="metric-label">Đã chọn</div><div class="metric-value" id="approval-selected-count">0</div></article>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><div><h2>Danh sách phê duyệt &amp; quyết toán</h2><div class="panel-subtitle">Chỉ bảng lương đã tính mới được phê duyệt; chỉ bảng đã duyệt mới được chi trả.</div></div><button class="button small" id="reload-approvals">↻ Tải lại</button></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th><input type="checkbox" id="select-all-approvals" aria-label="Chọn tất cả"></th><th>Nhân viên</th>
+                  <th class="amount">Gross</th><th class="amount">Phụ cấp</th><th class="amount">Khấu trừ</th><th class="amount">Thực lĩnh</th>
+                  <th>Trạng thái</th><th>Đã duyệt lúc</th><th>Đã chi trả lúc</th>
+                </tr></thead>
+                <tbody id="approval-rows"><tr><td class="empty" colspan="9">Chọn kỳ lương để xem danh sách.</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section id="page-payslip" hidden>
+          <div class="toolbar slip-toolbar">
+            <span class="toolbar-label">Kỳ lương</span>
+            <select class="select period-select" aria-label="Chọn kỳ lương phiếu lương"></select>
+            <span class="toolbar-label">Nhân viên</span>
+            <select class="select" id="payslip-employee" aria-label="Chọn nhân viên"></select>
+            <span class="toolbar-spacer"></span>
+            <button class="button" id="reload-payslip">↻ Tải phiếu</button>
+            <button class="button" id="export-payslip">Xuất TXT</button>
+            <button class="button primary" id="print-payslip">In phiếu</button>
+          </div>
+          <div id="payslip-content" class="empty">Chọn kỳ lương và nhân viên để xem phiếu lương.</div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div class="toast-region" id="toast-region" aria-live="polite"></div>
+
+  <dialog id="period-dialog">
+    <form id="period-form">
+      <div class="dialog-header"><h2>Mở kỳ lương mới</h2><button class="icon-close" type="button" data-close="period-dialog" aria-label="Đóng">×</button></div>
+      <div class="dialog-body form-grid">
+        <div class="form-field"><label for="period-month">Tháng</label><input class="input" id="period-month" type="number" min="1" max="12" required></div>
+        <div class="form-field"><label for="period-year">Năm</label><input class="input" id="period-year" type="number" min="2020" max="2100" required></div>
+      </div>
+      <div class="dialog-footer"><button class="button" type="button" data-close="period-dialog">Hủy</button><button class="button primary" type="submit">Mở kỳ</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="adjustment-dialog">
+    <form id="adjustment-form">
+      <div class="dialog-header"><div><h2 id="adjustment-dialog-title">Thêm khoản điều chỉnh</h2><div class="panel-subtitle">Khoản chỉ được thêm vào bảng lương nháp.</div></div><button class="icon-close" type="button" data-close="adjustment-dialog" aria-label="Đóng">×</button></div>
+      <div class="dialog-body form-grid">
+        <div class="form-field full"><label for="adjust-catalog">Loại khoản</label><select class="select" id="adjust-catalog" required></select></div>
+        <div class="form-field full"><label for="adjust-target">Nhân viên áp dụng</label><select class="select" id="adjust-target"></select></div>
+        <label class="check-line form-field full"><input id="adjust-all-drafts" type="checkbox"> Áp dụng cho tất cả nhân viên có bảng lương nháp trong kỳ</label>
+        <div class="form-field"><label for="adjust-value" id="adjust-value-label">Số tiền (VNĐ)</label><input class="input" id="adjust-value" type="number" min="0.01" step="0.01" required></div>
+        <div class="form-field"><label for="adjust-description">Ghi chú</label><input class="input" id="adjust-description" maxlength="500"></div>
+        <div class="form-field full"><div class="form-hint" id="adjust-hint">Chọn danh mục khoản để xem cách tính.</div></div>
+      </div>
+      <div class="dialog-footer"><button class="button" type="button" data-close="adjustment-dialog">Hủy</button><button class="button primary" type="submit">Thêm khoản</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="catalog-dialog" class="wide">
+    <div class="dialog-header"><div><h2>Quản lý danh mục phụ cấp &amp; khấu trừ</h2><div class="panel-subtitle">Thêm, sửa, ngừng dùng hoặc kích hoạt danh mục.</div></div><button class="icon-close" type="button" data-close="catalog-dialog" aria-label="Đóng">×</button></div>
+    <div class="tabs">
+      <button class="active" data-catalog-kind="allowance">Phụ cấp</button>
+      <button data-catalog-kind="paycut">Khấu trừ</button>
+    </div>
+    <div class="dialog-body" style="padding:0">
+      <div class="panel-header"><div class="panel-subtitle">Danh mục không hoạt động không xuất hiện khi tạo điều chỉnh mới.</div><button class="button primary small" id="catalog-add">＋ Thêm danh mục</button></div>
+      <div class="table-wrap">
+        <table class="catalog-table">
+          <thead><tr><th>Tên khoản</th><th>Mô tả</th><th>Cách tính</th><th class="amount">Giá trị mặc định</th><th>Trạng thái</th><th></th></tr></thead>
+          <tbody id="catalog-rows"><tr><td class="empty" colspan="6">Đang tải danh mục...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="dialog-footer"><button class="button" type="button" data-close="catalog-dialog">Đóng</button></div>
+  </dialog>
+
+  <dialog id="catalog-editor-dialog">
+    <form id="catalog-form">
+      <div class="dialog-header"><h2 id="catalog-editor-title">Thêm danh mục</h2><button class="icon-close" type="button" data-close="catalog-editor-dialog" aria-label="Đóng">×</button></div>
+      <div class="dialog-body form-grid">
+        <div class="form-field full"><label for="catalog-name">Tên khoản</label><input class="input" id="catalog-name" maxlength="120" required></div>
+        <div class="form-field full"><label for="catalog-description">Mô tả</label><textarea id="catalog-description" maxlength="500"></textarea></div>
+        <div class="form-field"><label for="catalog-calculation">Cách tính</label><select class="select" id="catalog-calculation"><option value="fixed">Cố định</option><option value="percentage">Phần trăm lương cơ bản</option><option value="formula">Công thức (nhập số tiền)</option></select></div>
+        <div class="form-field"><label for="catalog-default" id="catalog-default-label">Giá trị mặc định (VNĐ)</label><input class="input" id="catalog-default" type="number" min="0" step="0.01" required></div>
+        <label class="check-line form-field full"><input id="catalog-active" type="checkbox" checked> Đang hoạt động</label>
+      </div>
+      <div class="dialog-footer"><button class="button" type="button" data-close="catalog-editor-dialog">Hủy</button><button class="button primary" type="submit">Lưu danh mục</button></div>
+    </form>
+  </dialog>
+
+  <script>
+    "use strict";
+
+    const API = {
+      payroll: "http://localhost:5267",
+      attendance: "http://localhost:5231"
+    };
+    const pageInfo = {
+      table: ["Bảng lương & tính toán", "Mở kỳ, đồng bộ công và lương, khởi tạo và tính bảng lương."],
+      adjustments: ["Phụ cấp & khấu trừ", "Quản lý các khoản điều chỉnh trong bảng lương nháp."],
+      approval: ["Phê duyệt & chi trả", "Phê duyệt bảng lương đã tính và xác nhận chi trả."],
+      payslip: ["Phiếu lương", "Tra cứu, in hoặc xuất phiếu lương theo nhân viên và kỳ."]
+    };
+    const state = {
+      page: "table",
+      periods: [],
+      periodId: "",
+      payrolls: [],
+      adjustments: [],
+      selectedPayrollId: "",
+      selectedApprovalIds: new Set(),
+      catalogKind: "allowance",
+      catalogItems: [],
+      editingCatalogItem: null,
+      adjustmentKind: "allowance",
+      currentPayslip: null,
+      selectedPayslipPayroll: null
+    };
+    const money = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 });
+    const titlesByStatus = { draft: "Bản nháp", calculated: "Chờ duyệt", approved: "Đã duyệt", paid: "Đã chi trả", in_progress: "Đang xử lý", completed: "Đã hoàn tất" };
+    const $ = (selector, root = document) => root.querySelector(selector);
+    const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, character => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      })[character]);
+    }
+
+    function formatMoney(value) {
+      return money.format(Number(value) || 0);
+    }
+
+    function formatNumber(value) {
+      return new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 }).format(Number(value) || 0);
+    }
+
+    function formatDate(value) {
+      if (!value) return "—";
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString("vi-VN");
+    }
+
+    function statusText(value) {
+      const status = String(value || "").toLowerCase();
+      return titlesByStatus[status] || value || "—";
+    }
+
+    function statusBadge(value) {
+      const status = String(value || "").toLowerCase();
+      const klass = ["draft", "calculated", "approved", "paid"].includes(status) ? status : "other";
+      return `<span class="status ${klass}">${escapeHtml(statusText(status))}</span>`;
+    }
+
+    function employeeCode(payroll) {
+      return payroll.employeeCode || String(payroll.employeeID || "").slice(0, 8).toUpperCase() || "—";
+    }
+
+    function employeeName(payroll) {
+      return payroll.employeeName || `Nhân viên ${employeeCode(payroll)}`;
+    }
+
+    function employeeCell(payroll) {
+      return `<div class="emp-name">${escapeHtml(employeeName(payroll))}</div><div class="emp-code">${escapeHtml(employeeCode(payroll))}</div>`;
+    }
+
+    function toast(message, type = "") {
+      const item = document.createElement("div");
+      item.className = `toast ${type}`.trim();
+      item.textContent = message;
+      $("#toast-region").append(item);
+      window.setTimeout(() => item.remove(), 6000);
+    }
+
+    async function request(base, path, options = {}) {
+      let response;
+      try {
+        response = await fetch(`${base.replace(/\/$/, "")}/${path.replace(/^\//, "")}`, {
+          ...options,
+          headers: { ...(options.body ? { "Content-Type": "application/json" } : {}), ...options.headers }
+        });
+      } catch (error) {
+        $("#connection-state").className = "connection offline";
+        $("#connection-state").lastElementChild.textContent = "Không kết nối được API";
+        throw new Error(`Không gọi được ${base}. Hãy kiểm tra API đang chạy và CORS. (${error.message})`);
+      }
+
+      if (response.status === 404 && options.allowNotFound) return null;
+      const body = await response.text();
+      if (!response.ok) {
+        let detail = body;
+        try {
+          const parsed = JSON.parse(body);
+          detail = parsed.message || parsed.title || body;
+        } catch { /* Response may be plain text. */ }
+        throw new Error(detail || `API trả về HTTP ${response.status}.`);
+      }
+      $("#connection-state").className = "connection online";
+      $("#connection-state").lastElementChild.textContent = "Payroll API sẵn sàng";
+      if (!body) return null;
+      try { return JSON.parse(body); } catch { return body; }
+    }
+
+    function payrollApi(path, options) { return request(API.payroll, path, options); }
+    function attendanceApi(path, options) { return request(API.attendance, path, options); }
+    function postJson(body) { return { method: "POST", body: JSON.stringify(body) }; }
+    function setBusy(button, busy) {
+      if (!button) return;
+      if (busy) {
+        button.dataset.originalText = button.textContent;
+        button.disabled = true;
+        button.textContent = "Đang xử lý...";
+      } else {
+        button.disabled = false;
+        if (button.dataset.originalText) button.textContent = button.dataset.originalText;
+      }
+    }
+
+    async function runAction(button, action) {
+      setBusy(button, true);
+      try { await action(); }
+      catch (error) { toast(error.message, "error"); }
+      finally { setBusy(button, false); }
+    }
+
+    function updatePeriodOptions() {
+      const options = state.periods.map(period =>
+        `<option value="${escapeHtml(period.payrollPeriodID)}">Tháng ${String(period.month).padStart(2, "0")}/${period.year} · ${escapeHtml(statusText(period.status))}</option>`
+      ).join("");
+      $$(".period-select").forEach(select => {
+        const current = state.periodId;
+        select.innerHTML = options || '<option value="">Chưa có kỳ lương</option>';
+        select.value = current;
+        if (!select.value && state.periods.length) select.value = state.periods[0].payrollPeriodID;
+      });
+      if (!state.periodId && state.periods.length) state.periodId = state.periods[0].payrollPeriodID;
+      $$(".period-select").forEach(select => { select.value = state.periodId; });
+    }
+
+    async function loadPeriods() {
+      state.periods = await payrollApi("api/payroll-periods");
+      if (state.periodId && !state.periods.some(period => period.payrollPeriodID === state.periodId)) state.periodId = "";
+      updatePeriodOptions();
+    }
+
+    async function loadPayrolls() {
+      if (!state.periodId) {
+        state.payrolls = [];
+        state.selectedApprovalIds.clear();
+        renderPayrollTable();
+        renderApprovals();
+        updateEmployeeOptions();
+        return;
+      }
+      state.payrolls = await payrollApi(`api/payrolls/periods/${encodeURIComponent(state.periodId)}`);
+      state.selectedApprovalIds = new Set([...state.selectedApprovalIds].filter(id => state.payrolls.some(payroll => payroll.payrollID === id)));
+      renderPayrollTable();
+      renderApprovals();
+      updateEmployeeOptions();
+      if (state.page === "adjustments") await loadAdjustmentDetails();
+      if (state.page === "payslip") await loadPayslip();
+    }
+
+    function renderPayrollTable() {
+      const selectedPeriod = state.periods.find(period => period.payrollPeriodID === state.periodId);
+      $("#payroll-period-caption").textContent = selectedPeriod
+        ? `Kỳ lương tháng ${String(selectedPeriod.month).padStart(2, "0")}/${selectedPeriod.year} · ${state.payrolls.length} nhân viên`
+        : "Chưa có kỳ lương.";
+      const query = $("#payroll-search").value.trim().toLocaleLowerCase("vi");
+      const rows = state.payrolls.filter(payroll =>
+        `${employeeCode(payroll)} ${employeeName(payroll)}`.toLocaleLowerCase("vi").includes(query));
+      $("#payroll-rows").innerHTML = rows.length ? rows.map(payroll => `
+        <tr>
+          <td>${employeeCell(payroll)}</td>
+          <td class="amount">${formatMoney(payroll.baseSalary)}</td>
+          <td class="amount">${formatNumber(payroll.workingDays)} / ${formatNumber(payroll.standardWorkingDay)}</td>
+          <td class="amount">${formatMoney(payroll.totalProjectAllowance)}</td>
+          <td class="amount">${formatMoney(payroll.totalAllowance)}</td>
+          <td class="amount">${formatMoney(payroll.totalPayCut)}</td>
+          <td class="amount">${formatMoney(payroll.grossSalary)}</td>
+          <td class="amount"><strong>${formatMoney(payroll.netSalary)}</strong></td>
+          <td>${statusBadge(payroll.status)}</td>
+          <td>${escapeHtml(formatDate(payroll.calculatedAt))}</td>
+        </tr>`).join("") : '<tr><td class="empty" colspan="10">Không có dữ liệu bảng lương cho kỳ này.</td></tr>';
+
+      $("#metric-net").textContent = formatMoney(state.payrolls.reduce((sum, payroll) => sum + Number(payroll.netSalary || 0), 0));
+      $("#metric-count").textContent = String(state.payrolls.length);
+      $("#metric-allowance").textContent = formatMoney(state.payrolls.reduce((sum, payroll) => sum + Number(payroll.totalAllowance || 0), 0));
+      $("#metric-paycut").textContent = formatMoney(state.payrolls.reduce((sum, payroll) => sum + Number(payroll.totalPayCut || 0), 0));
+    }
+
+    function renderApprovals() {
+      const calculated = state.payrolls.filter(payroll => String(payroll.status).toLowerCase() === "calculated").length;
+      const approved = state.payrolls.filter(payroll => String(payroll.status).toLowerCase() === "approved").length;
+      const paid = state.payrolls.filter(payroll => String(payroll.status).toLowerCase() === "paid").length;
+      $("#approval-calculated").textContent = String(calculated);
+      $("#approval-approved").textContent = String(approved);
+      $("#approval-paid").textContent = String(paid);
+      $("#approval-selected-count").textContent = String(state.selectedApprovalIds.size);
+      $("#approval-rows").innerHTML = state.payrolls.length ? state.payrolls.map(payroll => `
+        <tr>
+          <td><input type="checkbox" class="approval-check" value="${escapeHtml(payroll.payrollID)}" ${state.selectedApprovalIds.has(payroll.payrollID) ? "checked" : ""} aria-label="Chọn bảng lương"></td>
+          <td>${employeeCell(payroll)}</td>
+          <td class="amount">${formatMoney(payroll.grossSalary)}</td>
+          <td class="amount">${formatMoney(payroll.totalAllowance)}</td>
+          <td class="amount">${formatMoney(payroll.totalPayCut)}</td>
+          <td class="amount"><strong>${formatMoney(payroll.netSalary)}</strong></td>
+          <td>${statusBadge(payroll.status)}</td>
+          <td>${escapeHtml(formatDate(payroll.approvedAt))}</td>
+          <td>${escapeHtml(formatDate(payroll.paidAt))}</td>
+        </tr>`).join("") : '<tr><td class="empty" colspan="9">Chưa có bảng lương trong kỳ.</td></tr>';
+      const eligibleApprove = [...state.selectedApprovalIds].some(id => state.payrolls.some(item => item.payrollID === id && String(item.status).toLowerCase() === "calculated"));
+      const eligiblePay = [...state.selectedApprovalIds].some(id => state.payrolls.some(item => item.payrollID === id && String(item.status).toLowerCase() === "approved"));
+      $("#approve-selected").disabled = !eligibleApprove;
+      $("#pay-selected").disabled = !eligiblePay;
+      $("#approve-all").disabled = calculated === 0;
+      $("#pay-all").disabled = approved === 0;
+      $("#select-all-approvals").checked = state.payrolls.length > 0 && state.payrolls.every(item => state.selectedApprovalIds.has(item.payrollID));
+    }
+
+    function updateEmployeeOptions() {
+      const options = state.payrolls.map(payroll =>
+        `<option value="${escapeHtml(payroll.payrollID)}">${escapeHtml(employeeCode(payroll))} — ${escapeHtml(employeeName(payroll))} (${escapeHtml(statusText(payroll.status))})</option>`
+      ).join("");
+      ["#adjustment-employee", "#payslip-employee"].forEach(selector => {
+        const select = $(selector);
+        const current = selector === "#adjustment-employee" ? state.selectedPayrollId : state.selectedPayslipPayroll?.payrollID;
+        select.innerHTML = options || '<option value="">Không có nhân viên trong kỳ</option>';
+        select.value = current || "";
+        if (!select.value && state.payrolls.length) select.selectedIndex = 0;
+      });
+      state.selectedPayrollId = $("#adjustment-employee").value;
+    }
+
+    function updatePageHeader(page) {
+      $("#page-title").textContent = pageInfo[page][0];
+      $("#page-subtitle").textContent = pageInfo[page][1];
+      $("#breadcrumb-current").textContent = pageInfo[page][0];
+    }
+
+    async function showPage(page) {
+      state.page = page;
+      $$(".nav button").forEach(button => button.classList.toggle("active", button.dataset.page === page));
+      Object.keys(pageInfo).forEach(key => { $(`#page-${key}`).hidden = key !== page; });
+      updatePageHeader(page);
+      if (page === "adjustments") {
+        await loadPayrolls();
+        await loadAdjustmentDetails();
+      } else if (page === "approval") {
+        await loadPayrolls();
+      } else if (page === "payslip") {
+        await loadPayrolls();
+      } else {
+        await loadPayrolls();
+      }
+    }
+
+    async function loadEmployeesForPayrollCreation() {
+      const employees = [];
+      let page = 1;
+      let total = Number.POSITIVE_INFINITY;
+      while (employees.length < total) {
+        const result = await attendanceApi(`api/employees?page=${page}&pageSize=100`);
+        const items = Array.isArray(result?.items) ? result.items : [];
+        total = Number(result?.total ?? items.length);
+        employees.push(...items);
+        if (!items.length || employees.length >= total) break;
+        page++;
+      }
+      return [...new Map(employees.map(employee => [employee.employeeId, employee])).values()];
+    }
+
+    async function runPeriodOperation(button, label, action) {
+      if (!state.periodId) {
+        toast("Vui lòng mở hoặc chọn kỳ lương trước.", "error");
+        return;
+      }
+      if (!window.confirm(`${label} cho kỳ lương đang chọn?`)) return;
+      await runAction(button, async () => {
+        const result = await action();
+        toast(result || `${label} thành công.`, "success");
+        await loadPeriods();
+        await loadPayrolls();
+      });
+    }
+
+    async function createPayrolls(button) {
+      if (!state.periodId) return toast("Vui lòng chọn kỳ lương.", "error");
+      if (!window.confirm("Tạo bảng lương cho toàn bộ nhân viên trong danh bạ Attendance?")) return;
+      await runAction(button, async () => {
+        const employees = await loadEmployeesForPayrollCreation();
+        const employeeIDs = employees.map(employee => employee.employeeId).filter(Boolean);
+        if (!employeeIDs.length) throw new Error("Không tìm thấy nhân viên trong Attendance API.");
+        await payrollApi(`api/payroll-management/periods/${encodeURIComponent(state.periodId)}/payrolls`, postJson({ employeeIDs }));
+        toast(`Đã khởi tạo bảng lương cho ${employeeIDs.length} nhân viên.`, "success");
+        await loadPayrolls();
+      });
+    }
+
+    async function calculateAll(button) {
+      if (!state.periodId) return toast("Vui lòng chọn kỳ lương.", "error");
+      const targets = state.payrolls.filter(payroll => ["draft", "calculated"].includes(String(payroll.status).toLowerCase()));
+      if (!targets.length) return toast("Không có bảng lương nháp hoặc cần tính lại trong kỳ này.");
+      if (!window.confirm(`Tính lương cho ${targets.length} nhân viên?`)) return;
+      await runAction(button, async () => {
+        let succeeded = 0;
+        const failures = [];
+        for (const payroll of targets) {
+          try {
+            await payrollApi(`api/payroll-calculation/${encodeURIComponent(payroll.payrollID)}/calculate`, { method: "POST" });
+            succeeded++;
+          } catch (error) { failures.push(`${employeeCode(payroll)}: ${error.message}`); }
+        }
+        await loadPayrolls();
+        toast(`Đã tính lương ${succeeded}/${targets.length}.` + (failures.length ? ` Lỗi: ${failures.slice(0, 3).join(" | ")}` : ""), failures.length ? "error" : "success");
+      });
+    }
+
+    function downloadFile(filename, content, type) {
+      const url = URL.createObjectURL(new Blob([content], { type }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function csvCell(value) {
+      return `"${String(value ?? "").replace(/"/g, '""')}"`;
+    }
+
+    function exportPayrolls() {
+      if (!state.payrolls.length) return toast("Không có dữ liệu bảng lương để xuất.", "error");
+      const headers = ["Mã nhân viên", "Họ tên", "Lương cơ bản", "Công chuẩn", "Công thực tế", "Phụ cấp dự án", "Tổng phụ cấp", "Khấu trừ", "Gross", "Thực lĩnh", "Trạng thái", "Thời điểm tính"];
+      const rows = state.payrolls.map(payroll => [
+        employeeCode(payroll), employeeName(payroll), payroll.baseSalary, payroll.standardWorkingDay,
+        payroll.workingDays, payroll.totalProjectAllowance, payroll.totalAllowance, payroll.totalPayCut,
+        payroll.grossSalary, payroll.netSalary, statusText(payroll.status), formatDate(payroll.calculatedAt)
+      ]);
+      const period = state.periods.find(item => item.payrollPeriodID === state.periodId);
+      downloadFile(`BangLuong_${period?.month || "ky"}_${period?.year || ""}.csv`, "\uFEFF" + [headers, ...rows].map(row => row.map(csvCell).join(",")).join("\r\n"), "text/csv;charset=utf-8");
+      toast("Đã xuất file CSV bảng lương.", "success");
+    }
+
+    async function loadAdjustmentDetails() {
+      const employeeId = $("#adjustment-employee").value;
+      state.selectedPayrollId = employeeId;
+      const payroll = state.payrolls.find(item => item.payrollID === employeeId);
+      const draftPayrolls = state.payrolls.filter(item => String(item.status).toLowerCase() === "draft");
+      $("#add-allowance").disabled = draftPayrolls.length === 0;
+      $("#add-paycut").disabled = draftPayrolls.length === 0;
+      if (!payroll) {
+        $("#adjustment-summary").textContent = state.payrolls.length
+          ? "Không có bảng lương nháp trong kỳ; không thể thêm điều chỉnh."
+          : "Chưa có dữ liệu bảng lương cho kỳ này.";
+        $("#adjustment-rows").innerHTML = '<tr><td class="empty" colspan="4">Chọn nhân viên để xem các khoản.</td></tr>';
+        return;
+      }
+      try {
+        const detail = await payrollApi(`api/payrolls/${encodeURIComponent(payroll.payrollID)}`);
+        const allowances = detail?.allowances || [];
+        const payCuts = detail?.payCuts || [];
+        state.adjustments = [
+          ...allowances.map(item => ({ name: item.allowanceTypeName, description: item.description, rate: item.rateApplied, amount: item.amount, type: "Phụ cấp" })),
+          ...payCuts.map(item => ({ name: item.payCutReasonName, description: item.description, rate: item.rateApplied, amount: item.amount, type: "Khấu trừ" }))
+        ];
+        $("#adjustment-summary").innerHTML = `<strong>${escapeHtml(employeeCode(payroll))} · ${escapeHtml(employeeName(payroll))}</strong><br>
+          Trạng thái: ${escapeHtml(statusText(payroll.status))}<br>
+          Lương cơ bản: ${formatMoney(detail?.baseSalary ?? payroll.baseSalary)} · Phụ cấp dự án: ${formatMoney(detail?.totalProjectAllowance ?? payroll.totalProjectAllowance)}<br>
+          Phụ cấp khác: ${formatMoney(detail?.totalAllowance ?? payroll.totalAllowance)} · Khấu trừ: ${formatMoney(detail?.totalPayCut ?? payroll.totalPayCut)}`;
+        $("#adjustment-rows").innerHTML = state.adjustments.length ? state.adjustments.map(item => `
+          <tr><td>${escapeHtml(item.name)}<div class="emp-code">${escapeHtml(item.type)}</div></td><td>${escapeHtml(item.description)}</td>
+          <td class="amount">${formatNumber(Number(item.rate) > 0 && Number(item.rate) <= 1 ? Number(item.rate) * 100 : item.rate)}%</td>
+          <td class="amount"><strong>${formatMoney(item.amount)}</strong></td></tr>`).join("")
+          : '<tr><td class="empty" colspan="4">Nhân viên chưa có phụ cấp hoặc khấu trừ.</td></tr>';
+      } catch (error) {
+        $("#adjustment-summary").textContent = `Không tải được chi tiết: ${error.message}`;
+        $("#adjustment-rows").innerHTML = '<tr><td class="empty" colspan="4">Không thể tải dữ liệu chi tiết.</td></tr>';
+      }
+    }
+
+    function filterAdjustmentEmployees() {
+      const query = $("#adjustment-search").value.trim().toLocaleLowerCase("vi");
+      const select = $("#adjustment-employee");
+      const selectedId = state.selectedPayrollId;
+      const matches = state.payrolls.filter(payroll => `${employeeCode(payroll)} ${employeeName(payroll)}`.toLocaleLowerCase("vi").includes(query));
+      select.innerHTML = matches.map(payroll =>
+        `<option value="${escapeHtml(payroll.payrollID)}">${escapeHtml(employeeCode(payroll))} — ${escapeHtml(employeeName(payroll))} (${escapeHtml(statusText(payroll.status))})</option>`
+      ).join("") || '<option value="">Không tìm thấy nhân viên</option>';
+      select.value = matches.some(item => item.payrollID === selectedId) ? selectedId : matches[0]?.payrollID || "";
+      state.selectedPayrollId = select.value;
+      loadAdjustmentDetails();
+    }
+
+    async function openAdjustment(kind) {
+      if (!state.periodId) return toast("Vui lòng chọn kỳ lương.", "error");
+      const drafts = state.payrolls.filter(payroll => String(payroll.status).toLowerCase() === "draft");
+      if (!drafts.length) return toast("Kỳ lương không có bảng lương nháp để điều chỉnh.", "error");
+      state.adjustmentKind = kind;
+      const catalog = await payrollApi(kind === "allowance"
+        ? "api/payroll-catalog/allowances?activeOnly=true"
+        : "api/payroll-catalog/pay-cuts?activeOnly=true");
+      if (!catalog.length) return toast("Danh mục đang trống. Hãy thêm khoản trong Quản lý danh mục trước.", "error");
+      $("#adjustment-dialog-title").textContent = kind === "allowance" ? "Thêm phụ cấp" : "Thêm khoản khấu trừ";
+      $("#adjust-catalog").innerHTML = catalog.map(item =>
+        `<option value="${escapeHtml(item.id)}" data-kind="${escapeHtml(item.calculationType)}" data-rate="${escapeHtml(item.defaultRate)}" data-description="${escapeHtml(item.description)}">${escapeHtml(item.name)} · ${escapeHtml(calculationLabel(item.calculationType))}</option>`
+      ).join("");
+      $("#adjust-target").innerHTML = drafts.map(payroll =>
+        `<option value="${escapeHtml(payroll.payrollID)}">${escapeHtml(employeeCode(payroll))} — ${escapeHtml(employeeName(payroll))} · ${formatMoney(payroll.baseSalary)}</option>`
+      ).join("");
+      $("#adjust-all-drafts").checked = false;
+      $("#adjust-target").disabled = false;
+      $("#adjust-target").value = drafts.some(item => item.payrollID === state.selectedPayrollId) ? state.selectedPayrollId : drafts[0].payrollID;
+      $("#adjust-catalog").dispatchEvent(new Event("change"));
+      $("#adjustment-dialog").showModal();
+    }
+
+    function calculationLabel(type) {
+      return type === "percentage" ? "Phần trăm" : type === "formula" ? "Công thức" : "Cố định";
+    }
+
+    function updateAdjustmentHint() {
+      const option = $("#adjust-catalog").selectedOptions[0];
+      if (!option) return;
+      const type = option.dataset.kind;
+      const defaultRate = Number(option.dataset.rate || 0);
+      const isPercentage = type === "percentage";
+      $("#adjust-value-label").textContent = isPercentage ? "Tỷ lệ áp dụng (%)" : "Số tiền áp dụng (VNĐ)";
+      $("#adjust-value").max = isPercentage ? "100" : "100000000";
+      $("#adjust-value").value = isPercentage && defaultRate > 0 && defaultRate <= 1 ? defaultRate * 100 : defaultRate;
+      $("#adjust-description").value = option.dataset.description || "";
+      const selected = state.payrolls.find(item => item.payrollID === $("#adjust-target").value);
+      const value = Number($("#adjust-value").value || 0);
+      const amount = isPercentage ? (Number(selected?.baseSalary || 0) * value / 100) : value;
+      $("#adjust-hint").textContent = isPercentage
+        ? `Tỷ lệ tính trên lương cơ bản từng nhân viên. Tạm tính cho người đang chọn: ${formatMoney(amount)}.`
+        : type === "formula"
+          ? "Nhập số tiền đã xác định theo công thức của khoản này."
+          : "Số tiền nhập sẽ áp dụng cho nhân viên được chọn.";
+    }
+
+    async function submitAdjustment(event) {
+      event.preventDefault();
+      const option = $("#adjust-catalog").selectedOptions[0];
+      const amountOrRate = Number($("#adjust-value").value);
+      if (!option || !Number.isFinite(amountOrRate) || amountOrRate <= 0) return toast("Vui lòng chọn khoản và nhập giá trị lớn hơn 0.", "error");
+      const targets = $("#adjust-all-drafts").checked
+        ? state.payrolls.filter(payroll => String(payroll.status).toLowerCase() === "draft")
+        : [state.payrolls.find(payroll => payroll.payrollID === $("#adjust-target").value)].filter(Boolean);
+      if (!targets.length) return toast("Vui lòng chọn ít nhất một nhân viên.", "error");
+      if (targets.length > 1 && !window.confirm(`Áp dụng khoản này cho ${targets.length} nhân viên?`)) return;
+      const isAllowance = state.adjustmentKind === "allowance";
+      const isPercentage = option.dataset.kind === "percentage";
+      let success = 0;
+      const failures = [];
+      const submit = $("#adjustment-form").querySelector('[type="submit"]');
+      setBusy(submit, true);
+      try {
+        for (const payroll of targets) {
+          const rateApplied = isPercentage ? amountOrRate / 100 : 1;
+          const amount = isPercentage ? Math.round(Number(payroll.baseSalary || 0) * rateApplied * 100) / 100 : amountOrRate;
+          const payload = {
+            [isAllowance ? "allowanceTypeID" : "payCutReasonID"]: option.value,
+            amount,
+            rateApplied,
+            description: $("#adjust-description").value.trim() || option.textContent.split(" · ")[0]
+          };
+          try {
+            await payrollApi(`api/payroll-adjustments/${encodeURIComponent(payroll.payrollID)}/${isAllowance ? "allowances" : "paycuts"}`, postJson(payload));
+            success++;
+          } catch (error) { failures.push(`${employeeCode(payroll)}: ${error.message}`); }
+        }
+        $("#adjustment-dialog").close();
+        toast(`Đã thêm thành công ${success}/${targets.length} nhân viên.` + (failures.length ? ` Lỗi: ${failures.slice(0, 3).join(" | ")}` : ""), failures.length ? "error" : "success");
+        await loadPayrolls();
+        await loadAdjustmentDetails();
+      } finally {
+        setBusy(submit, false);
+      }
+    }
+
+    async function loadCatalog() {
+      state.catalogItems = await payrollApi(state.catalogKind === "allowance"
+        ? "api/payroll-catalog/allowances"
+        : "api/payroll-catalog/pay-cuts");
+      $("#catalog-rows").innerHTML = state.catalogItems.length ? state.catalogItems.map(item => `
+        <tr>
+          <td><strong>${escapeHtml(item.name)}</strong></td><td>${escapeHtml(item.description)}</td>
+          <td>${escapeHtml(calculationLabel(item.calculationType))}</td>
+          <td class="amount">${escapeHtml(formatCatalogRate(item))}</td>
+          <td>${item.status === "active" ? '<span class="status paid">Đang dùng</span>' : '<span class="status other">Ngừng dùng</span>'}</td>
+          <td><div class="catalog-actions"><button class="button small" data-catalog-edit="${escapeHtml(item.id)}">Sửa</button>
+            <button class="button small ${item.status === "active" ? "danger" : ""}" data-catalog-toggle="${escapeHtml(item.id)}">${item.status === "active" ? "Ngừng dùng" : "Kích hoạt"}</button></div></td>
+        </tr>`).join("") : '<tr><td class="empty" colspan="6">Danh mục chưa có dữ liệu.</td></tr>';
+    }
+
+    function formatCatalogRate(item) {
+      const rate = Number(item.defaultRate || 0);
+      return item.calculationType === "percentage"
+        ? `${formatNumber(rate > 0 && rate <= 1 ? rate * 100 : rate)}%`
+        : formatMoney(rate);
+    }
+
+    function catalogPath(kind, id = "") {
+      const collection = kind === "allowance" ? "allowances" : "pay-cuts";
+      return `api/payroll-catalog/${collection}${id ? `/${encodeURIComponent(id)}` : ""}`;
+    }
+
+    function openCatalogEditor(item = null) {
+      state.editingCatalogItem = item;
+      $("#catalog-editor-title").textContent = item ? "Sửa danh mục" : "Thêm danh mục";
+      $("#catalog-name").value = item?.name || "";
+      $("#catalog-description").value = item?.description || "";
+      $("#catalog-calculation").value = item?.calculationType || "fixed";
+      let initialRate = Number(item?.defaultRate || 0);
+      if (item?.calculationType === "percentage" && initialRate > 0 && initialRate <= 1) initialRate *= 100;
+      $("#catalog-default").value = initialRate;
+      $("#catalog-active").checked = item?.status !== "inactive";
+      updateCatalogDefaultLabel();
+      $("#catalog-editor-dialog").showModal();
+    }
+
+    function updateCatalogDefaultLabel() {
+      $("#catalog-default-label").textContent = $("#catalog-calculation").value === "percentage" ? "Giá trị mặc định (%)" : "Giá trị mặc định (VNĐ)";
+      $("#catalog-default").max = $("#catalog-calculation").value === "percentage" ? "100" : "100000000";
+    }
+
+    async function submitCatalog(event) {
+      event.preventDefault();
+      const body = {
+        name: $("#catalog-name").value.trim(),
+        description: $("#catalog-description").value.trim(),
+        calculationType: $("#catalog-calculation").value,
+        defaultRate: Number($("#catalog-default").value),
+        isActive: $("#catalog-active").checked
+      };
+      if (!body.name) return toast("Vui lòng nhập tên danh mục.", "error");
+      const button = $("#catalog-form").querySelector('[type="submit"]');
+      await runAction(button, async () => {
+        const existing = state.editingCatalogItem;
+        await payrollApi(catalogPath(state.catalogKind, existing?.id), existing
+          ? { method: "PUT", body: JSON.stringify(body), headers: { "Content-Type": "application/json" } }
+          : postJson(body));
+        $("#catalog-editor-dialog").close();
+        toast(existing ? "Đã cập nhật danh mục." : "Đã thêm danh mục.", "success");
+        await loadCatalog();
+      });
+    }
+
+    async function toggleCatalogItem(id) {
+      const item = state.catalogItems.find(entry => entry.id === id);
+      if (!item) return;
+      const activating = item.status !== "active";
+      if (!activating && !window.confirm(`Ngừng sử dụng “${item.name}”? Dữ liệu lương cũ vẫn được giữ.`)) return;
+      await runAction(null, async () => {
+        if (activating) {
+          await payrollApi(catalogPath(state.catalogKind, id), {
+            method: "PUT",
+            body: JSON.stringify({
+              name: item.name, description: item.description, calculationType: item.calculationType,
+              defaultRate: item.defaultRate, isActive: true
+            }),
+            headers: { "Content-Type": "application/json" }
+          });
+        } else {
+          await payrollApi(catalogPath(state.catalogKind, id), { method: "DELETE" });
+        }
+        await loadCatalog();
+        toast(activating ? "Đã kích hoạt danh mục." : "Đã ngừng sử dụng danh mục.", "success");
+      });
+    }
+
+    async function applyApproval(ids, targetStatus, label, button) {
+      const target = state.payrolls.filter(payroll =>
+        ids.has(payroll.payrollID) && String(payroll.status).toLowerCase() === (targetStatus === "approved" ? "calculated" : "approved"));
+      if (!target.length) return toast(`Không có bảng lương phù hợp để ${label.toLocaleLowerCase("vi")}.`);
+      if (!window.confirm(`${label} cho ${target.length} nhân viên?`)) return;
+      await runAction(button, async () => {
+        let succeeded = 0;
+        const failures = [];
+        for (const payroll of target) {
+          try {
+            if (targetStatus === "approved") {
+              await payrollApi(`api/payroll-approval/${encodeURIComponent(payroll.payrollID)}/approve`, { method: "POST" });
+            } else {
+              await payrollApi(`api/payroll-payment/${encodeURIComponent(payroll.payrollID)}/mark-as-paid`, { method: "POST" });
+            }
+            succeeded++;
+          } catch (error) { failures.push(`${employeeCode(payroll)}: ${error.message}`); }
+        }
+        state.selectedApprovalIds.clear();
+        await loadPayrolls();
+        toast(`${label} thành công ${succeeded}/${target.length}.` + (failures.length ? ` Lỗi: ${failures.slice(0, 3).join(" | ")}` : ""), failures.length ? "error" : "success");
+      });
+    }
+
+    async function loadPayslip() {
+      const payrollId = $("#payslip-employee").value;
+      const payroll = state.payrolls.find(item => item.payrollID === payrollId);
+      state.currentPayslip = null;
+      state.selectedPayslipPayroll = payroll || null;
+      if (!payroll) {
+        $("#payslip-content").className = "empty";
+        $("#payslip-content").textContent = "Chưa có bảng lương trong kỳ đã chọn.";
+        $("#export-payslip").disabled = true;
+        $("#print-payslip").disabled = true;
+        return;
+      }
+      try {
+        const payslip = await payrollApi(`api/payslips/${encodeURIComponent(payroll.payrollID)}`, { allowNotFound: true });
+        if (!payslip) {
+          $("#payslip-content").className = "notice";
+          $("#payslip-content").textContent = `Phiếu lương chưa được phát hành cho ${employeeName(payroll)} (${employeeCode(payroll)}).`;
+          $("#export-payslip").disabled = true;
+          $("#print-payslip").disabled = true;
+          return;
+        }
+        state.currentPayslip = payslip;
+        $("#export-payslip").disabled = false;
+        $("#print-payslip").disabled = false;
+        renderPayslip(payroll, payslip);
+      } catch (error) {
+        $("#payslip-content").className = "notice";
+        $("#payslip-content").textContent = `Không tải được phiếu lương: ${error.message}`;
+        $("#export-payslip").disabled = true;
+        $("#print-payslip").disabled = true;
+      }
+    }
+
+    function payslipLines(items, nameKey) {
+      return (items || []).map(item => `<div class="slip-line"><span>${escapeHtml(item[nameKey])}${item.description ? ` <span class="muted">· ${escapeHtml(item.description)}</span>` : ""}</span><strong>${formatMoney(item.amount)}</strong></div>`).join("");
+    }
+
+    function renderPayslip(payroll, slip) {
+      const allowances = [
+        ...(Number(slip.totalProjectAllowance) > 0 ? [{ allowanceTypeName: "Phụ cấp dự án", amount: slip.totalProjectAllowance }] : []),
+        ...(slip.allowances || [])
+      ];
+      const payCuts = slip.payCuts || [];
+      $("#payslip-content").className = "payslip";
+      $("#payslip-content").innerHTML = `
+        <div class="slip-heading"><h2>PHIẾU LƯƠNG NHÂN VIÊN</h2><div>Tháng ${String(slip.month).padStart(2, "0")}/${slip.year}</div><div style="margin-top:7px">${statusBadge(slip.status)}</div></div>
+        <div class="slip-employee">
+          <div><span class="muted">Mã nhân viên:</span> <strong>${escapeHtml(slip.employeeCode || employeeCode(payroll))}</strong></div>
+          <div><span class="muted">Họ và tên:</span> <strong>${escapeHtml(slip.employeeName || employeeName(payroll))}</strong></div>
+          <div><span class="muted">Công chuẩn:</span> ${formatNumber(slip.standardWorkingDay)} ngày</div>
+          <div><span class="muted">Công thực tế:</span> ${formatNumber(slip.workingDays)} ngày</div>
+          <div><span class="muted">Lương cơ bản:</span> ${formatMoney(slip.baseSalary)}</div>
+          <div><span class="muted">Lương Gross:</span> ${formatMoney(slip.grossSalary)}</div>
+        </div>
+        <div class="slip-grid">
+          <div class="slip-section"><h3>Phụ cấp (+)</h3>${allowances.length ? payslipLines(allowances, "allowanceTypeName") : '<div class="muted">Không có phụ cấp</div>'}<div class="slip-line"><strong>Tổng phụ cấp</strong><strong>${formatMoney(slip.totalAllowance)}</strong></div></div>
+          <div class="slip-section"><h3>Khấu trừ (−)</h3>${payCuts.length ? payslipLines(payCuts, "payCutReasonName") : '<div class="muted">Không có khoản khấu trừ</div>'}<div class="slip-line"><strong>Tổng khấu trừ</strong><strong>${formatMoney(slip.totalPayCut)}</strong></div></div>
+        </div>
+        <div class="slip-net"><span>THỰC LĨNH (NET SALARY)</span><span>${formatMoney(slip.netSalary)}</span></div>`;
+    }
+
+    function exportPayslip() {
+      const slip = state.currentPayslip;
+      const payroll = state.selectedPayslipPayroll;
+      if (!slip || !payroll) return toast("Chưa có phiếu lương để xuất.", "error");
+      const lines = [
+        "PHIẾU LƯƠNG NHÂN VIÊN",
+        `Tháng: ${String(slip.month).padStart(2, "0")}/${slip.year}`,
+        `Mã nhân viên: ${slip.employeeCode || employeeCode(payroll)}`,
+        `Họ tên: ${slip.employeeName || employeeName(payroll)}`,
+        `Trạng thái: ${statusText(slip.status)}`,
+        `Lương cơ bản: ${formatMoney(slip.baseSalary)}`,
+        `Công chuẩn: ${formatNumber(slip.standardWorkingDay)} ngày`,
+        `Công thực tế: ${formatNumber(slip.workingDays)} ngày`,
+        `Lương Gross: ${formatMoney(slip.grossSalary)}`,
+        `Phụ cấp dự án: ${formatMoney(slip.totalProjectAllowance)}`,
+        "Phụ cấp:",
+        ...(slip.allowances || []).map(item => `  + ${item.allowanceTypeName}: ${formatMoney(item.amount)}`),
+        `Tổng phụ cấp: ${formatMoney(slip.totalAllowance)}`,
+        "Khấu trừ:",
+        ...(slip.payCuts || []).map(item => `  - ${item.payCutReasonName}: ${formatMoney(item.amount)}`),
+        `Tổng khấu trừ: ${formatMoney(slip.totalPayCut)}`,
+        `THỰC LĨNH: ${formatMoney(slip.netSalary)}`
+      ];
+      downloadFile(`PhieuLuong_${employeeCode(payroll)}_${slip.month}_${slip.year}.txt`, lines.join("\r\n"), "text/plain;charset=utf-8");
+    }
+
+    function wireEvents() {
+      $$(".nav button").forEach(button => button.addEventListener("click", () => runAction(null, () => showPage(button.dataset.page))));
+      $$(".period-select").forEach(select => select.addEventListener("change", () => runAction(null, async () => {
+        state.periodId = select.value;
+        $$(".period-select").forEach(item => { item.value = state.periodId; });
+        state.selectedPayrollId = "";
+        state.selectedApprovalIds.clear();
+        await loadPayrolls();
+      })));
+
+      $("#refresh-page").addEventListener("click", event => runAction(event.currentTarget, async () => {
+        await loadPeriods();
+        await loadPayrolls();
+        toast("Đã tải lại dữ liệu.", "success");
+      }));
+      $("#payroll-search").addEventListener("input", renderPayrollTable);
+      $("#new-period").addEventListener("click", () => {
+        $("#period-month").value = new Date().getMonth() + 1;
+        $("#period-year").value = new Date().getFullYear();
+        $("#period-dialog").showModal();
+      });
+      $("#period-form").addEventListener("submit", event => {
+        event.preventDefault();
+        runAction($("#period-form").querySelector('[type="submit"]'), async () => {
+          const period = await payrollApi("api/payroll-periods", postJson({
+            month: Number($("#period-month").value), year: Number($("#period-year").value)
+          }));
+          $("#period-dialog").close();
+          state.periodId = period?.payrollPeriodID || "";
+          await loadPeriods();
+          await loadPayrolls();
+          toast("Đã mở kỳ lương mới.", "success");
+        });
+      });
+      $("#sync-attendance").addEventListener("click", event => runPeriodOperation(event.currentTarget, "Đồng bộ chấm công", () =>
+        payrollApi(`api/payroll-attendance/periods/${encodeURIComponent(state.periodId)}/sync`, { method: "POST" })
+          .then(count => `Đã đồng bộ công cho ${count} nhân viên.`)));
+      $("#sync-salary").addEventListener("click", event => runPeriodOperation(event.currentTarget, "Đồng bộ lương cơ bản", () =>
+        payrollApi(`api/payroll-salary/periods/${encodeURIComponent(state.periodId)}/sync`, { method: "POST" })
+          .then(count => `Đã đồng bộ lương cho ${count} nhân viên.`)));
+      $("#create-payrolls").addEventListener("click", event => createPayrolls(event.currentTarget));
+      $("#calculate-all").addEventListener("click", event => calculateAll(event.currentTarget));
+      $("#export-payrolls").addEventListener("click", exportPayrolls);
+
+      $("#adjustment-search").addEventListener("input", filterAdjustmentEmployees);
+      $("#adjustment-employee").addEventListener("change", () => loadAdjustmentDetails());
+      $("#reload-adjustments").addEventListener("click", event => runAction(event.currentTarget, loadAdjustmentDetails));
+      $("#add-allowance").addEventListener("click", () => runAction(null, () => openAdjustment("allowance")));
+      $("#add-paycut").addEventListener("click", () => runAction(null, () => openAdjustment("paycut")));
+      $("#adjust-catalog").addEventListener("change", updateAdjustmentHint);
+      $("#adjust-target").addEventListener("change", updateAdjustmentHint);
+      $("#adjust-value").addEventListener("input", updateAdjustmentHint);
+      $("#adjust-all-drafts").addEventListener("change", event => { $("#adjust-target").disabled = event.target.checked; updateAdjustmentHint(); });
+      $("#adjustment-form").addEventListener("submit", submitAdjustment);
+
+      $("#manage-catalog").addEventListener("click", () => runAction(null, async () => {
+        $("#catalog-dialog").showModal();
+        await loadCatalog();
+      }));
+      $$("[data-catalog-kind]").forEach(button => button.addEventListener("click", () => runAction(null, async () => {
+        state.catalogKind = button.dataset.catalogKind;
+        $$("[data-catalog-kind]").forEach(tab => tab.classList.toggle("active", tab === button));
+        await loadCatalog();
+      })));
+      $("#catalog-add").addEventListener("click", () => openCatalogEditor());
+      $("#catalog-rows").addEventListener("click", event => {
+        const editId = event.target.closest("[data-catalog-edit]")?.dataset.catalogEdit;
+        const toggleId = event.target.closest("[data-catalog-toggle]")?.dataset.catalogToggle;
+        if (editId) openCatalogEditor(state.catalogItems.find(item => item.id === editId));
+        if (toggleId) toggleCatalogItem(toggleId);
+      });
+      $("#catalog-calculation").addEventListener("change", updateCatalogDefaultLabel);
+      $("#catalog-form").addEventListener("submit", submitCatalog);
+
+      $("#approval-rows").addEventListener("change", event => {
+        if (!event.target.matches(".approval-check")) return;
+        const id = event.target.value;
+        if (event.target.checked) state.selectedApprovalIds.add(id);
+        else state.selectedApprovalIds.delete(id);
+        renderApprovals();
+      });
+      $("#select-all-approvals").addEventListener("change", event => {
+        state.selectedApprovalIds = event.target.checked
+          ? new Set(state.payrolls.map(payroll => payroll.payrollID))
+          : new Set();
+        renderApprovals();
+      });
+      $("#approve-selected").addEventListener("click", event => applyApproval(state.selectedApprovalIds, "approved", "Phê duyệt", event.currentTarget));
+      $("#pay-selected").addEventListener("click", event => applyApproval(state.selectedApprovalIds, "paid", "Xác nhận chi trả", event.currentTarget));
+      $("#approve-all").addEventListener("click", event => applyApproval(new Set(state.payrolls.filter(item => String(item.status).toLowerCase() === "calculated").map(item => item.payrollID)), "approved", "Phê duyệt toàn kỳ", event.currentTarget));
+      $("#pay-all").addEventListener("click", event => applyApproval(new Set(state.payrolls.filter(item => String(item.status).toLowerCase() === "approved").map(item => item.payrollID)), "paid", "Chi trả toàn kỳ", event.currentTarget));
+      $("#reload-approvals").addEventListener("click", event => runAction(event.currentTarget, loadPayrolls));
+      $("#lock-period").addEventListener("click", event => {
+        if (!state.periodId) return toast("Vui lòng chọn kỳ lương.", "error");
+        if (!window.confirm("Khóa và hoàn tất kỳ lương đang chọn? Hãy kiểm tra trạng thái chi trả trước khi tiếp tục.")) return;
+        runAction(event.currentTarget, async () => {
+          const result = await payrollApi(`api/payroll-period-management/${encodeURIComponent(state.periodId)}/update-status`, { method: "POST" });
+          toast(`Đã cập nhật kỳ lương: ${statusText(result?.status || "completed")}.`, "success");
+          await loadPeriods();
+          await loadPayrolls();
+        });
+      });
+
+      $("#payslip-employee").addEventListener("change", () => runAction(null, loadPayslip));
+      $("#reload-payslip").addEventListener("click", event => runAction(event.currentTarget, loadPayslip));
+      $("#export-payslip").addEventListener("click", exportPayslip);
+      $("#print-payslip").addEventListener("click", () => window.print());
+      $$("[data-close]").forEach(button => button.addEventListener("click", () => $(`#${button.dataset.close}`).close()));
+      $$("dialog").forEach(dialog => dialog.addEventListener("click", event => {
+        if (event.target === dialog) dialog.close();
+      }));
+    }
+
+    async function initialize() {
+      wireEvents();
+      try {
+        await loadPeriods();
+        await loadPayrolls();
+        $("#connection-state").className = "connection online";
+        $("#connection-state").lastElementChild.textContent = "Payroll API sẵn sàng";
+      } catch (error) {
+        $("#connection-state").className = "connection offline";
+        $("#connection-state").lastElementChild.textContent = "Không kết nối được API";
+        toast(error.message, "error");
+        $("#payroll-rows").innerHTML = `<tr><td class="empty" colspan="10">${escapeHtml(error.message)}</td></tr>`;
+      }
+    }
+
+    initialize();
+  </script>
+</body>
+</html>

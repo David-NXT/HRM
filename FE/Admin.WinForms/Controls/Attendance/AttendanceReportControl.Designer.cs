@@ -45,6 +45,8 @@
             panel_Filter = new Panel();
             button_ExportPDF = new Button();
             button_Generate = new Button();
+            button_CreateMonthlySummary = new Button();
+            button_LockTimesheetPeriod = new Button();
             comboBox_Status = new ComboBox();
             comboBox_Department = new ComboBox();
             dateTimePicker1 = new DateTimePicker();
@@ -250,6 +252,8 @@
             panel_Filter.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             panel_Filter.Controls.Add(button_ExportPDF);
             panel_Filter.Controls.Add(button_Generate);
+            panel_Filter.Controls.Add(button_LockTimesheetPeriod);
+            panel_Filter.Controls.Add(button_CreateMonthlySummary);
             panel_Filter.Controls.Add(comboBox_Status);
             panel_Filter.Controls.Add(comboBox_Department);
             panel_Filter.Controls.Add(dateTimePicker1);
@@ -267,11 +271,31 @@
             button_ExportPDF.TabIndex = 4;
             button_ExportPDF.Text = "Export PDF";
             button_ExportPDF.UseVisualStyleBackColor = true;
+            //
+            // button_CreateMonthlySummary
+            //
+            button_CreateMonthlySummary.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            button_CreateMonthlySummary.Location = new Point(1002, 16);
+            button_CreateMonthlySummary.Name = "button_CreateMonthlySummary";
+            button_CreateMonthlySummary.Size = new Size(220, 46);
+            button_CreateMonthlySummary.TabIndex = 5;
+            button_CreateMonthlySummary.Text = "Tạo summary kỳ công";
+            button_CreateMonthlySummary.UseVisualStyleBackColor = true;
+            //
+            // button_LockTimesheetPeriod
+            //
+            button_LockTimesheetPeriod.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            button_LockTimesheetPeriod.Location = new Point(1232, 16);
+            button_LockTimesheetPeriod.Name = "button_LockTimesheetPeriod";
+            button_LockTimesheetPeriod.Size = new Size(175, 46);
+            button_LockTimesheetPeriod.TabIndex = 6;
+            button_LockTimesheetPeriod.Text = "Khóa kỳ công tháng";
+            button_LockTimesheetPeriod.UseVisualStyleBackColor = true;
             // 
             // button_Generate
             // 
             button_Generate.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            button_Generate.Location = new Point(1432, 16);
+            button_Generate.Location = new Point(1417, 16);
             button_Generate.Name = "button_Generate";
             button_Generate.Size = new Size(205, 46);
             button_Generate.TabIndex = 3;
@@ -571,6 +595,8 @@
         private Panel panel_Filter;
         private Button button_ExportPDF;
         private Button button_Generate;
+        private Button button_CreateMonthlySummary;
+        private Button button_LockTimesheetPeriod;
         private ComboBox comboBox_Status;
         private ComboBox comboBox_Department;
         private DateTimePicker dateTimePicker1;

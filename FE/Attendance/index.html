@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HRM | Quản lý chấm công</title>
+  <style>
+    :root{font-family:Inter,"Segoe UI",Arial,sans-serif;color:#17233b;background:#f4f7fb;font-synthesis:none}
+    *{box-sizing:border-box}body{margin:0;min-width:320px}button,input,select,textarea{font:inherit}
+    button{cursor:pointer}.app{min-height:100vh;display:grid;grid-template-columns:248px minmax(0,1fr)}
+    aside{background:#10213f;color:#e8efff;padding:25px 16px;display:flex;flex-direction:column;gap:26px}
+    .brand{display:flex;align-items:center;gap:12px;padding:0 10px}.brand-mark{width:38px;height:38px;border-radius:12px;background:#4169e1;display:grid;place-items:center;font-weight:800}
+    .brand strong{display:block;font-size:15px}.brand small{color:#9eafd0;font-size:11px}
+    .nav-label{margin:0 10px 8px;color:#8798bb;font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase}
+    nav{display:grid;gap:5px}.nav-item{border:0;background:transparent;color:#c5d0e7;text-align:left;padding:12px 13px;border-radius:9px;font-size:13px;font-weight:600;display:flex;gap:11px;align-items:center}
+    .nav-item:hover,.nav-item.active{color:#fff;background:#23395f}.nav-item.active{box-shadow:inset 3px 0 #77a2ff}.nav-icon{width:19px;text-align:center;font-size:16px}
+    .aside-note{margin-top:auto;padding:14px 12px;border:1px solid #2b3d5d;border-radius:10px;color:#aab8d2;font-size:11px;line-height:1.6}
+    main{min-width:0}.topbar{height:74px;padding:0 34px;border-bottom:1px solid #e6ebf2;background:#fff;display:flex;align-items:center;justify-content:space-between}
+    .crumb{color:#8792a6;font-size:12px}.crumb strong{color:#253654}.api-status{display:flex;gap:8px;align-items:center;font-size:12px;color:#68768c}
+    .dot{width:8px;height:8px;border-radius:50%;background:#a6afbd}.dot.online{background:#20b779;box-shadow:0 0 0 4px #e6f8f0}.dot.offline{background:#ef5460}
+    .content{max-width:1500px;margin:auto;padding:30px 34px 50px}.page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:22px}
+    h1{font-size:25px;margin:0 0 6px;letter-spacing:-.4px}.page-head p{margin:0;color:#7a879a;font-size:13px}
+    .page{display:none}.page.active{display:block}.toolbar,.filters,.actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .panel{background:#fff;border:1px solid #e6ebf2;border-radius:12px;box-shadow:0 2px 8px #1c36530a}.panel-head{padding:18px 20px;border-bottom:1px solid #edf0f5;display:flex;justify-content:space-between;align-items:center;gap:12px}
+    .panel-head h2{font-size:15px;margin:0}.panel-body{padding:18px 20px}.panel-body.flush{padding:0}
+    .btn{border:1px solid #d8e0ec;background:#fff;color:#34435d;padding:9px 13px;border-radius:8px;font-size:12px;font-weight:700;transition:.15s}
+    .btn:hover{border-color:#9bb2df;background:#f7f9ff}.btn.primary{background:#4169e1;border-color:#4169e1;color:#fff}.btn.primary:hover{background:#3459c9}
+    .btn.danger{color:#c43d4a;border-color:#f0cbd0}.btn.success{color:#16845c;border-color:#bfe8d7}.btn:disabled{opacity:.5;cursor:not-allowed}
+    .field{display:grid;gap:6px;min-width:130px}.field label{font-size:11px;color:#77849a;font-weight:700}.control{height:38px;border:1px solid #dce3ed;border-radius:8px;padding:0 10px;background:#fff;color:#273650;font-size:12px;min-width:0}
+    textarea.control{height:auto;min-height:82px;padding:10px;resize:vertical}.field.wide{min-width:220px;flex:1}
+    .filters{padding:16px 18px;border-bottom:1px solid #edf0f5}.filters .control{min-width:150px}.filters input[type=search]{min-width:200px}
+    .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:18px}.stat{padding:17px 18px;position:relative;overflow:hidden}
+    .stat-label{font-size:11px;color:#7a879a;font-weight:700}.stat-value{font-size:25px;font-weight:800;margin:9px 0 3px}.stat-note{font-size:10px;color:#9aa5b5}.stat-mark{position:absolute;right:17px;top:17px;width:34px;height:34px;border-radius:10px;background:#eef3ff;color:#4169e1;display:grid;place-items:center;font-size:16px}
+    .table-wrap{overflow:auto}table{border-collapse:collapse;width:100%;font-size:12px;white-space:nowrap}th{background:#f8faff;color:#78859a;font-size:10px;letter-spacing:.35px;text-transform:uppercase;text-align:left;padding:12px 14px;border-bottom:1px solid #e9edf4}
+    td{padding:12px 14px;border-bottom:1px solid #f0f2f6;color:#34435d}tr:last-child td{border-bottom:0}tbody tr:hover{background:#fbfcff}
+    .person{font-weight:700;color:#253654}.muted{color:#8995a8}.pill{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:700;background:#edf1f7;color:#62718a}
+    .pill.ok{background:#e5f7ef;color:#16845c}.pill.warn{background:#fff3dc;color:#b27612}.pill.bad{background:#ffeaec;color:#bf3c4a}.pill.info{background:#eaf0ff;color:#4169e1}
+    .empty{text-align:center;color:#8b97a8;padding:34px 16px;font-size:12px}.subnav{display:flex;gap:4px;border-bottom:1px solid #e8edf4;margin-bottom:17px;overflow:auto}
+    .subnav button{background:transparent;border:0;border-bottom:2px solid transparent;color:#7e8ba0;padding:12px 13px;font-size:12px;font-weight:700;white-space:nowrap}
+    .subnav button.active{border-color:#4169e1;color:#3459c9}.subpanel{display:none}.subpanel.active{display:block}
+    .checkin-layout{display:grid;grid-template-columns:minmax(280px,.8fr) minmax(400px,1.2fr);gap:18px}.check-card{padding:23px}
+    .clock{font-size:31px;font-weight:800;letter-spacing:1px;margin:8px 0 2px}.date-caption{color:#8b97a8;font-size:12px;margin-bottom:20px}
+    .check-state{border-radius:9px;background:#f5f7fb;padding:12px;margin:17px 0;color:#718096;font-size:12px;line-height:1.5}
+    .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.form-grid .full{grid-column:1/-1}
+    .progress{height:6px;background:#e8edf5;border-radius:10px;overflow:hidden;margin:12px 0}.progress span{display:block;height:100%;width:0;background:#4169e1;transition:width .2s}
+    .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0}.chart{display:flex;align-items:flex-end;gap:10px;height:150px;padding:14px 8px 0;border-bottom:1px solid #e8edf4}
+    .bar-item{height:100%;flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:7px;min-width:0}.bar{width:min(28px,70%);min-height:2px;border-radius:5px 5px 0 0;background:linear-gradient(180deg,#7798ff,#4169e1)}.bar-label{font-size:9px;color:#8b97a8;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+    .bar-value{font-size:9px;color:#52617a}.alert{display:none;padding:11px 14px;border-radius:8px;margin:0 0 16px;font-size:12px}.alert.show{display:block}.alert.error{background:#fff0f1;color:#b73c48;border:1px solid #f3d0d4}.alert.info{background:#eef4ff;color:#3e5e9d;border:1px solid #d6e2fc}
+    .toast{position:fixed;right:22px;bottom:22px;z-index:20;background:#193257;color:#fff;padding:12px 16px;border-radius:9px;box-shadow:0 10px 30px #15274633;font-size:12px;opacity:0;transform:translateY(10px);transition:.2s;pointer-events:none;max-width:min(420px,calc(100vw - 32px))}
+    .toast.show{opacity:1;transform:translateY(0)}dialog{width:min(620px,calc(100vw - 24px));border:0;border-radius:13px;padding:0;box-shadow:0 20px 70px #14284644}dialog::backdrop{background:#10213f66}
+    .dialog-head,.dialog-foot{padding:16px 20px;border-bottom:1px solid #edf0f5;display:flex;justify-content:space-between;align-items:center}.dialog-head h2{font-size:15px;margin:0}.dialog-body{padding:20px}.dialog-foot{border:0;border-top:1px solid #edf0f5;justify-content:flex-end;gap:8px}
+    @media(max-width:980px){.app{grid-template-columns:76px minmax(0,1fr)}aside{padding:20px 9px}.brand{justify-content:center;padding:0}.brand-text,.nav-label,.nav-text,.aside-note{display:none}.nav-item{justify-content:center;padding:13px 8px}.nav-icon{font-size:18px}.content{padding:24px 20px}.checkin-layout{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:620px){.topbar{height:60px;padding:0 16px}.content{padding:20px 13px 34px}.page-head{display:block}.page-head .toolbar{margin-top:14px}.stats{gap:9px}.stat{padding:13px}.stat-value{font-size:21px}.stat-mark{display:none}.filters{align-items:stretch}.filters .control,.filters input[type=search]{min-width:0;flex:1}.form-grid,.chart-grid{grid-template-columns:1fr}.panel-head{padding:15px}.panel-body{padding:15px}.checkin-layout{gap:12px}}
+    @media print{aside,.topbar,.toolbar,.filters,.subnav,.actions,.btn{display:none!important}.app{display:block}.content{max-width:none;padding:0}.page{display:none!important}.page.active{display:block!important}.panel{box-shadow:none;border:0}.panel-head{padding-left:0}body{background:#fff}table{white-space:normal}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <div class="brand"><div class="brand-mark">H</div><div class="brand-text"><strong>HRM PORTAL</strong><small>Attendance workspace</small></div></div>
+      <div>
+        <p class="nav-label">Chấm công</p>
+        <nav>
+          <button class="nav-item active" data-page="overview"><span class="nav-icon">▦</span><span class="nav-text">Tổng quan</span></button>
+          <button class="nav-item" data-page="checkin"><span class="nav-icon">◷</span><span class="nav-text">Chấm công</span></button>
+          <button class="nav-item" data-page="requests"><span class="nav-icon">▤</span><span class="nav-text">Đơn yêu cầu</span></button>
+          <button class="nav-item" data-page="approvals"><span class="nav-icon">✓</span><span class="nav-text">Phê duyệt</span></button>
+          <button class="nav-item" data-page="reports"><span class="nav-icon">▥</span><span class="nav-text">Báo cáo kỳ công</span></button>
+          <button class="nav-item" data-page="config"><span class="nav-icon">⚙</span><span class="nav-text">Cấu hình</span></button>
+        </nav>
+      </div>
+      <div class="aside-note">Attendance API<br><span id="api-url-label">http://localhost:5231</span></div>
+    </aside>
+    <main>
+      <header class="topbar"><div class="crumb">HRM <span class="muted">/</span> <strong id="crumb-title">Tổng quan</strong></div><div class="api-status"><span class="dot" id="api-dot"></span><span id="api-status-text">Đang kiểm tra API</span></div></header>
+      <div class="content">
+        <div id="global-alert" class="alert error"></div>
+        <section class="page active" id="page-overview">
+          <div class="page-head"><div><h1>Tổng quan chấm công</h1><p>Theo dõi tình hình chấm công và lọc dữ liệu theo ngày.</p></div><div class="toolbar"><button class="btn" id="overview-export">Xuất CSV</button><button class="btn" onclick="window.print()">In báo cáo</button><button class="btn primary" id="overview-refresh">Làm mới</button></div></div>
+          <div class="stats">
+            <div class="panel stat"><span class="stat-mark">◎</span><div class="stat-label">Nhân viên</div><div class="stat-value" id="stat-employees">—</div><div class="stat-note">Trong danh bạ hiện có</div></div>
+            <div class="panel stat"><span class="stat-mark">✓</span><div class="stat-label">Có chấm công</div><div class="stat-value" id="stat-present">—</div><div class="stat-note">Theo bộ lọc hiện tại</div></div>
+            <div class="panel stat"><span class="stat-mark">◷</span><div class="stat-label">Đi trễ</div><div class="stat-value" id="stat-late">—</div><div class="stat-note">Có ghi nhận đi trễ</div></div>
+            <div class="panel stat"><span class="stat-mark">!</span><div class="stat-label">Vắng mặt</div><div class="stat-value" id="stat-missing">—</div><div class="stat-note">Theo thống kê API của ngày</div></div>
+          </div>
+          <div class="panel">
+            <div class="filters">
+              <div class="field"><label>Ngày</label><input class="control" type="date" id="overview-date"></div>
+              <div class="field"><label>Phòng ban</label><select class="control" id="overview-department"><option value="">Tất cả phòng ban</option></select></div>
+              <div class="field"><label>Trạng thái</label><select class="control" id="overview-status"><option value="">Tất cả trạng thái</option><option value="Present">Có mặt</option><option value="Late">Đi trễ</option><option value="Absent">Vắng mặt</option><option value="Leave">Nghỉ</option></select></div>
+              <div class="field wide"><label>Tìm nhân viên</label><input class="control" type="search" id="overview-keyword" placeholder="Mã hoặc tên nhân viên"></div>
+              <button class="btn primary" id="overview-search">Tìm kiếm</button>
+            </div>
+            <div class="panel-head"><h2>Danh sách chấm công</h2><span class="muted" id="overview-count">0 bản ghi</span></div>
+            <div class="panel-body flush"><div class="table-wrap"><table><thead><tr><th>Nhân viên</th><th>Phòng ban</th><th>Ngày</th><th>Check-in</th><th>Check-out</th><th>Giờ làm</th><th>Trễ</th><th>Trạng thái</th></tr></thead><tbody id="overview-table"></tbody></table></div></div>
+          </div>
+        </section>
+
+        <section class="page" id="page-checkin">
+          <div class="page-head"><div><h1>Chấm công tại quầy</h1><p>Thực hiện check-in, check-out và xem lịch sử gần đây.</p></div><div class="toolbar"><button class="btn" id="checkin-refresh">Làm mới</button></div></div>
+          <div class="checkin-layout">
+            <div class="panel check-card">
+              <div class="muted">Thời gian hiện tại</div><div class="clock" id="live-clock">--:--:--</div><div class="date-caption" id="live-date"></div>
+              <div class="field"><label>Nhân viên</label><select class="control" id="checkin-employee"><option value="">Chọn nhân viên</option></select></div>
+              <div class="field" style="margin-top:13px"><label>Ca làm việc</label><select class="control" id="checkin-shift"><option value="">Chọn ca</option></select></div>
+              <div class="check-state" id="checkin-state">Chọn nhân viên để xem trạng thái chấm công hôm nay.</div>
+              <div class="actions"><button class="btn primary" id="checkin-button" disabled>Check-in</button><button class="btn" id="checkout-button" disabled>Check-out</button></div>
+            </div>
+            <div class="panel">
+              <div class="panel-head"><h2>Lịch sử chấm công gần đây</h2><span class="muted">Tối đa 50 bản ghi</span></div>
+              <div class="panel-body flush"><div class="table-wrap"><table><thead><tr><th>Ngày</th><th>Mã NV</th><th>Nhân viên</th><th>Vào</th><th>Ra</th><th>Giờ làm</th><th>Trạng thái</th></tr></thead><tbody id="checkin-history"></tbody></table></div></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="page" id="page-requests">
+          <div class="page-head"><div><h1>Đơn yêu cầu</h1><p>Tạo đơn nghỉ phép, làm thêm giờ hoặc giải trình chấm công.</p></div></div>
+          <div class="subnav" id="request-tabs">
+            <button class="active" data-sub="leave">Nghỉ phép</button><button data-sub="overtime">Làm thêm giờ</button><button data-sub="explanation">Giải trình chấm công</button><button data-sub="history">Lịch sử đơn</button>
+          </div>
+          <div class="subpanel active" id="request-leave">
+            <div class="panel"><div class="panel-head"><h2>Tạo đơn nghỉ phép</h2></div><div class="panel-body">
+              <form id="leave-form" class="form-grid">
+                <div class="field full"><label>Nhân viên</label><select class="control" name="employeeId" data-employee required></select></div>
+                <div class="field"><label>Loại nghỉ</label><select class="control" name="leaveType"><option>Phép năm</option><option>Nghỉ không lương</option><option>Nghỉ ốm</option><option>Nghỉ việc riêng</option></select></div>
+                <div class="field"><label>Số ngày</label><input class="control" name="totalDays" type="number" step="0.5" min="0.5" value="1" required></div>
+                <div class="field"><label>Từ ngày</label><input class="control" name="startDate" type="date" required></div>
+                <div class="field"><label>Đến ngày</label><input class="control" name="endDate" type="date" required></div>
+                <div class="field full"><label>Lý do</label><textarea class="control" name="reason" required></textarea></div>
+                <div class="full"><button class="btn primary" type="submit">Gửi đơn nghỉ phép</button></div>
+              </form>
+            </div></div>
+          </div>
+          <div class="subpanel" id="request-overtime">
+            <div class="panel"><div class="panel-head"><h2>Đăng ký làm thêm giờ</h2></div><div class="panel-body">
+              <form id="overtime-form" class="form-grid">
+                <div class="field full"><label>Nhân viên</label><select class="control" name="employeeId" data-employee required></select></div>
+                <div class="field"><label>Ngày làm thêm</label><input class="control" name="date" type="date" required></div>
+                <div class="field"><label>Loại ngày</label><select class="control" name="dayType"><option value="WEEKDAY">Ngày thường</option><option value="WEEKEND">Cuối tuần</option><option value="HOLIDAY">Ngày lễ</option></select></div>
+                <div class="field"><label>Bắt đầu</label><input class="control" name="startTime" type="time" required></div>
+                <div class="field"><label>Kết thúc</label><input class="control" name="endTime" type="time" required></div>
+                <div class="field"><label>Số giờ dự kiến</label><input class="control" name="plannedHours" type="number" step="0.25" min="0.25" required></div>
+                <div class="field"><label>Hệ số</label><input class="control" name="multiplier" type="number" step="0.1" min="1" value="1.5" required></div>
+                <div class="field full"><label>Lý do</label><textarea class="control" name="reason"></textarea></div>
+                <div class="full"><label style="font-size:12px;color:#68768c"><input type="checkbox" name="isUnplanned"> Đây là giờ làm thêm phát sinh</label></div>
+                <div class="full"><button class="btn primary" type="submit">Gửi đăng ký OT</button></div>
+              </form>
+            </div></div>
+          </div>
+          <div class="subpanel" id="request-explanation">
+            <div class="panel"><div class="panel-head"><h2>Tạo giải trình chấm công</h2></div><div class="panel-body">
+              <form id="explanation-form" class="form-grid">
+                <div class="field full"><label>Nhân viên</label><select class="control" name="employeeId" data-employee required></select></div>
+                <div class="field"><label>Ngày cần giải trình</label><input class="control" name="date" type="date" required></div>
+                <div class="field"><label>Loại giải trình</label><select class="control" name="explanationType"><option>Quên quẹt thẻ Check-in</option><option>Quên quẹt thẻ Check-out</option><option>Sai giờ chấm công</option><option>Khác</option></select></div>
+                <div class="field"><label>Giờ check-in đề nghị</label><input class="control" name="requestedTimeIn" type="time"></div>
+                <div class="field"><label>Giờ check-out đề nghị</label><input class="control" name="requestedTimeOut" type="time"></div>
+                <div class="field full"><label>Lý do</label><textarea class="control" name="reason" required></textarea></div>
+                <div class="full"><button class="btn primary" type="submit">Gửi giải trình</button></div>
+              </form>
+            </div></div>
+          </div>
+          <div class="subpanel" id="request-history">
+            <div class="panel"><div class="panel-head"><h2>Lịch sử đơn yêu cầu</h2><button class="btn" id="request-history-refresh">Làm mới</button></div><div class="panel-body flush"><div class="table-wrap"><table><thead><tr><th>Loại đơn</th><th>Nhân viên</th><th>Ngày</th><th>Nội dung</th><th>Trạng thái</th><th>Ngày tạo</th></tr></thead><tbody id="request-history-table"></tbody></table></div></div></div>
+          </div>
+        </section>
+
+        <section class="page" id="page-approvals">
+          <div class="page-head"><div><h1>Phê duyệt yêu cầu</h1><p>Xử lý đơn giải trình chấm công và đề nghị làm thêm giờ.</p></div><div class="toolbar"><button class="btn" id="approval-refresh">Tải lại danh sách</button></div></div>
+          <div class="panel">
+            <div class="filters"><div class="field"><label>Loại đơn</label><select class="control" id="approval-type"><option value="">Tất cả</option><option value="explanation">Giải trình</option><option value="overtime">Làm thêm giờ</option></select></div>
+              <div class="field"><label>Trạng thái</label><select class="control" id="approval-status"><option value="">Tất cả</option><option>Pending</option><option>Approved</option><option>Rejected</option></select></div>
+              <div class="field wide"><label>Tìm kiếm</label><input class="control" id="approval-keyword" type="search" placeholder="Tên hoặc mã nhân viên"></div>
+              <button class="btn primary" id="approval-search">Lọc đơn</button>
+            </div>
+            <div class="panel-head"><h2>Danh sách phê duyệt</h2><span class="muted" id="approval-count">0 đơn</span></div>
+            <div class="panel-body flush"><div class="table-wrap"><table><thead><tr><th>Loại</th><th>Nhân viên</th><th>Ngày</th><th>Chi tiết</th><th>Trạng thái</th><th>Ngày gửi</th><th>Thao tác</th></tr></thead><tbody id="approval-table"></tbody></table></div></div>
+          </div>
+        </section>
+
+        <section class="page" id="page-reports">
+          <div class="page-head"><div><h1>Báo cáo & kỳ công</h1><p>Xem báo cáo tháng, tạo tổng hợp kỳ công và khóa kỳ đã hoàn tất.</p></div><div class="toolbar"><button class="btn" onclick="window.print()">In</button><button class="btn" id="report-export">Xuất CSV</button></div></div>
+          <div class="panel">
+            <div class="filters"><div class="field"><label>Tháng báo cáo</label><input class="control" id="report-month" type="month"></div>
+              <button class="btn" id="report-load">Tải báo cáo</button><button class="btn primary" id="report-generate">Tạo summary kỳ công</button><button class="btn danger" id="report-lock">Khóa kỳ công</button></div>
+            <div class="panel-body"><div class="alert info show" id="report-status">Chọn tháng rồi tải báo cáo.</div><div class="progress"><span id="report-progress"></span></div>
+              <div class="chart-grid"><div class="panel"><div class="panel-head"><h2>Chấm công theo tuần</h2></div><div class="panel-body"><div class="chart" id="weekly-chart"></div></div></div>
+                <div class="panel"><div class="panel-head"><h2>Chấm công theo phòng ban</h2></div><div class="panel-body"><div class="chart" id="department-chart"></div></div></div></div>
+            </div>
+            <div class="panel-head"><h2>Summary nhân viên</h2><span class="muted" id="summary-count">0 nhân viên</span></div>
+            <div class="panel-body flush"><div class="table-wrap"><table><thead><tr><th>Mã NV</th><th>Nhân viên</th><th>Ngày chuẩn</th><th>Ngày công</th><th>Giờ làm</th><th>Nghỉ có lương</th><th>Nghỉ không lương</th><th>Đi trễ (phút)</th><th>OT (giờ)</th></tr></thead><tbody id="summary-table"></tbody></table></div></div>
+          </div>
+        </section>
+
+        <section class="page" id="page-config">
+          <div class="page-head"><div><h1>Cấu hình chấm công</h1><p>Quản lý ca làm việc, quy tắc chấm công và quy tắc làm thêm.</p></div><div class="toolbar"><button class="btn" id="config-refresh">Làm mới</button></div></div>
+          <div class="subnav" id="config-tabs"><button class="active" data-sub="shifts">Ca làm việc</button><button data-sub="rules">Quy tắc chấm công</button><button data-sub="ot-rules">Quy tắc OT</button></div>
+          <div class="subpanel active" id="config-shifts"><div class="panel"><div class="panel-head"><h2>Danh sách ca làm việc</h2><button class="btn primary" data-config-add="shifts">Thêm ca</button></div><div class="panel-body flush"><div class="table-wrap"><table><thead><tr><th>Tên ca</th><th>Bắt đầu</th><th>Kết thúc</th><th>Nghỉ giữa ca</th><th>Ngày hiệu lực</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody id="config-shifts-table"></tbody></table></div></div></div></div>
+          <div class="subpanel" id="config-rules"><div class="panel"><div class="panel-head"><h2>Quy tắc chấm công</h2><button class="btn primary" data-config-add="rules">Thêm quy tắc</button></div><div class="panel-body flush"><div class="table-wrap"><table><thead><tr><th>Tên quy tắc</th><th>Trễ cho phép</th><th>Về sớm</th><th>Vi phạm/tháng</th><th>Ngày hiệu lực</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody id="config-rules-table"></tbody></table></div></div></div></div>
+          <div class="subpanel" id="config-ot-rules"><div class="panel"><div class="panel-head"><h2>Quy tắc làm thêm giờ</h2><button class="btn primary" data-config-add="ot-rules">Thêm quy tắc OT</button></div><div class="panel-body flush"><div class="table-wrap"><table><thead><tr><th>Loại ngày</th><th>Hệ số</th><th>Tối đa/ngày</th><th>Tối đa/tháng</th><th>Tối đa/năm</th><th>Ngày hiệu lực</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody id="config-ot-rules-table"></tbody></table></div></div></div></div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <dialog id="config-dialog"><form method="dialog" id="config-form"><div class="dialog-head"><h2 id="config-dialog-title">Cấu hình</h2><button class="btn" value="cancel" formnovalidate aria-label="Đóng">Đóng</button></div><div class="dialog-body"><div class="form-grid" id="config-fields"></div></div><div class="dialog-foot"><button class="btn" value="cancel" formnovalidate>Hủy</button><button class="btn primary" id="config-save" value="save">Lưu</button></div></form></dialog>
+  <dialog id="reject-dialog"><form method="dialog" id="reject-form"><div class="dialog-head"><h2>Từ chối yêu cầu</h2><button class="btn" value="cancel" formnovalidate>Đóng</button></div><div class="dialog-body"><div class="field"><label>Lý do từ chối</label><textarea class="control" id="reject-reason" required></textarea></div></div><div class="dialog-foot"><button class="btn" value="cancel" formnovalidate>Hủy</button><button class="btn danger" id="reject-confirm" value="reject">Xác nhận từ chối</button></div></form></dialog>
+  <div class="toast" id="toast"></div>
+  <script>
+    (() => {
+      "use strict";
+      const API = "http://localhost:5231";
+      const $ = (selector, root = document) => root.querySelector(selector);
+      const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+      const state = { employees: [], departments: [], shifts: [], records: [], explanations: [], overtime: [], periods: [], summaries: [], config: { shifts: [], rules: [], "ot-rules": [] }, currentPeriod: null, approvalSelection: null, configSelection: null };
+      const localDate = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      const today = () => localDate(new Date());
+      const monthNow = () => today().slice(0, 7);
+      const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+      const dateText = value => value ? new Date(`${String(value).slice(0, 10)}T00:00:00`).toLocaleDateString("vi-VN") : "—";
+      const timeText = value => value ? String(value).slice(0, 5) : "—";
+      const number = value => Number(value || 0).toLocaleString("vi-VN", { maximumFractionDigits: 2 });
+      const statusLabel = value => ({ Present: "Có mặt", Late: "Đi trễ", Absent: "Vắng mặt", Leave: "Nghỉ", Pending: "Chờ duyệt", Approved: "Đã duyệt", Rejected: "Từ chối", Open: "Đang mở", Locked: "Đã khóa" }[value] || value || "—");
+      const statusClass = value => ({ Present: "ok", Approved: "ok", Locked: "ok", Late: "warn", Pending: "warn", Absent: "bad", Rejected: "bad", Leave: "info" }[value] || "");
+      let toastTimer;
+
+      async function api(path, options = {}) {
+        const headers = { ...(options.body ? { "Content-Type": "application/json" } : {}), ...(options.headers || {}) };
+        let response;
+        try { response = await fetch(`${API}/${path.replace(/^\/+/, "")}`, { ...options, headers }); }
+        catch (error) { setApiStatus(false); throw new Error(`Không kết nối được Attendance API tại ${API}. Hãy kiểm tra API và CORS. ${error.message}`); }
+        setApiStatus(true);
+        const text = await response.text();
+        let data = null;
+        if (text) { try { data = JSON.parse(text); } catch { data = text; } }
+        if (!response.ok) {
+          const detail = typeof data === "string" ? data : data?.detail || data?.title || data?.message || JSON.stringify(data || {});
+          throw new Error(`HTTP ${response.status}: ${detail}`);
+        }
+        return data;
+      }
+      const post = (path, body) => api(path, { method: "POST", body: JSON.stringify(body) });
+      const put = (path, body) => api(path, { method: "PUT", body: JSON.stringify(body) });
+      function setApiStatus(online) { $("#api-dot").className = `dot ${online ? "online" : "offline"}`; $("#api-status-text").textContent = online ? "Attendance API sẵn sàng" : "Không kết nối API"; }
+      function toast(message) { const el = $("#toast"); el.textContent = message; el.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove("show"), 3600); }
+      function showError(error, target = $("#global-alert")) { target.textContent = error?.message || String(error); target.className = "alert error show"; }
+      function clearError(target = $("#global-alert")) { target.textContent = ""; target.className = "alert error"; }
+      function emptyRow(cols, text = "Không có dữ liệu") { return `<tr><td class="empty" colspan="${cols}">${esc(text)}</td></tr>`; }
+      function employeeName(id) { const e = state.employees.find(x => x.employeeId === id); return e ? e.fullName : "—"; }
+      function employeeCode(id) { const e = state.employees.find(x => x.employeeId === id); return e ? e.employeeCode : "—"; }
+      function employeeDepartment(id) { const e = state.employees.find(x => x.employeeId === id); return e?.departmentName || "—"; }
+      function pill(status) { return `<span class="pill ${statusClass(status)}">${esc(statusLabel(status))}</span>`; }
+      function fillEmployeeSelects() {
+        const options = `<option value="">Chọn nhân viên</option>` + state.employees.map(e => `<option value="${esc(e.employeeId)}">${esc(e.employeeCode)} — ${esc(e.fullName)}</option>`).join("");
+        $$("[data-employee]").forEach(select => { const previous = select.value; select.innerHTML = options; if (state.employees.some(e => e.employeeId === previous)) select.value = previous; });
+        const checkin = $("#checkin-employee"), old = checkin.value;
+        checkin.innerHTML = options; if (state.employees.some(e => e.employeeId === old)) checkin.value = old;
+      }
+      async function loadEmployees() {
+        const employees = []; let page = 1;
+        while (true) {
+          const result = await api(`api/employees?page=${page}&pageSize=500`);
+          const items = result?.items || [];
+          employees.push(...items);
+          if (!items.length || employees.length >= (result.total || employees.length)) break;
+          page++;
+        }
+        state.employees = employees;
+        fillEmployeeSelects();
+        $("#stat-employees").textContent = number(employees.filter(e => !/inactive|terminated|đã nghỉ/i.test(e.status || "")).length);
+      }
+      async function loadDepartments() {
+        state.departments = await api("api/Attendance/departments") || [];
+        $("#overview-department").innerHTML = `<option value="">Tất cả phòng ban</option>` + state.departments.map(d => `<option value="${esc(d.id || d.departmentId)}">${esc(d.name || d.departmentName)}</option>`).join("");
+      }
+      async function loadShifts() {
+        state.shifts = await api("api/WorkShifts") || [];
+        const select = $("#checkin-shift"), previous = select.value;
+        select.innerHTML = `<option value="">Chọn ca</option>` + state.shifts.filter(s => s.isActive !== false).map(s => `<option value="${esc(s.id)}">${esc(s.name)} (${timeText(s.startTime)}–${timeText(s.endTime)})</option>`).join("");
+        if (state.shifts.some(s => s.id === previous)) select.value = previous;
+        else if (state.shifts.filter(s => s.isActive !== false).length) select.value = state.shifts.find(s => s.isActive !== false).id;
+      }
+      function switchPage(name) {
+        $$(".nav-item").forEach(button => button.classList.toggle("active", button.dataset.page === name));
+        $$(".page").forEach(page => page.classList.toggle("active", page.id === `page-${name}`));
+        $("#crumb-title").textContent = ({ overview: "Tổng quan", checkin: "Chấm công", requests: "Đơn yêu cầu", approvals: "Phê duyệt", reports: "Báo cáo kỳ công", config: "Cấu hình" })[name];
+        clearError();
+        if (name === "approvals") loadApprovals();
+        if (name === "config") loadConfig();
+        if (name === "checkin") { loadCheckinHistory(); updateSelectedEmployee(); }
+      }
+      $$(".nav-item").forEach(button => button.addEventListener("click", () => switchPage(button.dataset.page)));
+      function setSubnav(container, panelPrefix, value) {
+        $$(".subnav button", container).forEach(button => button.classList.toggle("active", button.dataset.sub === value));
+        $$(".subpanel", container.parentElement).forEach(panel => panel.classList.toggle("active", panel.id === `${panelPrefix}-${value}`));
+      }
+      $$("#request-tabs button").forEach(button => button.addEventListener("click", () => { setSubnav($("#request-tabs"), "request", button.dataset.sub); if (button.dataset.sub === "history") loadRequestHistory(); }));
+      $$("#config-tabs button").forEach(button => button.addEventListener("click", () => setSubnav($("#config-tabs"), "config", button.dataset.sub)));
+
+      function renderOverview(records, stats) {
+        state.records = records || [];
+        $("#stat-employees").textContent = number(stats.totalEmployees);
+        $("#stat-present").textContent = number(stats.presentCount);
+        $("#stat-late").textContent = number(stats.lateCount);
+        $("#stat-missing").textContent = number(stats.absentCount);
+        $("#overview-count").textContent = `${number(state.records.length)} bản ghi`;
+        $("#overview-table").innerHTML = state.records.length ? state.records.map(r => `<tr><td class="person">${esc(r.employeeCode || employeeCode(r.employeeId))} · ${esc(r.employeeName || employeeName(r.employeeId))}</td><td>${esc(employeeDepartment(r.employeeId))}</td><td>${dateText(r.date)}</td><td>${timeText(r.timeIn)}</td><td>${timeText(r.timeOut)}</td><td>${number(r.workHour)} giờ</td><td>${r.lateMins ? `${number(r.lateMins)} phút` : "—"}</td><td>${pill(r.status)}</td></tr>`).join("") : emptyRow(8);
+      }
+      async function searchOverview() {
+        clearError();
+        const body = { date: $("#overview-date").value || null, departmentId: $("#overview-department").value || null, status: $("#overview-status").value || null, keyword: $("#overview-keyword").value.trim() || null };
+        try {
+          const date = encodeURIComponent(body.date || today());
+          const [records, stats] = await Promise.all([
+            post("api/Attendance/search", body),
+            api(`api/attendance/analytics/overview?date=${date}`)
+          ]);
+          renderOverview(records || [], stats || {});
+        }
+        catch (error) { showError(error); }
+      }
+      $("#overview-search").addEventListener("click", searchOverview);
+      $("#overview-refresh").addEventListener("click", searchOverview);
+      $("#overview-date").value = today();
+      $("#overview-keyword").addEventListener("keydown", event => { if (event.key === "Enter") searchOverview(); });
+      $("#overview-export").addEventListener("click", () => downloadCsv("attendance.csv", ["Employee code", "Employee name", "Department", "Date", "Time in", "Time out", "Hours", "Late minutes", "Status"], state.records.map(r => [r.employeeCode || employeeCode(r.employeeId), r.employeeName || employeeName(r.employeeId), employeeDepartment(r.employeeId), r.date, r.timeIn, r.timeOut, r.workHour, r.lateMins, r.status])));
+
+      function updateClock() {
+        const now = new Date();
+        $("#live-clock").textContent = now.toLocaleTimeString("vi-VN");
+        $("#live-date").textContent = now.toLocaleDateString("vi-VN", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+      }
+      setInterval(updateClock, 1000); updateClock();
+      function parseMinutes(value) { const [h, m] = String(value || "00:00").split(":").map(Number); return h * 60 + m; }
+      async function updateSelectedEmployee() {
+        const id = $("#checkin-employee").value;
+        $("#checkin-button").disabled = $("#checkout-button").disabled = !id;
+        if (!id) { $("#checkin-state").textContent = "Chọn nhân viên để xem trạng thái chấm công hôm nay."; return; }
+        try {
+          const records = await post("api/Attendance/search", { date: today() });
+          const record = (records || []).find(r => r.employeeId === id);
+          $("#checkin-state").dataset.recordId = record?.id || "";
+          $("#checkin-state").dataset.record = record ? JSON.stringify(record) : "";
+          if (!record) { $("#checkin-state").textContent = "Chưa có chấm công hôm nay. Chọn ca làm và thực hiện check-in."; $("#checkin-button").disabled = false; $("#checkout-button").disabled = true; return; }
+          const checkedOut = Boolean(record.timeOut);
+          $("#checkin-state").innerHTML = `Check-in: <strong>${timeText(record.timeIn)}</strong> · Check-out: <strong>${timeText(record.timeOut)}</strong><br>Trạng thái: ${pill(record.status)}${record.lateMins ? ` · Trễ ${number(record.lateMins)} phút` : ""}`;
+          $("#checkin-button").disabled = true; $("#checkout-button").disabled = checkedOut || !record.timeIn;
+        } catch (error) { showError(error); $("#checkin-state").textContent = error.message; }
+      }
+      $("#checkin-employee").addEventListener("change", updateSelectedEmployee);
+      $("#checkin-button").addEventListener("click", async () => {
+        const employeeId = $("#checkin-employee").value, shift = state.shifts.find(s => s.id === $("#checkin-shift").value);
+        if (!employeeId || !shift) { toast("Chọn nhân viên và ca làm trước khi check-in."); return; }
+        try {
+          const now = new Date(), timeIn = now.toTimeString().slice(0, 8), minutesLate = Math.max(0, parseMinutes(timeIn) - parseMinutes(shift.startTime));
+          const lateMins = minutesLate > 15 ? minutesLate : 0;
+          await post("api/Attendance", { employeeId, shiftId: shift.id, date: today(), timeIn, status: lateMins ? "Late" : "Present", workHour: 0, lateMins, earlyLeaveMins: 0, otMins: 0, actualOTMins: 0, isLate: Boolean(lateMins), isEarlyLeave: false, checkInSource: "Kiosk/WebTerminal", note: lateMins ? `Đi trễ ${lateMins} phút` : "Đúng giờ" });
+          toast("Check-in thành công."); await updateSelectedEmployee(); await loadCheckinHistory(); searchOverview();
+        } catch (error) { showError(error); }
+      });
+      $("#checkout-button").addEventListener("click", async () => {
+        const record = JSON.parse($("#checkin-state").dataset.record || "null");
+        if (!record) return;
+        const shift = state.shifts.find(s => s.id === record.shiftId);
+        try {
+          const now = new Date(), timeOut = now.toTimeString().slice(0, 8), start = parseMinutes(record.timeIn), end = parseMinutes(timeOut), shiftEnd = shift ? parseMinutes(shift.endTime) : end;
+          const elapsed = (end >= start ? end - start : end + 1440 - start);
+          const workHour = Math.max(0, Math.round((elapsed - (elapsed > 240 ? (shift?.breakMins ?? 60) : 0)) / 60 * 100) / 100);
+          const minutesEarly = Math.max(0, shiftEnd - end), earlyLeaveMins = minutesEarly > 15 ? minutesEarly : 0;
+          await put(`api/Attendance/${record.id}`, { timeOut, workHour, earlyLeaveMins, isEarlyLeave: Boolean(earlyLeaveMins), status: "Present", checkOutSource: "Kiosk/WebTerminal", note: earlyLeaveMins ? `Về sớm ${earlyLeaveMins} phút` : "Hoàn thành ca" });
+          toast("Check-out thành công."); await updateSelectedEmployee(); await loadCheckinHistory(); searchOverview();
+        } catch (error) { showError(error); }
+      });
+      async function loadCheckinHistory() {
+        try {
+          const items = await api("api/Attendance") || [];
+          const list = [...items].sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 50);
+          $("#checkin-history").innerHTML = list.length ? list.map(r => `<tr><td>${dateText(r.date)}</td><td>${esc(r.employeeCode || employeeCode(r.employeeId))}</td><td>${esc(r.employeeName || employeeName(r.employeeId))}</td><td>${timeText(r.timeIn)}</td><td>${timeText(r.timeOut)}</td><td>${number(r.workHour)}</td><td>${pill(r.status)}</td></tr>`).join("") : emptyRow(7);
+        } catch (error) { showError(error); }
+      }
+      $("#checkin-refresh").addEventListener("click", async () => { await loadShifts(); await loadCheckinHistory(); await updateSelectedEmployee(); });
+
+      function formObject(form) { return Object.fromEntries(new FormData(form).entries()); }
+      $("#leave-form").addEventListener("submit", async event => {
+        event.preventDefault(); const f = formObject(event.currentTarget);
+        try {
+          await post("api/LeaveRequests", { employeeId: f.employeeId, leaveType: f.leaveType, startDate: f.startDate, endDate: f.endDate, totalDays: Number(f.totalDays), reason: f.reason.trim(), status: "Pending" });
+          event.currentTarget.reset(); toast("Đã gửi đơn nghỉ phép."); loadRequestHistory();
+        } catch (error) { showError(error); }
+      });
+      $("#overtime-form").addEventListener("submit", async event => {
+        event.preventDefault(); const f = formObject(event.currentTarget);
+        try {
+          await post("api/OTRequests", { employeeId: f.employeeId, date: f.date, startTime: f.startTime, endTime: f.endTime, plannedHours: Number(f.plannedHours), dayType: f.dayType, multiplier: Number(f.multiplier), isUnplanned: event.currentTarget.elements.isUnplanned.checked, reason: f.reason || "", status: "Pending" });
+          event.currentTarget.reset(); toast("Đã gửi đăng ký làm thêm giờ."); loadRequestHistory();
+        } catch (error) { showError(error); }
+      });
+      $("#explanation-form").addEventListener("submit", async event => {
+        event.preventDefault(); const f = formObject(event.currentTarget);
+        try {
+          await post("api/AttendanceExplanations", { employeeId: f.employeeId, date: f.date, explanationType: f.explanationType, reason: f.reason.trim(), requestedTimeIn: f.requestedTimeIn || null, requestedTimeOut: f.requestedTimeOut || null, status: "Pending" });
+          event.currentTarget.reset(); toast("Đã gửi giải trình chấm công."); loadRequestHistory();
+        } catch (error) { showError(error); }
+      });
+      async function loadRequestHistory() {
+        try {
+          const [leaves, overtime, explanations] = await Promise.all([api("api/LeaveRequests"), api("api/OTRequests"), api("api/AttendanceExplanations")]);
+          const rows = [
+            ...(leaves || []).map(x => ({ type: "Nghỉ phép", name: x.employeeName || employeeName(x.employeeId), date: `${dateText(x.startDate)} – ${dateText(x.endDate)}`, detail: `${x.leaveType} · ${x.totalDays} ngày`, status: x.status, created: x.createdAt })),
+            ...(overtime || []).map(x => ({ type: "Làm thêm", name: employeeName(x.employeeId), date: dateText(x.date), detail: `${timeText(x.startTime)}–${timeText(x.endTime)} · ${x.plannedHours} giờ`, status: x.status, created: x.createdAt })),
+            ...(explanations || []).map(x => ({ type: "Giải trình", name: employeeName(x.employeeId), date: dateText(x.date), detail: x.explanationType, status: x.status, created: x.createdAt }))
+          ].sort((a, b) => String(b.created).localeCompare(String(a.created)));
+          $("#request-history-table").innerHTML = rows.length ? rows.map(x => `<tr><td>${esc(x.type)}</td><td class="person">${esc(x.name)}</td><td>${esc(x.date)}</td><td>${esc(x.detail)}</td><td>${pill(x.status)}</td><td>${x.created ? new Date(x.created).toLocaleDateString("vi-VN") : "—"}</td></tr>`).join("") : emptyRow(6);
+        } catch (error) { showError(error); }
+      }
+      $("#request-history-refresh").addEventListener("click", loadRequestHistory);
+
+      async function loadApprovals() {
+        clearError();
+        try {
+          const [explanations, overtime] = await Promise.all([api("api/AttendanceExplanations"), api("api/OTRequests")]);
+          state.explanations = explanations || []; state.overtime = overtime || [];
+          renderApprovals();
+        } catch (error) { showError(error); }
+      }
+      function renderApprovals() {
+        const type = $("#approval-type").value, status = $("#approval-status").value, keyword = $("#approval-keyword").value.trim().toLocaleLowerCase("vi");
+        let rows = [
+          ...state.explanations.map(x => ({ ...x, kind: "explanation", typeLabel: "Giải trình", date: x.date, detail: `${x.explanationType} · ${x.reason}`, name: employeeName(x.employeeId), code: employeeCode(x.employeeId) })),
+          ...state.overtime.map(x => ({ ...x, kind: "overtime", typeLabel: "Làm thêm", date: x.date, detail: `${timeText(x.startTime)}–${timeText(x.endTime)} · ${x.plannedHours} giờ · ${x.reason || ""}`, name: employeeName(x.employeeId), code: employeeCode(x.employeeId) }))
+        ];
+        rows = rows.filter(x => (!type || x.kind === type) && (!status || x.status === status) && (!keyword || `${x.name} ${x.code}`.toLocaleLowerCase("vi").includes(keyword)));
+        $("#approval-count").textContent = `${rows.length} đơn`;
+        $("#approval-table").innerHTML = rows.length ? rows.map(x => `<tr><td>${esc(x.typeLabel)}</td><td class="person">${esc(x.code)} · ${esc(x.name)}</td><td>${dateText(x.date)}</td><td title="${esc(x.detail)}">${esc(x.detail.length > 78 ? `${x.detail.slice(0, 75)}…` : x.detail)}</td><td>${pill(x.status)}</td><td>${x.createdAt ? new Date(x.createdAt).toLocaleDateString("vi-VN") : "—"}</td><td><div class="actions">${x.status === "Pending" ? `<button class="btn success" data-approve="${x.kind}:${x.id}">Duyệt</button><button class="btn danger" data-reject="${x.kind}:${x.id}">Từ chối</button>` : "—"}</div></td></tr>`).join("") : emptyRow(7);
+        $$("[data-approve]").forEach(button => button.addEventListener("click", () => decideApproval(button.dataset.approve, true)));
+        $$("[data-reject]").forEach(button => button.addEventListener("click", () => { state.approvalSelection = button.dataset.reject; $("#reject-reason").value = ""; $("#reject-dialog").showModal(); }));
+      }
+      $("#approval-refresh").addEventListener("click", loadApprovals);
+      $("#approval-search").addEventListener("click", renderApprovals);
+      $("#approval-status").addEventListener("change", renderApprovals);
+      $("#approval-type").addEventListener("change", renderApprovals);
+      $("#approval-keyword").addEventListener("input", renderApprovals);
+      async function decideApproval(key, approved, reason = "") {
+        const [kind, id] = key.split(":");
+        const body = { status: approved ? "Approved" : "Rejected", approvedBy: "Admin", approvedAt: new Date().toISOString(), rejectionReason: approved ? null : reason, updatedAt: new Date().toISOString() };
+        try {
+          await put(`api/${kind === "explanation" ? "AttendanceExplanations" : "OTRequests"}/${id}`, body);
+          $("#reject-dialog").close(); toast(approved ? "Đã duyệt yêu cầu." : "Đã từ chối yêu cầu."); await loadApprovals();
+        } catch (error) { showError(error); }
+      }
+      $("#reject-form").addEventListener("submit", event => {
+        event.preventDefault(); const reason = $("#reject-reason").value.trim();
+        if (!reason) { $("#reject-reason").focus(); return; }
+        decideApproval(state.approvalSelection, false, reason);
+      });
+
+      function selectedMonth() { return $("#report-month").value || monthNow(); }
+      function monthRange(month) { const [year, m] = month.split("-").map(Number); return { year, month: m, startDate: `${month}-01`, endDate: localDate(new Date(year, m, 0)) }; }
+      async function getPeriods(year) { state.periods = await api(`api/Timesheets/periods?year=${year}`) || []; return state.periods; }
+      async function loadReport() {
+        clearError(); $("#report-month").value = selectedMonth();
+        const range = monthRange(selectedMonth());
+        $("#summary-table").innerHTML = emptyRow(9, "Đang tải báo cáo…");
+        try {
+          const [periods, weekly, departmentStats] = await Promise.all([
+            getPeriods(range.year),
+            api(`api/attendance/analytics/trends?month=${range.month}&year=${range.year}`),
+            api(`api/attendance/analytics/departments?month=${range.month}&year=${range.year}`)
+          ]);
+          const period = periods.find(p => Number(p.year) === range.year && Number(p.month) === range.month) || null;
+          state.currentPeriod = period;
+          if (period) state.summaries = await api(`api/Timesheets/periods/${period.id}/summaries`) || [];
+          else state.summaries = [];
+          $("#report-status").textContent = period ? `Kỳ công ${period.name || `${range.month}/${range.year}`} · ${statusLabel(period.status)} · ${state.summaries.length} summary.` : "Chưa có kỳ công cho tháng này. Tạo summary để khởi tạo kỳ và tổng hợp từng nhân viên.";
+          $("#report-lock").disabled = !period || String(period.status).toLowerCase() === "locked";
+          $("#report-generate").disabled = period && String(period.status).toLowerCase() === "locked";
+          renderSummaries(state.summaries);
+          renderCharts(weekly || [], departmentStats || []);
+        } catch (error) { showError(error); $("#report-status").textContent = error.message; }
+      }
+      function renderSummaries(summaries) {
+        $("#summary-count").textContent = `${number(summaries.length)} nhân viên`;
+        $("#summary-table").innerHTML = summaries.length ? summaries.map(x => `<tr><td>${esc(x.employeeCode || employeeCode(x.employeeId))}</td><td class="person">${esc(x.employeeName || employeeName(x.employeeId))}</td><td>${number(x.standardWorkingDays)}</td><td>${number(x.actualWorkingDays)}</td><td>${number(x.totalWorkingHours)}</td><td>${number(x.paidLeaveDays)}</td><td>${number(x.unpaidLeaveDays)}</td><td>${number(x.totalLateMinutes)} (${number(x.lateOccurrences)} lần)</td><td>${number(x.otHours)}</td></tr>`).join("") : emptyRow(9, "Chưa có summary kỳ công cho tháng đã chọn.");
+      }
+      function drawBars(target, items) {
+        const max = Math.max(1, ...items.map(x => Number(x.value) || 0));
+        $(target).innerHTML = items.length ? items.map(x => `<div class="bar-item"><span class="bar-value">${number(x.value)}</span><div class="bar" style="height:${Math.max(3, (Number(x.value) || 0) / max * 100)}%"></div><span class="bar-label" title="${esc(x.label)}">${esc(x.label)}</span></div>`).join("") : `<span class="muted">Không có dữ liệu</span>`;
+      }
+      function renderCharts(weekly, departments) {
+        drawBars("#weekly-chart", weekly.map(x => ({ label: x.name, value: x.present })));
+        drawBars("#department-chart", departments.map(x => ({ label: x.name, value: x.presentCount })));
+      }
+      async function generateSummary() {
+        clearError(); const range = monthRange(selectedMonth()); const button = $("#report-generate"); button.disabled = true;
+        $("#report-progress").style.width = "0%";
+        try {
+          const periods = await getPeriods(range.year);
+          let period = periods.find(p => Number(p.month) === range.month && Number(p.year) === range.year);
+          if (!period) period = await post("api/Timesheets/periods", { name: `Tháng ${String(range.month).padStart(2, "0")}/${range.year}`, month: range.month, year: range.year, startDate: range.startDate, endDate: range.endDate });
+          if (String(period.status).toLowerCase() === "locked") throw new Error("Kỳ công đã khóa, không thể tạo lại summary.");
+          state.currentPeriod = period;
+          const employees = []; let page = 1;
+          while (true) {
+            const result = await api(`api/employees?page=${page}&pageSize=500`), items = result?.items || [];
+            employees.push(...items); if (!items.length || employees.length >= (result.total || employees.length)) break; page++;
+          }
+          let success = 0, failures = 0;
+          for (let i = 0; i < employees.length; i++) {
+            try { await api(`api/Timesheets/periods/${period.id}/employees/${employees[i].employeeId}/calculate`, { method: "POST" }); success++; }
+            catch { failures++; }
+            $("#report-progress").style.width = `${Math.round((i + 1) / Math.max(1, employees.length) * 100)}%`;
+          }
+          await loadReport();
+          $("#report-status").textContent = `Đã tạo ${success}/${employees.length} summary${failures ? `; ${failures} nhân viên không xử lý được` : ""}.`;
+          toast(`Tạo summary hoàn tất: ${success}/${employees.length}.`);
+        } catch (error) { showError(error); $("#report-status").textContent = error.message; }
+        finally { button.disabled = false; }
+      }
+      async function lockPeriod() {
+        const period = state.currentPeriod;
+        if (!period) { toast("Chưa có kỳ công để khóa."); return; }
+        if (!confirm(`Khóa kỳ công ${period.name || `${period.month}/${period.year}`}? Sau khi khóa sẽ không thể tạo lại summary.`)) return;
+        try {
+          const summaries = await api(`api/Timesheets/periods/${period.id}/summaries`);
+          if (!summaries?.length) { toast("Kỳ công chưa có summary; hãy tạo summary trước khi khóa."); return; }
+          await api(`api/Timesheets/periods/${period.id}/lock?lockedBy=${encodeURIComponent("Admin")}`, { method: "PUT" });
+          toast("Đã khóa kỳ công."); await loadReport();
+        } catch (error) { showError(error); }
+      }
+      $("#report-load").addEventListener("click", loadReport);
+      $("#report-generate").addEventListener("click", generateSummary);
+      $("#report-lock").addEventListener("click", lockPeriod);
+      $("#report-export").addEventListener("click", () => downloadCsv("timesheet-summary.csv", ["Employee code", "Employee name", "Standard days", "Actual days", "Hours", "Paid leave", "Unpaid leave", "Late minutes", "Late occurrences", "OT hours"], state.summaries.map(x => [x.employeeCode || employeeCode(x.employeeId), x.employeeName || employeeName(x.employeeId), x.standardWorkingDays, x.actualWorkingDays, x.totalWorkingHours, x.paidLeaveDays, x.unpaidLeaveDays, x.totalLateMinutes, x.lateOccurrences, x.otHours])));
+
+      const configMeta = {
+        shifts: { endpoint: "WorkShifts", title: "ca làm việc", fields: [
+          ["name", "Tên ca", "text", true], ["startTime", "Giờ bắt đầu", "time", true], ["endTime", "Giờ kết thúc", "time", true], ["breakMins", "Nghỉ giữa ca (phút)", "number", true], ["description", "Mô tả", "text", false], ["effectiveDate", "Ngày hiệu lực", "date", false], ["isActive", "Đang áp dụng", "checkbox", false]
+        ] },
+        rules: { endpoint: "AttendanceRules", title: "quy tắc chấm công", fields: [
+          ["ruleName", "Tên quy tắc", "text", true], ["allowedLateMinutes", "Trễ cho phép (phút)", "number", true], ["allowedEarlyLeaveMinutes", "Về sớm cho phép (phút)", "number", true], ["maxViolationsPerMonth", "Vi phạm tối đa/tháng", "number", true], ["effectiveDate", "Ngày hiệu lực", "date", true], ["description", "Mô tả", "text", false], ["isActive", "Đang áp dụng", "checkbox", false]
+        ] },
+        "ot-rules": { endpoint: "OvertimeRules", title: "quy tắc OT", fields: [
+          ["dayType", "Loại ngày", "select", true], ["multiplier", "Hệ số lương OT", "number", true], ["maxHoursPerDay", "Tối đa giờ/ngày", "number", true], ["maxHoursPerMonth", "Tối đa giờ/tháng", "number", true], ["maxHoursPerYear", "Tối đa giờ/năm", "number", true], ["effectiveDate", "Ngày hiệu lực", "date", true], ["description", "Mô tả", "text", false], ["isActive", "Đang áp dụng", "checkbox", false]
+        ] }
+      };
+      async function loadConfig() {
+        try {
+          for (const key of Object.keys(configMeta)) state.config[key] = await api(`api/${configMeta[key].endpoint}`) || [];
+          renderConfig();
+          if (state.config.shifts.length) {
+            const chosen = $("#checkin-shift").value; $("#checkin-shift").innerHTML = `<option value="">Chọn ca</option>` + state.config.shifts.filter(x => x.isActive).map(x => `<option value="${esc(x.id)}">${esc(x.name)} (${timeText(x.startTime)}–${timeText(x.endTime)})</option>`).join("");
+            if (chosen) $("#checkin-shift").value = chosen;
+          }
+        } catch (error) { showError(error); }
+      }
+      function renderConfig() {
+        const rows = (items, key, columns) => items.length ? items.map(x => `<tr>${columns(x)}<td><span class="pill ${x.isActive === false ? "" : "ok"}">${x.isActive === false ? "Ngưng áp dụng" : "Đang áp dụng"}</span></td><td><div class="actions"><button class="btn" data-edit="${key}:${x.id}">Sửa</button><button class="btn danger" data-delete="${key}:${x.id}">Xóa</button></div></td></tr>`).join("") : emptyRow(key === "ot-rules" ? 8 : 7);
+        $("#config-shifts-table").innerHTML = rows(state.config.shifts, "shifts", x => `<td class="person">${esc(x.name)}</td><td>${timeText(x.startTime)}</td><td>${timeText(x.endTime)}</td><td>${number(x.breakMins)} phút</td><td>${dateText(x.effectiveDate)}</td>`);
+        $("#config-rules-table").innerHTML = rows(state.config.rules, "rules", x => `<td class="person">${esc(x.ruleName)}</td><td>${number(x.allowedLateMinutes)} phút</td><td>${number(x.allowedEarlyLeaveMinutes)} phút</td><td>${number(x.maxViolationsPerMonth)}</td><td>${dateText(x.effectiveDate)}</td>`);
+        $("#config-ot-rules-table").innerHTML = rows(state.config["ot-rules"], "ot-rules", x => `<td class="person">${esc(x.dayType)}</td><td>${number(x.multiplier)}×</td><td>${number(x.maxHoursPerDay)} giờ</td><td>${number(x.maxHoursPerMonth)} giờ</td><td>${number(x.maxHoursPerYear)} giờ</td><td>${dateText(x.effectiveDate)}</td>`);
+        $$("[data-edit]").forEach(button => button.addEventListener("click", () => openConfigForm(...button.dataset.edit.split(":"))));
+        $$("[data-delete]").forEach(button => button.addEventListener("click", () => deleteConfig(...button.dataset.delete.split(":"))));
+      }
+      $$("[data-config-add]").forEach(button => button.addEventListener("click", () => openConfigForm(button.dataset.configAdd)));
+      function openConfigForm(key, id = "") {
+        const meta = configMeta[key], existing = id ? state.config[key].find(x => x.id === id) : null;
+        state.configSelection = { key, id, existing };
+        $("#config-dialog-title").textContent = `${existing ? "Sửa" : "Thêm"} ${meta.title}`;
+        $("#config-fields").innerHTML = meta.fields.map(([name, label, type, required]) => {
+          const value = existing?.[name] ?? (name === "effectiveDate" ? today() : name === "isActive" ? true : "");
+          const field = type === "checkbox"
+            ? `<label style="font-size:12px;color:#68768c"><input name="${name}" type="checkbox" ${value ? "checked" : ""}> ${label}</label>`
+            : type === "select"
+              ? `<select class="control" name="${name}" ${required ? "required" : ""}><option value="WEEKDAY">WEEKDAY</option><option value="WEEKEND">WEEKEND</option><option value="HOLIDAY">HOLIDAY</option></select>`
+              : `<input class="control" name="${name}" type="${type}" value="${esc(type === "time" ? (value ? timeText(value) : "") : value)}" ${required ? "required" : ""} ${type === "number" ? 'min="0"' : ""}>`;
+          return `<div class="field ${name === "description" ? "full" : ""}"><label>${label}</label>${field}</div>`;
+        }).join("");
+        if (key === "ot-rules") $(`#config-fields select[name="dayType"]`).value = existing?.dayType || "WEEKDAY";
+        $("#config-dialog").showModal();
+      }
+      $("#config-form").addEventListener("submit", async event => {
+        if (event.submitter?.value !== "save") return;
+        event.preventDefault();
+        const { key, id, existing } = state.configSelection, meta = configMeta[key], form = event.currentTarget;
+        const body = {};
+        for (const [name, , type] of meta.fields) {
+          const input = form.elements[name];
+          body[name] = type === "checkbox" ? input.checked : type === "number" ? Number(input.value || 0) : (input.value || null);
+        }
+        body[existing ? "updatedBy" : "createdBy"] = "Admin";
+        try {
+          if (id) await put(`api/${meta.endpoint}/${id}`, body); else await post(`api/${meta.endpoint}`, body);
+          $("#config-dialog").close(); toast("Đã lưu cấu hình."); await loadConfig(); await loadShifts();
+        } catch (error) { showError(error); }
+      });
+      async function deleteConfig(key, id) {
+        const meta = configMeta[key];
+        if (!confirm(`Xóa ${meta.title} này?`)) return;
+        try { await api(`api/${meta.endpoint}/${id}`, { method: "DELETE" }); toast("Đã xóa cấu hình."); await loadConfig(); await loadShifts(); }
+        catch (error) { showError(error); }
+      }
+      $("#config-refresh").addEventListener("click", loadConfig);
+
+      function downloadCsv(filename, headers, rows) {
+        const cell = value => `"${String(value ?? "").replace(/"/g, '""')}"`;
+        const csv = "\ufeff" + [headers, ...rows].map(row => row.map(cell).join(",")).join("\r\n");
+        const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" })); link.download = filename; link.click(); URL.revokeObjectURL(link.href);
+      }
+      async function initialize() {
+        $("#api-url-label").textContent = API;
+        $("#report-month").value = monthNow();
+        for (const id of ["leave-form", "overtime-form", "explanation-form"]) {
+          const form = $(`#${id}`);
+          if (form.elements.startDate) form.elements.startDate.value = today();
+          if (form.elements.endDate) form.elements.endDate.value = today();
+          if (form.elements.date) form.elements.date.value = today();
+        }
+        try {
+          await Promise.all([loadEmployees(), loadDepartments(), loadShifts()]);
+          await searchOverview();
+          await loadCheckinHistory();
+          updateSelectedEmployee();
+        } catch (error) { setApiStatus(false); showError(error); }
+      }
+      initialize();
+    })();
+  </script>
+</body>
+</html>
