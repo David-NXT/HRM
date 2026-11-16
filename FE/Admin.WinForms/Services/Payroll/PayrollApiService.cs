@@ -148,6 +148,30 @@ public class PayrollApiService
         return true;
     }
 
+    public Task<List<PayrollCatalogItemDto>> GetAllowanceTypesAsync(bool activeOnly = false) =>
+        GetListAsync<PayrollCatalogItemDto>($"api/payroll-catalog/allowances?activeOnly={activeOnly}");
+
+    public Task<List<PayrollCatalogItemDto>> GetPayCutReasonsAsync(bool activeOnly = false) =>
+        GetListAsync<PayrollCatalogItemDto>($"api/payroll-catalog/pay-cuts?activeOnly={activeOnly}");
+
+    public Task<PayrollCatalogItemDto> CreateAllowanceTypeAsync(SavePayrollCatalogItemDto dto) =>
+        SaveCatalogItemAsync("api/payroll-catalog/allowances", dto, HttpMethod.Post);
+
+    public Task<PayrollCatalogItemDto> UpdateAllowanceTypeAsync(Guid id, SavePayrollCatalogItemDto dto) =>
+        SaveCatalogItemAsync($"api/payroll-catalog/allowances/{id}", dto, HttpMethod.Put);
+
+    public Task DeactivateAllowanceTypeAsync(Guid id) =>
+        DeactivateCatalogItemAsync($"api/payroll-catalog/allowances/{id}");
+
+    public Task<PayrollCatalogItemDto> CreatePayCutReasonAsync(SavePayrollCatalogItemDto dto) =>
+        SaveCatalogItemAsync("api/payroll-catalog/pay-cuts", dto, HttpMethod.Post);
+
+    public Task<PayrollCatalogItemDto> UpdatePayCutReasonAsync(Guid id, SavePayrollCatalogItemDto dto) =>
+        SaveCatalogItemAsync($"api/payroll-catalog/pay-cuts/{id}", dto, HttpMethod.Put);
+
+    public Task DeactivatePayCutReasonAsync(Guid id) =>
+        DeactivateCatalogItemAsync($"api/payroll-catalog/pay-cuts/{id}");
+
     // 7. Phiếu lương (Payslips)
     public async Task<PayslipDto?> GetPayslipAsync(Guid payrollId)
     {
@@ -178,6 +202,27 @@ public class PayrollApiService
         await EnsureSuccessAsync(response);
         return await response.Content.ReadFromJsonAsync<T>()
             ?? throw new InvalidDataException("Payroll API trả về dữ liệu rỗng hoặc không hợp lệ.");
+    }
+
+    private async Task<PayrollCatalogItemDto> SaveCatalogItemAsync(
+        string path,
+        SavePayrollCatalogItemDto dto,
+        HttpMethod method)
+    {
+        using var request = new HttpRequestMessage(method, path)
+        {
+            Content = JsonContent.Create(dto)
+        };
+        using var response = await _httpClient.SendAsync(request);
+        await EnsureSuccessAsync(response);
+        return await response.Content.ReadFromJsonAsync<PayrollCatalogItemDto>()
+            ?? throw new InvalidDataException("Payroll API trả về danh mục rỗng hoặc không hợp lệ.");
+    }
+
+    private async Task DeactivateCatalogItemAsync(string path)
+    {
+        using var response = await _httpClient.DeleteAsync(path);
+        await EnsureSuccessAsync(response);
     }
 
     private static async Task EnsureSuccessAsync(HttpResponseMessage response)

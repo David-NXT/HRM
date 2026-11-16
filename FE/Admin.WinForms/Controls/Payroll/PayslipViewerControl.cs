@@ -135,6 +135,8 @@ namespace Admin.WinForms.Controls.Payroll
                 label_StandardDays.Text = $"Công chuẩn: {_currentPayslip.StandardWorkingDay:0.##} ngày";
                 label_ActualDays.Text = $"Công thực tế: {_currentPayslip.WorkingDays:0.##} ngày";
                 label_GrossSalary.Text = $"Lương Gross: {_currentPayslip.GrossSalary:#,##0 đ}";
+                label_ProjectAllowance.Text = $"Tổng phụ cấp dự án: {_currentPayslip.TotalProjectAllowance:#,##0 đ}";
+                label_TotalAllowance.Text = $"Tổng phụ cấp: {_currentPayslip.TotalAllowance:#,##0 đ}";
 
                 // Allowances
                 listView_Allowances.BeginUpdate();
@@ -191,6 +193,8 @@ namespace Admin.WinForms.Controls.Payroll
             label_StandardDays.Text = "Công chuẩn: 0";
             label_ActualDays.Text = "Công thực tế: 0";
             label_GrossSalary.Text = "Lương Gross: 0 đ";
+            label_ProjectAllowance.Text = "Tổng phụ cấp dự án: 0 đ";
+            label_TotalAllowance.Text = "Tổng phụ cấp: 0 đ";
             label_NetValue.Text = "0 đ";
             listView_Allowances.Items.Clear();
             listView_PayCuts.Items.Clear();
@@ -242,6 +246,7 @@ namespace Admin.WinForms.Controls.Payroll
                     sb.AppendLine($" - Lương Gross:     {_currentPayslip.GrossSalary:#,##0 đ}");
                     sb.AppendLine("-------------------------------------------------------------");
                     sb.AppendLine("2. CÁC KHOẢN PHỤ CẤP (+):");
+                    sb.AppendLine($" + {"Phụ cấp dự án",-35} : {_currentPayslip.TotalProjectAllowance,15:#,##0 đ}");
                     if (_currentPayslip.Allowances != null && _currentPayslip.Allowances.Count > 0)
                     {
                         foreach (var a in _currentPayslip.Allowances)
@@ -249,10 +254,11 @@ namespace Admin.WinForms.Controls.Payroll
                             sb.AppendLine($" + {a.AllowanceTypeName,-35} : {a.Amount,15:#,##0 đ}");
                         }
                     }
-                    else
+                    else if (_currentPayslip.TotalProjectAllowance <= 0)
                     {
                         sb.AppendLine(" (Không có phụ cấp)");
                     }
+                    sb.AppendLine($" + {"TỔNG PHỤ CẤP",-35} : {_currentPayslip.TotalAllowance,15:#,##0 đ}");
                     sb.AppendLine("-------------------------------------------------------------");
                     sb.AppendLine("3. CÁC KHOẢN TRÍCH ĐÓNG & KHẤU TRỪ (-):");
                     if (_currentPayslip.PayCuts != null && _currentPayslip.PayCuts.Count > 0)

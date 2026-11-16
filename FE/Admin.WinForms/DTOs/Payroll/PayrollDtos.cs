@@ -11,7 +11,17 @@ public class PayrollPeriodDto
     public string Status { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
 
-    public string DisplayName => $"Kỳ lương Tháng {Month:D2}/{Year} ({Status})";
+    public string DisplayName => $"Kỳ lương Tháng {Month:D2}/{Year} ({FormatStatus(Status)})";
+
+    private static string FormatStatus(string status) => status?.ToLowerInvariant() switch
+    {
+        "draft" => "Bản nháp",
+        "calculated" => "Đã tính lương",
+        "approved" => "Đã duyệt",
+        "paid" => "Đã chi trả",
+        "in_progress" => "Đang xử lý",
+        _ => status ?? "--"
+    };
 }
 
 public class CreatePayrollPeriodDto
@@ -36,6 +46,10 @@ public class PayrollListDto
     public Guid EmployeeID { get; set; }
     public string? EmployeeCode { get; set; }
     public string? EmployeeName { get; set; }
+    public string EmployeeDisplayName =>
+        string.IsNullOrWhiteSpace(EmployeeName)
+            ? $"{EmployeeCode ?? EmployeeID.ToString()[..8].ToUpper()} — Nhân viên"
+            : $"{EmployeeCode ?? EmployeeID.ToString()[..8].ToUpper()} — {EmployeeName}";
     public Guid PayrollPeriodID { get; set; }
 
     public decimal BaseSalary { get; set; }
@@ -118,6 +132,25 @@ public class CreatePayCutDto
     public decimal Amount { get; set; }
 }
 
+public class PayrollCatalogItemDto
+{
+    public Guid ID { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string CalculationType { get; set; } = "fixed";
+    public decimal DefaultRate { get; set; }
+    public string Status { get; set; } = "active";
+}
+
+public class SavePayrollCatalogItemDto
+{
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string CalculationType { get; set; } = "fixed";
+    public decimal DefaultRate { get; set; }
+    public bool IsActive { get; set; } = true;
+}
+
 public class CreatePayrollsDto
 {
     public List<Guid> EmployeeIDs { get; set; } = new();
@@ -163,18 +196,4 @@ public class PayslipPayCutDto
     public string PayCutReasonName { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public decimal Amount { get; set; }
-}
-
-public class AllowanceTypeItemDto
-{
-    public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public decimal DefaultAmount { get; set; }
-}
-
-public class PayCutReasonItemDto
-{
-    public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public decimal DefaultAmount { get; set; }
 }

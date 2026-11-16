@@ -308,6 +308,26 @@ public class AttendanceApiService
         }
     }
 
+    public async Task<List<EmployeeDirectoryDto>> SearchEmployeesAsync(string keyword)
+    {
+        var path = $"api/employees?keyword={Uri.EscapeDataString(keyword.Trim())}&page=1&pageSize=100";
+        using var response = await _httpClient.GetAsync(path);
+        if (!response.IsSuccessStatusCode)
+        {
+            var details = await response.Content.ReadAsStringAsync();
+            throw new HttpRequestException(
+                string.IsNullOrWhiteSpace(details)
+                    ? $"Attendance API trả về HTTP {(int)response.StatusCode} khi tìm nhân viên."
+                    : $"Attendance API trả về HTTP {(int)response.StatusCode}: {details}",
+                null,
+                response.StatusCode);
+        }
+
+        var page = await response.Content.ReadFromJsonAsync<EmployeeDirectoryPageDto>()
+            ?? throw new InvalidDataException("Attendance API trả về dữ liệu tìm kiếm nhân viên rỗng.");
+        return page.Items;
+    }
+
     public async Task<EmployeeDirectoryDto?> GetEmployeeByIdAsync(Guid id)
     {
         try
