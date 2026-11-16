@@ -22,3 +22,5 @@ publish/
 .env
 .env.*
 !.env.example
+
+run.ps1
