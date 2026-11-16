@@ -1,62 +1,63 @@
 @page "/organization"
 @{ Layout = null; }
 <!doctype html>
-<html lang="en">
+<html lang="vi">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>HR - Organization structure</title>
+    <title>Nhân sự - Cơ cấu tổ chức</title>
     <style>
         body{font:15px Segoe UI,Arial;background:#f3f6fa;color:#182230;margin:0}header{background:#12304a;color:#fff;padding:20px max(20px,calc((100% - 1160px)/2))}header a{color:#fff;margin-left:18px}main{max-width:1160px;margin:26px auto;padding:0 20px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.card{background:#fff;border:1px solid #dce4ec;border-radius:9px;padding:18px;margin-bottom:16px}input,select,textarea,button{font:inherit;padding:8px;border:1px solid #c7d2de;border-radius:5px}button{background:#1769aa;color:#fff;cursor:pointer}.secondary{background:#fff;color:#25364a}.danger{background:#a93232}.form{display:grid;gap:9px}.form label{display:grid;gap:4px}.row{display:flex;gap:6px;align-items:center}.row input{min-width:0;flex:1}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{text-align:left;padding:9px;border-bottom:1px solid #e6ebf0}td.actions{white-space:nowrap}.status{min-height:22px;color:#526274}ul{padding-left:22px}@@media(max-width:760px){.grid{grid-template-columns:1fr}}
     </style>
 </head>
 <body>
-<header><strong>HR - Organization structure</strong><a href="/">Employee records</a></header>
+<header><strong>Nhân sự - Cơ cấu tổ chức</strong><a href="/">Hồ sơ nhân viên</a></header>
 <main>
     <p id="status" class="status" role="status"></p>
     <div class="grid">
         <section class="card">
-            <h2>Departments</h2>
+            <h2>Phòng ban</h2>
             <form id="departmentForm" class="form">
                 <input type="hidden" name="departmentId">
-                <label>Code<input name="code" maxlength="20" required></label>
-                <label>Name<input name="name" maxlength="150" required></label>
-                <label>Description<textarea name="description" maxlength="500"></textarea></label>
-                <label>Parent department<select name="parentDepartmentId"><option value="">No parent</option></select></label>
-                <div class="row"><button type="submit">Save department</button><button type="reset" class="secondary">Clear</button></div>
+                <label>Mã<input name="code" maxlength="20" required></label>
+                <label>Tên<input name="name" maxlength="150" required></label>
+                <label>Mô tả<textarea name="description" maxlength="500"></textarea></label>
+                <label>Phòng ban cấp trên<select name="parentDepartmentId"><option value="">Không có phòng ban cấp trên</option></select></label>
+                <div class="row"><button type="submit">Lưu phòng ban</button><button type="reset" class="secondary">Xóa nội dung</button></div>
             </form>
-            <table><thead><tr><th>Department</th><th>Status</th><th>Actions</th></tr></thead><tbody id="departments"></tbody></table>
-            <h3>Organization tree</h3><div id="tree"></div>
+            <table><thead><tr><th>Phòng ban</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody id="departments"></tbody></table>
+            <h3>Cây tổ chức</h3><div id="tree"></div>
         </section>
         <section class="card">
-            <h2>Positions</h2>
+            <h2>Chức vụ</h2>
             <form id="positionForm" class="form">
                 <input type="hidden" name="positionId">
-                <label>Code<input name="code" maxlength="20" required></label>
-                <label>Name<input name="name" maxlength="150" required></label>
-                <label>Description<textarea name="description" maxlength="500"></textarea></label>
-                <label>Seniority level<select name="seniorityLevel" required><option value="">Select level</option><option value="STAFF">Staff / individual contributor</option><option value="MANAGER">Manager</option><option value="DIRECTOR">Director</option><option value="EXECUTIVE">Executive or higher</option></select></label>
-                <div class="row"><button type="submit">Save position</button><button type="reset" class="secondary">Clear</button></div>
+                <label>Mã<input name="code" maxlength="20" required></label>
+                <label>Tên<input name="name" maxlength="150" required></label>
+                <label>Mô tả<textarea name="description" maxlength="500"></textarea></label>
+                <label>Cấp bậc chức vụ<select name="seniorityLevel" required><option value="">Chọn cấp bậc</option><option value="STAFF">Nhân viên / Chuyên viên</option><option value="MANAGER">Quản lý</option><option value="DIRECTOR">Giám đốc</option><option value="EXECUTIVE">Ban điều hành / cấp cao hơn</option></select></label>
+                <div class="row"><button type="submit">Lưu chức vụ</button><button type="reset" class="secondary">Xóa nội dung</button></div>
             </form>
-            <table><thead><tr><th>Position</th><th>Seniority</th><th>Status</th><th>Actions</th></tr></thead><tbody id="positions"></tbody></table>
+            <table><thead><tr><th>Chức vụ</th><th>Cấp bậc</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody id="positions"></tbody></table>
         </section>
     </div>
 </main>
+@await Html.PartialAsync("/Pages/Shared/_HrVietnameseLabels.cshtml")
 <script>
 const statusBox=document.querySelector('#status');let departments=[],positions=[];
-async function request(url,options={}){const response=await fetch(url,{...options,headers:{'Content-Type':'application/json','X-Role':'HR',...(options.headers||{})}});const body=await response.json().catch(()=>null);if(!response.ok)throw Error(body?.message||response.statusText);return body}
+async function request(url,options={}){const response=await fetch(url,{...options,headers:{'Content-Type':'application/json','X-Role':'HR',...(options.headers||{})}});const body=await response.json().catch(()=>null);if(!response.ok)throw Error(body?.message||`Yêu cầu không thành công (HTTP ${response.status}).`);return body}
 function cell(row,value){const td=document.createElement('td');td.textContent=value??'';row.append(td);return td}
 function actionButton(label,className,handler){const button=document.createElement('button');button.type='button';button.textContent=label;button.className=className;button.onclick=handler;return button}
-function renderTree(nodes){const ul=document.createElement('ul');for(const node of nodes){const li=document.createElement('li');li.textContent=`${node.code} — ${node.name} (${node.status})`;if(node.children?.length)li.append(renderTree(node.children));ul.append(li)}return ul}
-async function load(){try{[departments,positions]=await Promise.all([request('/departments'),request('/positions')]);const deptBody=document.querySelector('#departments');deptBody.replaceChildren();const parentSelect=document.querySelector('[name=parentDepartmentId]');parentSelect.replaceChildren(new Option('No parent',''));for(const item of departments){if(item.status==='ACTIVE')parentSelect.add(new Option(`${item.code} — ${item.name}`,item.departmentId));const row=document.createElement('tr');cell(row,`${item.code} — ${item.name}`);cell(row,item.status);const actions=cell(row,'');actions.className='actions';actions.append(actionButton('Edit','secondary',()=>editDepartment(item)));if(item.status==='ACTIVE')actions.append(actionButton('Deactivate','danger',()=>deactivate('/departments',item.departmentId)));deptBody.append(row)}
-const posBody=document.querySelector('#positions');posBody.replaceChildren();for(const item of positions){const row=document.createElement('tr');cell(row,`${item.code} — ${item.name}`);cell(row,seniorityLabel(item.seniorityLevel));cell(row,item.status);const actions=cell(row,'');actions.className='actions';actions.append(actionButton('Edit','secondary',()=>editPosition(item)));if(item.status==='ACTIVE')actions.append(actionButton('Deactivate','danger',()=>deactivate('/positions',item.positionId)));posBody.append(row)}
-document.querySelector('#tree').replaceChildren(renderTree(await request('/departments/tree')));statusBox.textContent='Organization data loaded.'}catch(error){statusBox.textContent=error.message}}
+function renderTree(nodes){const ul=document.createElement('ul');for(const node of nodes){const li=document.createElement('li');li.textContent=`${node.code} — ${node.name} (${hrLabel(node.status)})`;if(node.children?.length)li.append(renderTree(node.children));ul.append(li)}return ul}
+async function load(){try{[departments,positions]=await Promise.all([request('/departments'),request('/positions')]);const deptBody=document.querySelector('#departments');deptBody.replaceChildren();const parentSelect=document.querySelector('[name=parentDepartmentId]');parentSelect.replaceChildren(new Option('Không có phòng ban cấp trên',''));for(const item of departments){if(item.status==='ACTIVE')parentSelect.add(new Option(`${item.code} — ${item.name}`,item.departmentId));const row=document.createElement('tr');cell(row,`${item.code} — ${item.name}`);cell(row,hrLabel(item.status));const actions=cell(row,'');actions.className='actions';actions.append(actionButton('Sửa','secondary',()=>editDepartment(item)));if(item.status==='ACTIVE')actions.append(actionButton('Ngừng hoạt động','danger',()=>deactivate('/departments',item.departmentId)));deptBody.append(row)}
+const posBody=document.querySelector('#positions');posBody.replaceChildren();for(const item of positions){const row=document.createElement('tr');cell(row,`${item.code} — ${item.name}`);cell(row,seniorityLabel(item.seniorityLevel));cell(row,hrLabel(item.status));const actions=cell(row,'');actions.className='actions';actions.append(actionButton('Sửa','secondary',()=>editPosition(item)));if(item.status==='ACTIVE')actions.append(actionButton('Ngừng hoạt động','danger',()=>deactivate('/positions',item.positionId)));posBody.append(row)}
+document.querySelector('#tree').replaceChildren(renderTree(await request('/departments/tree')));statusBox.textContent='Đã tải dữ liệu tổ chức.'}catch(error){statusBox.textContent=hrErrorMessage(error)}}
 function editDepartment(item){const form=document.querySelector('#departmentForm');for(const key of ['departmentId','code','name','description','parentDepartmentId'])form.elements[key].value=item[key]??'';form.elements.code.focus()}
-function seniorityLabel(level){return ({STAFF:'Staff / individual contributor',MANAGER:'Manager',DIRECTOR:'Director',EXECUTIVE:'Executive or higher'})[level]||'Unclassified'}
+function seniorityLabel(level){return ({STAFF:'Nhân viên / Chuyên viên',MANAGER:'Quản lý',DIRECTOR:'Giám đốc',EXECUTIVE:'Ban điều hành / cấp cao hơn'})[level]||'Chưa phân loại'}
 function editPosition(item){const form=document.querySelector('#positionForm');for(const key of ['positionId','code','name','description','seniorityLevel'])form.elements[key].value=item[key]??'';form.elements.code.focus()}
-async function deactivate(route,id){if(!confirm('Deactivate this item?'))return;try{await request(`${route}/${id}/deactivate`,{method:'POST'});await load()}catch(error){statusBox.textContent=error.message}}
-document.querySelector('#departmentForm').onsubmit=async event=>{event.preventDefault();const form=event.currentTarget,data=Object.fromEntries(new FormData(form));const id=data.departmentId;const payload={code:data.code,name:data.name,description:data.description.trim()||null,parentDepartmentId:data.parentDepartmentId?data.parentDepartmentId:null};try{await request(id?`/departments/${id}`:'/departments',{method:id?'PUT':'POST',body:JSON.stringify(payload)});form.reset();await load()}catch(error){statusBox.textContent=error.message}};
-document.querySelector('#positionForm').onsubmit=async event=>{event.preventDefault();const form=event.currentTarget,data=Object.fromEntries(new FormData(form));const id=data.positionId;const payload={code:data.code,name:data.name,description:data.description.trim()||null,seniorityLevel:data.seniorityLevel};try{await request(id?`/positions/${id}`:'/positions',{method:id?'PUT':'POST',body:JSON.stringify(payload)});form.reset();await load()}catch(error){statusBox.textContent=error.message}};
+async function deactivate(route,id){if(!confirm('Ngừng hoạt động mục này?'))return;try{await request(`${route}/${id}/deactivate`,{method:'POST'});await load()}catch(error){statusBox.textContent=hrErrorMessage(error)}}
+document.querySelector('#departmentForm').onsubmit=async event=>{event.preventDefault();const form=event.currentTarget,data=Object.fromEntries(new FormData(form));const id=data.departmentId;const payload={code:data.code,name:data.name,description:data.description.trim()||null,parentDepartmentId:data.parentDepartmentId?data.parentDepartmentId:null};try{await request(id?`/departments/${id}`:'/departments',{method:id?'PUT':'POST',body:JSON.stringify(payload)});form.reset();await load()}catch(error){statusBox.textContent=hrErrorMessage(error)}};
+document.querySelector('#positionForm').onsubmit=async event=>{event.preventDefault();const form=event.currentTarget,data=Object.fromEntries(new FormData(form));const id=data.positionId;const payload={code:data.code,name:data.name,description:data.description.trim()||null,seniorityLevel:data.seniorityLevel};try{await request(id?`/positions/${id}`:'/positions',{method:id?'PUT':'POST',body:JSON.stringify(payload)});form.reset();await load()}catch(error){statusBox.textContent=hrErrorMessage(error)}};
 document.querySelector('#departmentForm').onreset=event=>{event.currentTarget.elements.departmentId.value=''};document.querySelector('#positionForm').onreset=event=>{event.currentTarget.elements.positionId.value=''};load();
 </script>
 </body>

@@ -1,54 +1,55 @@
 @page "/profile-updates"
 @{ Layout = null; }
 <!doctype html>
-<html lang="en">
+<html lang="vi">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>HR - My profile updates</title>
+    <title>Nhân sự - Yêu cầu cập nhật hồ sơ của tôi</title>
     <style>
         body{font:15px Segoe UI,Arial;background:#f3f6fa;color:#182230;margin:0}header{background:#12304a;color:#fff;padding:20px max(20px,calc((100% - 1050px)/2))}header a{color:#fff;margin-left:16px}main{max-width:1050px;margin:25px auto;padding:0 20px}.card{background:#fff;border:1px solid #dce4ec;border-radius:9px;padding:18px;margin-bottom:16px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}label{display:grid;gap:4px}input,select,textarea,button{font:inherit;padding:8px;border:1px solid #c7d2de;border-radius:5px}button{background:#1769aa;color:white;cursor:pointer}.secondary{background:white;color:#25364a}.danger{background:#a93232}.wide{grid-column:1/-1}.row{display:flex;gap:8px;align-items:end}.row>*{flex:1}.status{min-height:22px;color:#526274}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{text-align:left;padding:9px;border-bottom:1px solid #e6ebf0}td.actions{white-space:nowrap}.notice{padding:9px;background:#eef5fb;border-radius:5px;margin:5px 0}@@media(max-width:700px){.grid{grid-template-columns:1fr}.wide{grid-column:auto}.row{display:grid}}
     </style>
 </head>
 <body>
-<header><strong>My profile update requests</strong><a href="/">Employee records</a><a href="/employment">Contracts</a></header>
+<header><strong>Yêu cầu cập nhật hồ sơ của tôi</strong><a href="/">Hồ sơ nhân viên</a><a href="/employment">Hợp đồng</a></header>
 <main>
     <p id="status" class="status" role="status"></p>
     <section class="card">
-        <h2>Employee identity</h2>
-        <div class="row"><label>Employee GUID<input id="employeeGuid" placeholder="Paste your employee GUID"></label><button id="loadProfile" type="button">Load profile</button></div>
-        <small>Local demo identity only. The production app must supply this identity from authenticated login.</small>
+        <h2>Nhận diện nhân viên</h2>
+        <div class="row"><label>Mã định danh nhân viên (GUID)<input id="employeeGuid" placeholder="Dán mã định danh nhân viên (GUID)"></label><button id="loadProfile" type="button">Tải hồ sơ</button></div>
+        <small>Đây là cách nhận diện dùng để thử nghiệm. Khi tích hợp đăng nhập, hệ thống phải tự xác định nhân viên từ tài khoản.</small>
         <p id="employeeSummary"></p>
     </section>
     <section class="card">
-        <h2>Request profile changes</h2>
+        <h2>Đề nghị cập nhật hồ sơ</h2>
         <form id="profileForm" class="grid">
-            <label>Full name<input name="fullName" maxlength="150" required></label>
-            <label>Date of birth<input name="dateOfBirth" type="date" min="1900-01-01" required></label>
-            <label>Gender<select name="gender"><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option></select></label>
+            <label>Họ tên<input name="fullName" maxlength="150" required></label>
+            <label>Ngày sinh<input name="dateOfBirth" type="date" min="1900-01-01" required></label>
+            <label>Giới tính<select name="gender"><option value="Male">Nam</option><option value="Female">Nữ</option><option value="Other">Khác</option></select></label>
             <label>Email<input name="email" type="email" maxlength="200" required></label>
-            <label>Phone<input name="phone" maxlength="20" required></label>
-            <label>Citizen ID<input name="citizenId" maxlength="12" required></label>
-            <label class="wide">Address<textarea name="address" maxlength="500"></textarea></label>
-            <label class="wide">Evidence files (PDF, JPG, PNG; up to 5 files, 10 MB each)<input name="attachments" type="file" multiple accept=".pdf,.jpg,.jpeg,.png"></label>
-            <div class="row wide"><button id="saveDraft" type="button" class="secondary">Save draft</button><button type="submit">Submit request</button></div>
+            <label>Điện thoại<input name="phone" maxlength="20" required></label>
+            <label>CCCD/CMND<input name="citizenId" maxlength="12" required></label>
+            <label class="wide">Địa chỉ<textarea name="address" maxlength="500"></textarea></label>
+            <label class="wide">Minh chứng (PDF, JPG, PNG; tối đa 5 tệp, mỗi tệp tối đa 10 MB)<input name="attachments" type="file" multiple accept=".pdf,.jpg,.jpeg,.png"></label>
+            <div class="row wide"><button id="saveDraft" type="button" class="secondary">Lưu nháp</button><button type="submit">Gửi yêu cầu</button></div>
         </form>
     </section>
-    <section class="card"><h2>My requests</h2><table><thead><tr><th>ID</th><th>Status</th><th>Submitted</th><th>Review note</th><th>Actions</th></tr></thead><tbody id="requests"></tbody></table></section>
-    <section class="card"><h2>Notifications</h2><div id="notifications"></div></section>
+    <section class="card"><h2>Yêu cầu của tôi</h2><table><thead><tr><th>Mã định danh</th><th>Trạng thái</th><th>Thời điểm gửi</th><th>Ý kiến xử lý</th><th>Thao tác</th></tr></thead><tbody id="requests"></tbody></table></section>
+    <section class="card"><h2>Thông báo</h2><div id="notifications"></div></section>
 </main>
+@await Html.PartialAsync("/Pages/Shared/_HrVietnameseLabels.cshtml")
 <script>
 const statusBox=document.querySelector('#status'),guidInput=document.querySelector('#employeeGuid'),profileForm=document.querySelector('#profileForm'),requestBody=document.querySelector('#requests');let editingRequestId=null;
 guidInput.value=localStorage.getItem('hrEmployeeGuid')||'';
-async function request(url,options={}){const headers={...(options.body instanceof FormData?{}:{'Content-Type':'application/json'}),...(guidInput.value?{'X-Employee-Guid':guidInput.value.trim()}:{}),...(options.headers||{})};const response=await fetch(url,{...options,headers});if(!response.ok){const body=await response.json().catch(()=>null);throw Error(body?.message||response.statusText)}return options.download?response.blob():await response.json().catch(()=>null)}
+async function request(url,options={}){const headers={...(options.body instanceof FormData?{}:{'Content-Type':'application/json'}),...(guidInput.value?{'X-Employee-Guid':guidInput.value.trim()}:{}),...(options.headers||{})};const response=await fetch(url,{...options,headers});if(!response.ok){const body=await response.json().catch(()=>null);throw Error(body?.message||`Yêu cầu không thành công (HTTP ${response.status}).`)}return options.download?response.blob():await response.json().catch(()=>null)}
 function formChanges(){const data=Object.fromEntries(new FormData(profileForm));delete data.attachments;data.address=data.address.trim()||null;return data}
 function fillProfile(profile){for(const key of ['fullName','dateOfBirth','gender','email','phone','citizenId','address'])profileForm.elements[key].value=profile[key]??''}
-async function loadProfile(){try{localStorage.setItem('hrEmployeeGuid',guidInput.value.trim());const profile=await request('/me/profile');fillProfile(profile);document.querySelector('#employeeSummary').textContent=`${profile.employeeCode} — ${profile.fullName}`;await Promise.all([loadRequests(),loadNotifications()]);statusBox.textContent='Profile loaded.'}catch(error){statusBox.textContent=error.message}}
-async function send(submit){const employeeGuid=guidInput.value.trim();if(!employeeGuid){statusBox.textContent='Enter your employee GUID first.';return}const data=new FormData();data.append('ChangesJson',JSON.stringify(formChanges()));data.append('Submit',String(submit));for(const file of profileForm.elements.attachments.files)data.append('Attachments',file);try{const url=editingRequestId?`/me/update-requests/${editingRequestId}`:'/me/update-requests';await request(url,{method:editingRequestId?'PUT':'POST',body:data});editingRequestId=null;profileForm.reset();await loadProfile();statusBox.textContent=submit?'Request submitted.':'Draft saved.'}catch(error){statusBox.textContent=error.message}}
+async function loadProfile(){try{localStorage.setItem('hrEmployeeGuid',guidInput.value.trim());const profile=await request('/me/profile');fillProfile(profile);document.querySelector('#employeeSummary').textContent=`${profile.employeeCode} — ${profile.fullName}`;await Promise.all([loadRequests(),loadNotifications()]);statusBox.textContent='Đã tải hồ sơ.'}catch(error){statusBox.textContent=hrErrorMessage(error)}}
+async function send(submit){const employeeGuid=guidInput.value.trim();if(!employeeGuid){statusBox.textContent='Vui lòng nhập mã định danh nhân viên (GUID) trước.';return}const data=new FormData();data.append('ChangesJson',JSON.stringify(formChanges()));data.append('Submit',String(submit));for(const file of profileForm.elements.attachments.files)data.append('Attachments',file);try{const url=editingRequestId?`/me/update-requests/${editingRequestId}`:'/me/update-requests';await request(url,{method:editingRequestId?'PUT':'POST',body:data});editingRequestId=null;profileForm.reset();await loadProfile();statusBox.textContent=submit?'Đã gửi yêu cầu.':'Đã lưu bản nháp.'}catch(error){statusBox.textContent=hrErrorMessage(error)}}
 function addCell(row,text){const cell=document.createElement('td');cell.textContent=text??'';row.append(cell);return cell}
-async function downloadEvidence(requestId,attachmentId,fileName){try{const blob=await request(`/me/update-requests/${requestId}/attachments/${attachmentId}`,{download:true});const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=fileName;link.click();URL.revokeObjectURL(link.href)}catch(error){statusBox.textContent=error.message}}
-async function loadRequests(){const items=await request('/me/update-requests');requestBody.replaceChildren();for(const item of items){const row=document.createElement('tr');addCell(row,item.profileUpdateRequestId);addCell(row,item.status);addCell(row,item.submittedAt||'—');addCell(row,item.reviewReason||'');const actions=addCell(row,'');actions.className='actions';for(const attachment of item.attachments){const button=document.createElement('button');button.type='button';button.className='secondary';button.textContent='File';button.title=attachment.originalFileName;button.onclick=()=>downloadEvidence(item.profileUpdateRequestId,attachment.profileUpdateAttachmentId,attachment.originalFileName);actions.append(button)}if(item.status==='DRAFT'||item.status==='NEED_INFO'){const edit=document.createElement('button');edit.type='button';edit.className='secondary';edit.textContent='Edit';edit.onclick=()=>{editingRequestId=item.profileUpdateRequestId;fillProfile(item.changes);window.scrollTo({top:profileForm.offsetTop,behavior:'smooth'})};actions.append(edit)}if(item.status==='DRAFT'||item.status==='PENDING'){const cancel=document.createElement('button');cancel.type='button';cancel.className='danger';cancel.textContent='Cancel';cancel.onclick=async()=>{try{await request(`/me/update-requests/${item.profileUpdateRequestId}/cancel`,{method:'POST'});await loadRequests()}catch(error){statusBox.textContent=error.message}};actions.append(cancel)}requestBody.append(row)}}
-async function loadNotifications(){const items=await request('/me/notifications');const root=document.querySelector('#notifications');root.replaceChildren();if(!items.length){root.textContent='No notifications.';return}for(const item of items){const div=document.createElement('div');div.className='notice';div.textContent=`${item.title}: ${item.message} (${new Date(item.createdAt).toLocaleString()})`;root.append(div)}}
+async function downloadEvidence(requestId,attachmentId,fileName){try{const blob=await request(`/me/update-requests/${requestId}/attachments/${attachmentId}`,{download:true});const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=fileName;link.click();URL.revokeObjectURL(link.href)}catch(error){statusBox.textContent=hrErrorMessage(error)}}
+async function loadRequests(){const items=await request('/me/update-requests');requestBody.replaceChildren();for(const item of items){const row=document.createElement('tr');addCell(row,item.profileUpdateRequestId);addCell(row,hrLabel(item.status));addCell(row,item.submittedAt||'—');addCell(row,item.reviewReason||'');const actions=addCell(row,'');actions.className='actions';for(const attachment of item.attachments){const button=document.createElement('button');button.type='button';button.className='secondary';button.textContent='Tải minh chứng';button.title=attachment.originalFileName;button.onclick=()=>downloadEvidence(item.profileUpdateRequestId,attachment.profileUpdateAttachmentId,attachment.originalFileName);actions.append(button)}if(item.status==='DRAFT'||item.status==='NEED_INFO'){const edit=document.createElement('button');edit.type='button';edit.className='secondary';edit.textContent='Sửa';edit.onclick=()=>{editingRequestId=item.profileUpdateRequestId;fillProfile(item.changes);window.scrollTo({top:profileForm.offsetTop,behavior:'smooth'})};actions.append(edit)}if(item.status==='DRAFT'||item.status==='PENDING'){const cancel=document.createElement('button');cancel.type='button';cancel.className='danger';cancel.textContent='Hủy';cancel.onclick=async()=>{try{await request(`/me/update-requests/${item.profileUpdateRequestId}/cancel`,{method:'POST'});await loadRequests()}catch(error){statusBox.textContent=hrErrorMessage(error)}};actions.append(cancel)}requestBody.append(row)}}
+async function loadNotifications(){const items=await request('/me/notifications');const root=document.querySelector('#notifications');root.replaceChildren();if(!items.length){root.textContent='Chưa có thông báo.';return}for(const item of items){const div=document.createElement('div');div.className='notice';div.textContent=`${item.title}: ${item.message} (${new Date(item.createdAt).toLocaleString('vi-VN')})`;root.append(div)}}
 document.querySelector('#loadProfile').onclick=loadProfile;document.querySelector('#saveDraft').onclick=()=>send(false);profileForm.onsubmit=event=>{event.preventDefault();send(true)};if(guidInput.value)loadProfile();
 </script>
 </body>

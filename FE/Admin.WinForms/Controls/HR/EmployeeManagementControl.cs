@@ -110,7 +110,7 @@ public sealed partial class EmployeeManagementControl : HrPageControl
         if (creating)
         {
             form.AmountField("baseSalary", "Lương cơ bản full-time (VND/tháng)")
-                .AmountField("partTimeSalary", "Đơn giá part-time (VND/giờ)");
+                .AmountField("partTimeSalary", "Lương part-time (VND/giờ)");
             var departments = await Api.GetAsync<List<DepartmentRow>>("departments", Token);
             var positions = await Api.GetAsync<List<PositionRow>>("positions", Token);
             Token.ThrowIfCancellationRequested();
