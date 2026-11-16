@@ -5,6 +5,8 @@ namespace Admin.WinForms.Controls.HR;
 
 public sealed partial class ProfileReviewControl : HrPageControl
 {
+    protected override Label PageStatus => Status;
+
     private List<ProfileRequestRow> _rows = [];
 
     public ProfileReviewControl()

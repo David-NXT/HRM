@@ -27,6 +27,15 @@ public sealed class HrApiClient : IDisposable
     public Task<T> GetAsync<T>(string path, CancellationToken token) =>
         SendAsync<T>(HttpMethod.Get, path, null, token);
 
+    public async Task DeleteEmployeeAsync(Guid employeeId, CancellationToken token)
+    {
+        using var request = Request(HttpMethod.Delete, $"employees/{employeeId}");
+        using var response = await _http.SendAsync(request, token);
+        await EnsureSuccessAsync(response, token);
+        // DELETE succeeds with 204 No Content, so there is no JSON to deserialize.
+        token.ThrowIfCancellationRequested();
+    }
+
     public async Task<T> SendAsync<T>(HttpMethod method, string path, object? data, CancellationToken token)
     {
         using var request = Request(method, path);

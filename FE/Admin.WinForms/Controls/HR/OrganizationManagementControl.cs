@@ -5,6 +5,8 @@ namespace Admin.WinForms.Controls.HR;
 
 public sealed partial class OrganizationManagementControl : HrPageControl
 {
+    protected override Label PageStatus => Status;
+
     private List<DepartmentRow> _departmentRows = [];
 
     public OrganizationManagementControl()
