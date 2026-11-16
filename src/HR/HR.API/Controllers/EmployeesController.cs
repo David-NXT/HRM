@@ -33,6 +33,16 @@ public sealed class EmployeesController : ControllerBase
         return Ok(await _employees.GetStatisticsAsync(cancellationToken));
     }
 
+    [HttpGet("export")]
+    public async Task<IActionResult> Export(
+        [FromQuery] string? keyword,
+        [FromServices] IEmployeeExportService exporter,
+        CancellationToken cancellationToken)
+    {
+        var file = await exporter.ExportAsync(keyword, cancellationToken);
+        return File(file.Content, EmployeeExportFile.ContentType, file.FileName);
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<EmployeeDto>> Get(Guid id, CancellationToken cancellationToken)
     {

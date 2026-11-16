@@ -19,4 +19,10 @@
     <ProjectReference Include="..\..\src\Project\Project.API\Project.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Pure presentation models: test contract dates on Linux without referencing WinForms. -->
+    <Compile Include="..\..\FE\Admin.WinForms\Models\HR\HrModels.cs" Link="Presentation\HrModels.cs" />
+    <Compile Include="..\..\FE\Admin.WinForms\Models\HR\ContractPresentation.cs" Link="Presentation\ContractPresentation.cs" />
+  </ItemGroup>
+
 </Project>

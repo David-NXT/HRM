@@ -18,6 +18,7 @@ public sealed partial class ContractAlertsControl
     private Button _previous;
     private Button _next;
     private Button _refreshButton;
+    private Button _scanButton;
     private Button _updateButton;
     private DataGridViewTextBoxColumn _employeeCodeColumn;
     private DataGridViewTextBoxColumn _employeeNameColumn;
@@ -52,6 +53,7 @@ public sealed partial class ContractAlertsControl
         _previous = new Button();
         _next = new Button();
         _refreshButton = new Button();
+        _scanButton = new Button();
         _updateButton = new Button();
         _employeeCodeColumn = new DataGridViewTextBoxColumn();
         _employeeNameColumn = new DataGridViewTextBoxColumn();
@@ -112,6 +114,13 @@ public sealed partial class ContractAlertsControl
         _refreshButton.Name = "_refreshButton";
         _refreshButton.Margin = new Padding(3, 3, 8, 3);
 
+        _scanButton.AutoSize = true;
+        _scanButton.MinimumSize = new Size(110, 34);
+        _scanButton.Text = "Quét ngay";
+        _scanButton.Name = "_scanButton";
+        _scanButton.Margin = new Padding(3, 3, 8, 3);
+        _scanButton.TabIndex = 2;
+
         _updateButton.AutoSize = true;
         _updateButton.MinimumSize = new Size(120, 34);
         _updateButton.Text = "Cập nhật trạng thái";
@@ -120,7 +129,7 @@ public sealed partial class ContractAlertsControl
         _updateButton.BackColor = Color.FromArgb(35, 83, 166);
         _updateButton.ForeColor = Color.White;
         _updateButton.FlatStyle = FlatStyle.Flat;
-        Toolbar.Controls.AddRange(new Control[] { _filter, _refreshButton, _updateButton });
+        Toolbar.Controls.AddRange(new Control[] { _filter, _refreshButton, _scanButton, _updateButton });
 
         _grid.AllowUserToAddRows = false;
         _grid.AllowUserToDeleteRows = false;

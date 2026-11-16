@@ -25,7 +25,12 @@ public sealed partial class ContractAlertsControl : HrPageControl
 
     private void WireEvents()
     {
-        _refreshButton.Click += async (_, _) => await RunAsync(ReloadAsync);
+        _refreshButton.Click += async (_, _) => await RunAsync(async () =>
+        {
+            _page = 1;
+            await ReloadAsync();
+        });
+        _scanButton.Click += async (_, _) => await RunAsync(ScanAsync);
         _updateButton.Click += async (_, _) => await RunAsync(UpdateAsync);
         _previous.Click += async (_, _) => await RunAsync(async () =>
         {
@@ -70,7 +75,21 @@ public sealed partial class ContractAlertsControl : HrPageControl
         _previous.Enabled = _page > 1;
         _next.Enabled = (long)_page * 20 < result.Total;
         _summary.Text = $"Trang {_page} · Tổng {result.Total} cảnh báo";
-        Status.Text = "Cảnh báo do job HR tạo cho hợp đồng sắp hết hạn trong 30 ngày. Làm mới chỉ tải lại danh sách.";
+        Status.Text = "Hợp đồng còn 0–30 ngày được kiểm tra khi lưu và quét hằng ngày. "
+            + "Làm mới tải lại danh sách; Quét ngay kiểm tra thêm các hợp đồng đủ điều kiện.";
+    }
+
+    private async Task ScanAsync()
+    {
+        var result = await Api.SendAsync<AlertScanResult>(HttpMethod.Post, "contract-alerts/scan", null, Token);
+        _page = 1;
+        _filter.SelectedIndex = 0;
+        await ReloadAsync();
+        Status.Text = $"Quét ngày {result.ScanDate:dd/MM/yyyy}: kiểm tra {result.ScannedCount}, "
+            + $"tạo mới {result.CreatedCount}, bỏ qua {result.SkippedCount}, lỗi {result.FailedCount}. "
+            + (result.FailedCount > 0
+                ? "Một số hợp đồng chưa kiểm tra được; bấm Quét ngay để thử lại."
+                : "Đã tải lại tất cả trạng thái từ trang 1.");
     }
 
     private async Task UpdateAsync()

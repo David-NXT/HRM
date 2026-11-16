@@ -1,5 +1,6 @@
 using HR.Application.DTOs.ContractAlerts;
 using HR.Application.Interfaces.Repositories;
+using HR.Application.Interfaces.Services;
 using HR.Domain.Constants;
 using HR.Domain.Entities;
 using HR.Application.Exceptions;
@@ -8,14 +9,27 @@ using Microsoft.Extensions.Logging;
 namespace HR.Application.Services.ContractAlerts;
 
 public sealed class ContractAlertService(
-    IContractAlertRepository repository, TimeProvider clock, ILogger<ContractAlertService> logger)
+    IContractAlertRepository repository, TimeProvider clock, ILogger<ContractAlertService> logger) : IContractAlertGenerator
 {
     public async Task<ContractAlertScanResult> GenerateAlertsAsync(CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        // A query failure propagates; the scheduler/manual caller must not report success.
+        var contracts = await repository.ListActiveContractsAsync(cancellationToken);
+        return await GenerateForContractsAsync(contracts, cancellationToken);
+    }
+
+    public async Task GenerateForContractAsync(EmploymentContract contract, CancellationToken cancellationToken)
+    {
+        // Only check the saved contract; reuse the daily scan's eligibility and duplicate guards.
+        await GenerateForContractsAsync([contract], cancellationToken);
+    }
+
+    private async Task<ContractAlertScanResult> GenerateForContractsAsync(
+        IReadOnlyList<EmploymentContract> contracts, CancellationToken cancellationToken)
+    {
         var now = clock.GetUtcNow().UtcDateTime;
         var today = DateOnly.FromDateTime(now);
-        // A query failure propagates; the scheduler logs failure instead of reporting success.
-        var contracts = await repository.ListActiveContractsAsync(cancellationToken);
         var created = 0;
         var skipped = 0;
         var failed = 0;

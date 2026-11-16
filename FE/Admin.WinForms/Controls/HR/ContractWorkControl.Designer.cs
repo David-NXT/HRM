@@ -13,6 +13,12 @@ public sealed partial class ContractWorkControl
     private FlowLayoutPanel Footer;
 
     private ComboBox _employees;
+    private Label _contractFilterLabel;
+    private ComboBox _contractFilter;
+    private TableLayoutPanel _contractLayout;
+    private Label _contractSummary;
+    private Label _contractLegend;
+    private Label _contractCountLabel;
     private TabControl _tabs;
     private TabPage _contractsPage;
     private TabPage _historyPage;
@@ -28,6 +34,8 @@ public sealed partial class ContractWorkControl
     private DataGridViewTextBoxColumn _contractStartColumn;
     private DataGridViewTextBoxColumn _contractEndColumn;
     private DataGridViewTextBoxColumn _contractStatusColumn;
+    private DataGridViewTextBoxColumn _contractDateStatusColumn;
+    private DataGridViewTextBoxColumn _contractRemainingColumn;
     private DataGridViewTextBoxColumn _contractNotesColumn;
     private DataGridViewTextBoxColumn _historyDepartmentColumn;
     private DataGridViewTextBoxColumn _historyPositionColumn;
@@ -43,6 +51,7 @@ public sealed partial class ContractWorkControl
 
     private void InitializeComponent()
     {
+        DataGridViewCellStyle contractEndStyle = new DataGridViewCellStyle();
         components = new Container();
         layout = new TableLayoutPanel();
         Toolbar = new FlowLayoutPanel();
@@ -55,6 +64,12 @@ public sealed partial class ContractWorkControl
         Footer.SuspendLayout();
 
         _employees = new ComboBox();
+        _contractFilterLabel = new Label();
+        _contractFilter = new ComboBox();
+        _contractLayout = new TableLayoutPanel();
+        _contractSummary = new Label();
+        _contractLegend = new Label();
+        _contractCountLabel = new Label();
         _tabs = new TabControl();
         _contractsPage = new TabPage();
         _historyPage = new TabPage();
@@ -70,6 +85,8 @@ public sealed partial class ContractWorkControl
         _contractStartColumn = new DataGridViewTextBoxColumn();
         _contractEndColumn = new DataGridViewTextBoxColumn();
         _contractStatusColumn = new DataGridViewTextBoxColumn();
+        _contractDateStatusColumn = new DataGridViewTextBoxColumn();
+        _contractRemainingColumn = new DataGridViewTextBoxColumn();
         _contractNotesColumn = new DataGridViewTextBoxColumn();
         _historyDepartmentColumn = new DataGridViewTextBoxColumn();
         _historyPositionColumn = new DataGridViewTextBoxColumn();
@@ -80,6 +97,7 @@ public sealed partial class ContractWorkControl
         ((ISupportInitialize)_history).BeginInit();
         _tabs.SuspendLayout();
         _contractsPage.SuspendLayout();
+        _contractLayout.SuspendLayout();
         _historyPage.SuspendLayout();
         SuspendLayout();
         layout.ColumnCount = 1;
@@ -154,15 +172,37 @@ public sealed partial class ContractWorkControl
         _assignmentButton.Text = "Phân công / Điều chuyển";
         _assignmentButton.Name = "_assignmentButton";
         _assignmentButton.Margin = new Padding(3, 3, 8, 3);
+        //
+        // _contractFilterLabel
+        //
+        _contractFilterLabel.AutoSize = true;
+        _contractFilterLabel.Margin = new Padding(3, 12, 3, 3);
+        _contractFilterLabel.Name = "_contractFilterLabel";
+        _contractFilterLabel.Text = "Lọc hợp đồng:";
+        //
+        // _contractFilter
+        //
+        _contractFilter.DropDownStyle = ComboBoxStyle.DropDownList;
+        _contractFilter.Items.AddRange(new object[]
+        {
+            "Tất cả", "Đang hiệu lực (gồm sắp hết hạn)", "Sắp hết hạn (0–30 ngày)", "Đã hết hạn", "Chưa bắt đầu"
+        });
+        _contractFilter.Margin = new Padding(3, 6, 8, 3);
+        _contractFilter.Name = "_contractFilter";
+        _contractFilter.Size = new Size(250, 23);
+        _contractFilter.TabIndex = 6;
         Toolbar.Controls.AddRange(new Control[]
         {
-            _employees, _refreshButton, _addContractButton, _editContractButton, _renewButton, _assignmentButton
+            _employees, _refreshButton, _addContractButton, _editContractButton, _renewButton, _assignmentButton,
+            _contractFilterLabel, _contractFilter
         });
+        Toolbar.SetFlowBreak(_assignmentButton, true);
 
         _contracts.AllowUserToAddRows = false;
         _contracts.AllowUserToDeleteRows = false;
         _contracts.AutoGenerateColumns = false;
         _contracts.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+        _contracts.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
         _contracts.BackgroundColor = Color.White;
         _contracts.BorderStyle = BorderStyle.FixedSingle;
         _contracts.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(230, 236, 246);
@@ -178,27 +218,103 @@ public sealed partial class ContractWorkControl
         _contractNumberColumn.DataPropertyName = "ContractNumber";
         _contractNumberColumn.HeaderText = "Số hợp đồng";
         _contractNumberColumn.Name = "ContractNumber";
+        _contractNumberColumn.FillWeight = 85F;
+        _contractNumberColumn.MinimumWidth = 85;
         _contractTypeColumn.DataPropertyName = "ContractType";
         _contractTypeColumn.HeaderText = "Loại";
         _contractTypeColumn.Name = "ContractType";
+        _contractTypeColumn.FillWeight = 85F;
         _contractStartColumn.DataPropertyName = "StartDate";
         _contractStartColumn.HeaderText = "Bắt đầu";
         _contractStartColumn.Name = "StartDate";
+        _contractStartColumn.MinimumWidth = 85;
+        _contractStartColumn.FillWeight = 80F;
         _contractEndColumn.DataPropertyName = "EndDate";
         _contractEndColumn.HeaderText = "Kết thúc";
         _contractEndColumn.Name = "EndDate";
+        contractEndStyle.NullValue = "Không thời hạn";
+        _contractEndColumn.DefaultCellStyle = contractEndStyle;
+        _contractEndColumn.MinimumWidth = 95;
+        _contractEndColumn.FillWeight = 95F;
         _contractStatusColumn.DataPropertyName = "Status";
-        _contractStatusColumn.HeaderText = "Trạng thái";
+        _contractStatusColumn.HeaderText = "Trạng thái quản lý";
         _contractStatusColumn.Name = "Status";
+        _contractStatusColumn.FillWeight = 100F;
+        _contractStatusColumn.MinimumWidth = 90;
+        //
+        // _contractDateStatusColumn
+        //
+        _contractDateStatusColumn.DataPropertyName = "PeriodLabel";
+        _contractDateStatusColumn.HeaderText = "Tình trạng theo ngày";
+        _contractDateStatusColumn.Name = "_contractDateStatusColumn";
+        _contractDateStatusColumn.FillWeight = 120F;
+        _contractDateStatusColumn.MinimumWidth = 115;
+        _contractDateStatusColumn.ReadOnly = true;
+        _contractDateStatusColumn.SortMode = DataGridViewColumnSortMode.NotSortable;
+        //
+        // _contractRemainingColumn
+        //
+        _contractRemainingColumn.DataPropertyName = "TimeRemaining";
+        _contractRemainingColumn.HeaderText = "Thời hạn";
+        _contractRemainingColumn.Name = "_contractRemainingColumn";
+        _contractRemainingColumn.FillWeight = 130F;
+        _contractRemainingColumn.MinimumWidth = 125;
+        _contractRemainingColumn.ReadOnly = true;
+        _contractRemainingColumn.SortMode = DataGridViewColumnSortMode.NotSortable;
         _contractNotesColumn.DataPropertyName = "Notes";
         _contractNotesColumn.HeaderText = "Ghi chú";
         _contractNotesColumn.Name = "Notes";
         _contracts.Columns.AddRange(new DataGridViewColumn[]
         {
             _contractNumberColumn, _contractTypeColumn, _contractStartColumn,
-            _contractEndColumn, _contractStatusColumn, _contractNotesColumn
+            _contractEndColumn, _contractDateStatusColumn, _contractRemainingColumn,
+            _contractStatusColumn, _contractNotesColumn
         });
-        _contractsPage.Controls.Add(_contracts);
+        //
+        // _contractLayout
+        //
+        _contractLayout.ColumnCount = 1;
+        _contractLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        _contractLayout.Controls.Add(_contractSummary, 0, 0);
+        _contractLayout.Controls.Add(_contracts, 0, 1);
+        _contractLayout.Controls.Add(_contractLegend, 0, 2);
+        _contractLayout.Dock = DockStyle.Fill;
+        _contractLayout.Name = "_contractLayout";
+        _contractLayout.RowCount = 3;
+        _contractLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        _contractLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+        _contractLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        _contractLayout.TabIndex = 0;
+        //
+        // _contractSummary
+        //
+        _contractSummary.AutoSize = true;
+        _contractSummary.Dock = DockStyle.Fill;
+        _contractSummary.Font = new Font("Segoe UI", 11F, FontStyle.Bold);
+        _contractSummary.ForeColor = Color.FromArgb(80, 96, 115);
+        _contractSummary.Margin = new Padding(6, 12, 6, 12);
+        _contractSummary.Name = "_contractSummary";
+        _contractSummary.TabIndex = 0;
+        _contractSummary.Text = "Chọn nhân viên để xem tổng quan hợp đồng.";
+        //
+        // _contractLegend
+        //
+        _contractLegend.AutoSize = true;
+        _contractLegend.Dock = DockStyle.Fill;
+        _contractLegend.ForeColor = Color.FromArgb(80, 96, 115);
+        _contractLegend.Margin = new Padding(6, 10, 6, 6);
+        _contractLegend.Name = "_contractLegend";
+        _contractLegend.TabIndex = 2;
+        _contractLegend.Text = "Tình trạng theo ngày tính theo ngày bắt đầu và kết thúc; ngày kết thúc vẫn được tính là còn hiệu lực.\r\nACTIVE/RENEWED là trạng thái quản lý. Hợp đồng đã gia hạn vẫn có thể bao phủ hôm nay trước khi hợp đồng mới bắt đầu.";
+        //
+        // _contractCountLabel
+        //
+        _contractCountLabel.AutoSize = true;
+        _contractCountLabel.Margin = new Padding(3, 8, 3, 3);
+        _contractCountLabel.Name = "_contractCountLabel";
+        _contractCountLabel.TabIndex = 0;
+        Footer.Controls.Add(_contractCountLabel);
+        _contractsPage.Controls.Add(_contractLayout);
         _contractsPage.Name = "_contractsPage";
         _contractsPage.Padding = new Padding(3);
         _contractsPage.Text = "Hợp đồng";
@@ -253,6 +369,8 @@ public sealed partial class ContractWorkControl
         ((ISupportInitialize)_contracts).EndInit();
         ((ISupportInitialize)_history).EndInit();
         _contractsPage.ResumeLayout(false);
+        _contractLayout.ResumeLayout(false);
+        _contractLayout.PerformLayout();
         _historyPage.ResumeLayout(false);
         _tabs.ResumeLayout(false);
         layout.ResumeLayout(false);

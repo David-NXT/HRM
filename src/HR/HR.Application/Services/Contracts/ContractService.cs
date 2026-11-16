@@ -1,5 +1,6 @@
 using HR.Application.DTOs.Contracts;
 using HR.Application.Interfaces.Repositories;
+using HR.Application.Interfaces.Services;
 using HR.Domain.Constants;
 using HR.Domain.Entities;
 using HR.Application.Exceptions;
@@ -8,8 +9,13 @@ namespace HR.Application.Services.Contracts;
 public sealed class ContractService
 {
     private readonly IEmploymentRepository _repository;
+    private readonly IContractAlertGenerator _alerts;
 
-    public ContractService(IEmploymentRepository repository) => _repository = repository;
+    public ContractService(IEmploymentRepository repository, IContractAlertGenerator alerts)
+    {
+        _repository = repository;
+        _alerts = alerts;
+    }
 
     public async Task<IReadOnlyList<EmploymentContractDto>> GetContractsAsync(Guid employeeId, CancellationToken cancellationToken)
     {
@@ -87,6 +93,8 @@ public sealed class ContractService
         {
             await _repository.SaveChangesAsync(cancellationToken);
         }
+        // The contract must be persisted before the alert's foreign key can reference it.
+        await _alerts.GenerateForContractAsync(contract, cancellationToken);
         return ToDto(contract);
     }
 
@@ -110,6 +118,7 @@ public sealed class ContractService
         contract.Notes = values.Notes;
         contract.UpdatedAt = DateTime.UtcNow;
         await _repository.SaveChangesAsync(cancellationToken);
+        await _alerts.GenerateForContractAsync(contract, cancellationToken);
         return ToDto(contract);
     }
 

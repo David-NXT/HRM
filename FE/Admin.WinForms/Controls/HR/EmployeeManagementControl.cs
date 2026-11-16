@@ -46,6 +46,7 @@ public sealed partial class EmployeeManagementControl : HrPageControl
         _deleteButton.Click += async (_, _) => await RunAsync(DeleteAsync);
         _detailsButton.Click += async (_, _) => await RunAsync(DetailsAsync);
         _salaryButton.Click += async (_, _) => await RunAsync(UpdateSalaryAsync);
+        _exportButton.Click += async (_, _) => await RunAsync(ExportAsync);
 
         _previous.Click += async (_, _) => await RunAsync(async () =>
         {
@@ -95,6 +96,30 @@ public sealed partial class EmployeeManagementControl : HrPageControl
         Status.Text = result.Total == 0
             ? "Không tìm thấy nhân viên phù hợp."
             : "Chọn một dòng để sửa, xem, khóa hoặc xóa hồ sơ.";
+    }
+
+    private async Task ExportAsync()
+    {
+        Ensure(_search.Text.Trim() == _keyword,
+            "Bạn đã đổi từ khóa. Hãy bấm Tìm kiếm trước để xuất đúng kết quả đang xem.");
+        using var save = new SaveFileDialog
+        {
+            Title = "Xuất toàn bộ danh sách nhân viên theo kết quả tìm kiếm",
+            Filter = "Excel Workbook (*.xlsx)|*.xlsx",
+            DefaultExt = "xlsx",
+            AddExtension = true,
+            OverwritePrompt = true,
+            FileName = $"DanhSachNhanVien_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx"
+        };
+        if (save.ShowDialog(this) != DialogResult.OK)
+        {
+            Status.Text = "Đã hủy xuất Excel.";
+            return;
+        }
+
+        var bytes = await Api.DownloadAsync($"employees/export?keyword={Uri.EscapeDataString(_keyword)}", Token);
+        await File.WriteAllBytesAsync(save.FileName, bytes, Token);
+        Status.Text = $"Đã xuất Excel toàn bộ kết quả tìm kiếm: {save.FileName}";
     }
 
     private async Task EditAsync(EmployeeRow? employee)
@@ -201,16 +226,7 @@ public sealed partial class EmployeeManagementControl : HrPageControl
     {
         var employee = await Api.GetAsync<EmployeeRow>($"employees/{Selected<EmployeeRow>(_grid).EmployeeId}", Token);
         Token.ThrowIfCancellationRequested();
-        using var form = new HrEditorForm(employee.DisplayName);
-        form.TextField("profile", "Thông tin hồ sơ", string.Join(Environment.NewLine,
-            $"GUID: {employee.EmployeeId}", $"Loại: {employee.EmploymentTypeLabel}",
-            employee.EmploymentType == "PART_TIME"
-                ? $"Đơn giá part-time: {employee.PartTimeHourlyRate.GetValueOrDefault():N2} VND/giờ"
-                : $"Lương cơ bản: {employee.BaseSalary.GetValueOrDefault():N2} VND/tháng",
-            $"Phòng ban: {employee.DepartmentName ?? "Chưa phân công"}", $"Chức vụ: {employee.PositionName ?? "Chưa phân công"}",
-            $"Trạng thái: {employee.Status}", $"Ngày sinh: {employee.DateOfBirth:dd/MM/yyyy}", $"Giới tính: {employee.Gender}",
-            $"Email: {employee.Email}", $"Điện thoại: {employee.Phone}", $"CCCD: {employee.CitizenId}", $"Địa chỉ: {employee.Address}"),
-            maxLength: 5000, multiline: true, readOnly: true).ReadOnlyView();
+        using var form = new EmployeeDetailsForm(employee);
         form.ShowDialog(this);
         Status.Text = "Đã xem hồ sơ.";
     }

@@ -1,5 +1,6 @@
 using HR.Application.DTOs.Contracts;
 using HR.Application.Interfaces.Repositories;
+using HR.Application.Interfaces.Services;
 using HR.Application.Services.Contracts;
 using HR.Domain.Constants;
 using HR.Domain.Entities;
@@ -13,12 +14,18 @@ public sealed class ResignedAssignmentTests
     [Fact]
     public async Task ResignedEmployeeCannotOpenNewWorkHistoryAfterOffboarding()
     {
-        var service = new ContractService(new ResignedEmployeeRepository());
+        var service = new ContractService(new ResignedEmployeeRepository(), new UnusedAlertGenerator());
         var error = await Assert.ThrowsAsync<HrException>(() => service.RecordAssignmentAsync(
             Id(1), new CreateWorkAssignmentRequest(Id(1), Id(1), new(2026, 11, 10), null), CancellationToken.None));
 
         Assert.Equal(409, error.StatusCode);
         Assert.Equal("EmployeeResigned", error.Code);
+    }
+
+    private sealed class UnusedAlertGenerator : IContractAlertGenerator
+    {
+        public Task GenerateForContractAsync(EmploymentContract contract, CancellationToken token) =>
+            throw new InvalidOperationException("Recording work history must not generate a contract alert.");
     }
 
     private sealed class ResignedEmployeeRepository : IEmploymentRepository
