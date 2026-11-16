@@ -6,6 +6,12 @@ namespace Admin.WinForms.Controls.HR;
 public sealed partial class ContractWorkControl
 {
     private IContainer components = null;
+    private TableLayoutPanel layout;
+    private FlowLayoutPanel Toolbar;
+    private Label Status;
+    private Panel Body;
+    private FlowLayoutPanel Footer;
+
     private ComboBox _employees;
     private TabControl _tabs;
     private TabPage _contractsPage;
@@ -29,9 +35,25 @@ public sealed partial class ContractWorkControl
     private DataGridViewTextBoxColumn _historyEndColumn;
     private DataGridViewTextBoxColumn _historyNotesColumn;
 
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing) components?.Dispose();
+        base.Dispose(disposing);
+    }
+
     private void InitializeComponent()
     {
         components = new Container();
+        layout = new TableLayoutPanel();
+        Toolbar = new FlowLayoutPanel();
+        Status = new Label();
+        Body = new Panel();
+        Footer = new FlowLayoutPanel();
+        layout.SuspendLayout();
+        Toolbar.SuspendLayout();
+        Body.SuspendLayout();
+        Footer.SuspendLayout();
+
         _employees = new ComboBox();
         _tabs = new TabControl();
         _contractsPage = new TabPage();
@@ -60,6 +82,44 @@ public sealed partial class ContractWorkControl
         _contractsPage.SuspendLayout();
         _historyPage.SuspendLayout();
         SuspendLayout();
+        layout.ColumnCount = 1;
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        layout.RowCount = 4;
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.Dock = DockStyle.Fill;
+        layout.Name = "layout";
+        layout.Padding = new Padding(16);
+
+        Toolbar.AutoSize = true;
+        Toolbar.Dock = DockStyle.Fill;
+        Toolbar.Name = "Toolbar";
+        Toolbar.WrapContents = true;
+
+        Status.AutoSize = true;
+        Status.Dock = DockStyle.Fill;
+        Status.ForeColor = Color.FromArgb(80, 96, 115);
+        Status.Margin = new Padding(3, 8, 3, 12);
+        Status.Name = "Status";
+
+        Body.Dock = DockStyle.Fill;
+        Body.Name = "Body";
+
+        Footer.AutoSize = true;
+        Footer.Dock = DockStyle.Fill;
+        Footer.Name = "Footer";
+
+        layout.Controls.Add(Toolbar, 0, 0);
+        layout.Controls.Add(Status, 0, 1);
+        layout.Controls.Add(Body, 0, 2);
+        layout.Controls.Add(Footer, 0, 3);
+        Controls.Add(layout);
+
+        BackColor = Color.FromArgb(244, 246, 249);
+        Font = new Font("Segoe UI", 9F);
+
 
         _employees.DropDownStyle = ComboBoxStyle.DropDownList;
         _employees.Name = "_employees";
@@ -195,6 +255,13 @@ public sealed partial class ContractWorkControl
         _contractsPage.ResumeLayout(false);
         _historyPage.ResumeLayout(false);
         _tabs.ResumeLayout(false);
+        layout.ResumeLayout(false);
+        layout.PerformLayout();
+        Toolbar.ResumeLayout(false);
+        Toolbar.PerformLayout();
+        Body.ResumeLayout(false);
+        Footer.ResumeLayout(false);
+        Footer.PerformLayout();
         ResumeLayout(false);
     }
 }

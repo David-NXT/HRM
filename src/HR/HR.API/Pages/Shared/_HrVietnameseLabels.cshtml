@@ -1,0 +1,82 @@
+<script>
+const hrVietnameseLabels = Object.freeze({
+    FULL_TIME: 'Toàn thời gian',
+    PART_TIME: 'Bán thời gian',
+    Male: 'Nam',
+    Female: 'Nữ',
+    Other: 'Khác',
+    ACTIVE: 'Đang hoạt động',
+    INACTIVE: 'Ngừng hoạt động',
+    LOCKED: 'Đã khóa',
+    RESIGNED: 'Đã nghỉ việc',
+    RENEWED: 'Đã gia hạn',
+    DRAFT: 'Bản nháp',
+    PENDING: 'Chờ duyệt',
+    NEED_INFO: 'Cần bổ sung thông tin',
+    APPROVED: 'Đã chấp thuận',
+    REJECTED: 'Đã từ chối',
+    CANCELLED: 'Đã hủy',
+    IN_PROGRESS: 'Đang xử lý',
+    COMPLETED: 'Đã hoàn tất',
+    NEW: 'Mới',
+    VIEWED: 'Đã xem',
+    STAFF: 'Nhân viên / Chuyên viên',
+    MANAGER: 'Quản lý',
+    DIRECTOR: 'Giám đốc',
+    EXECUTIVE: 'Ban điều hành / cấp cao hơn'
+});
+
+const hrVietnameseFieldLabels = Object.freeze({
+    employeeId: 'Mã định danh nhân viên (GUID)',
+    employeeCode: 'Mã nhân viên',
+    fullName: 'Họ tên',
+    dateOfBirth: 'Ngày sinh',
+    gender: 'Giới tính',
+    email: 'Email',
+    phone: 'Điện thoại',
+    citizenId: 'CCCD/CMND',
+    address: 'Địa chỉ',
+    status: 'Trạng thái',
+    createdAt: 'Thời điểm tạo',
+    updatedAt: 'Thời điểm cập nhật',
+    departmentId: 'Mã định danh phòng ban',
+    positionId: 'Mã định danh chức vụ',
+    departmentName: 'Phòng ban',
+    positionName: 'Chức vụ',
+    employmentType: 'Loại nhân viên',
+    baseSalary: 'Lương cơ bản (VND/tháng)',
+    partTimeSalary: 'Đơn giá bán thời gian (VND/giờ)'
+});
+
+const hrVietnameseErrorLabels = Object.freeze({
+    'Failed to fetch': 'Không kết nối được máy chủ HR. Vui lòng kiểm tra kết nối và thử lại.',
+    'NetworkError when attempting to fetch resource.': 'Không kết nối được máy chủ HR. Vui lòng kiểm tra kết nối và thử lại.',
+    'Load failed': 'Không tải được dữ liệu. Vui lòng kiểm tra kết nối và thử lại.',
+    'One or more validation errors occurred.': 'Thông tin nhập chưa hợp lệ. Vui lòng kiểm tra lại.',
+    'Bad Request': 'Thông tin yêu cầu chưa hợp lệ.',
+    'Unauthorized': 'Chưa xác định được người dùng.',
+    'Forbidden': 'Bạn không có quyền thực hiện thao tác này.',
+    'Not Found': 'Không tìm thấy dữ liệu được yêu cầu.',
+    'Conflict': 'Dữ liệu đã thay đổi hoặc thao tác không phù hợp với trạng thái hiện tại.',
+    'Internal Server Error': 'Máy chủ gặp lỗi khi xử lý yêu cầu.'
+});
+
+function hrLabel(value) {
+    return typeof value === 'string' && Object.hasOwn(hrVietnameseLabels, value)
+        ? hrVietnameseLabels[value] : value ?? '—';
+}
+
+function hrFieldLabel(key) {
+    return Object.hasOwn(hrVietnameseFieldLabels, key) ? hrVietnameseFieldLabels[key] : key;
+}
+
+function hrFieldValue(key, value) {
+    return ['gender', 'status', 'employmentType'].includes(key) ? hrLabel(value) : value ?? '—';
+}
+
+function hrErrorMessage(error) {
+    const message = typeof error === 'string' ? error : error?.message;
+    return typeof message === 'string' && Object.hasOwn(hrVietnameseErrorLabels, message)
+        ? hrVietnameseErrorLabels[message] : message || 'Có lỗi xảy ra. Vui lòng thử lại.';
+}
+</script>

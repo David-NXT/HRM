@@ -5,6 +5,8 @@ namespace Admin.WinForms.Controls.HR;
 
 public sealed partial class OffboardingControl : HrPageControl
 {
+    protected override Label PageStatus => Status;
+
     public OffboardingControl()
     {
         InitializeComponent();

@@ -5,6 +5,8 @@ namespace Admin.WinForms.Controls.HR;
 
 public sealed partial class EmployeeManagementControl : HrPageControl
 {
+    protected override Label PageStatus => Status;
+
     private int _page = 1;
     private string _keyword = "";
 
@@ -41,6 +43,7 @@ public sealed partial class EmployeeManagementControl : HrPageControl
         });
 
         _lockButton.Click += async (_, _) => await RunAsync(LockAsync);
+        _deleteButton.Click += async (_, _) => await RunAsync(DeleteAsync);
         _detailsButton.Click += async (_, _) => await RunAsync(DetailsAsync);
         _salaryButton.Click += async (_, _) => await RunAsync(UpdateSalaryAsync);
 
@@ -91,7 +94,7 @@ public sealed partial class EmployeeManagementControl : HrPageControl
         _summary.Text = $"Trang {_page}/{Math.Max(1, (int)Math.Ceiling(result.Total / 20d))} · Tổng {result.Total} nhân viên";
         Status.Text = result.Total == 0
             ? "Không tìm thấy nhân viên phù hợp."
-            : "Chọn một dòng để sửa, xem hoặc khóa hồ sơ.";
+            : "Chọn một dòng để sửa, xem, khóa hoặc xóa hồ sơ.";
     }
 
     private async Task EditAsync(EmployeeRow? employee)
@@ -110,7 +113,7 @@ public sealed partial class EmployeeManagementControl : HrPageControl
         if (creating)
         {
             form.AmountField("baseSalary", "Lương cơ bản full-time (VND/tháng)")
-                .AmountField("partTimeSalary", "Đơn giá part-time (VND/giờ)");
+                .AmountField("partTimeSalary", "Lương part-time (VND/giờ)");
             var departments = await Api.GetAsync<List<DepartmentRow>>("departments", Token);
             var positions = await Api.GetAsync<List<PositionRow>>("positions", Token);
             Token.ThrowIfCancellationRequested();
@@ -160,6 +163,24 @@ public sealed partial class EmployeeManagementControl : HrPageControl
 
         await Api.SendAsync<EmployeeRow>(HttpMethod.Post, $"employees/{employee.EmployeeId}/lock", null, Token);
         await ReloadAsync();
+    }
+
+    private async Task DeleteAsync()
+    {
+        var employee = Selected<EmployeeRow>(_grid);
+        if (MessageBox.Show(this,
+            $"Xóa vĩnh viễn nhân viên {employee.EmployeeCode} — {employee.FullName}?\n\n" +
+            "Thao tác này không thể hoàn tác. Chỉ xóa được hồ sơ chưa có dữ liệu liên quan.",
+            "Xác nhận xóa nhân viên", MessageBoxButtons.YesNo, MessageBoxIcon.Warning,
+            MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+        {
+            Status.Text = "Đã hủy thao tác xóa.";
+            return;
+        }
+
+        await Api.DeleteEmployeeAsync(employee.EmployeeId, Token);
+        await ReloadAsync();
+        Status.Text = $"Đã xóa nhân viên {employee.EmployeeCode} — {employee.FullName}.";
     }
 
     private async Task UpdateSalaryAsync()

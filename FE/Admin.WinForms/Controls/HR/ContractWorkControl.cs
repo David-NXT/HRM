@@ -5,6 +5,8 @@ namespace Admin.WinForms.Controls.HR;
 
 public sealed partial class ContractWorkControl : HrPageControl
 {
+    protected override Label PageStatus => Status;
+
     private List<ContractRow> _contractRows = [];
 
     public ContractWorkControl()

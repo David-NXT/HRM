@@ -5,6 +5,8 @@ namespace Admin.WinForms.Controls.HR;
 
 public sealed partial class ContractAlertsControl : HrPageControl
 {
+    protected override Label PageStatus => Status;
+
     private int _page = 1;
 
     public ContractAlertsControl()

@@ -35,9 +35,9 @@
                 <div class="fields">
                     <label>Mã nhân viên<input name="employeeCode" maxlength="20" required></label>
                     <label>Họ tên<input name="fullName" maxlength="150" required></label>
-                    <label>Loại nhân viên<select name="employmentType"><option value="FULL_TIME">Full-time</option><option value="PART_TIME">Part-time</option></select></label>
-                    <label>Lương cơ bản full-time (VND/tháng)<input name="baseSalary" type="number" min="0" max="9999999999999999.99" step="0.01" value="0" required></label>
-                    <label>Đơn giá part-time (VND/giờ)<input name="partTimeSalary" type="number" min="0" max="9999999999999999.99" step="0.01" value="0" required></label>
+                    <label>Loại nhân viên<select name="employmentType"><option value="FULL_TIME">Toàn thời gian</option><option value="PART_TIME">Bán thời gian</option></select></label>
+                    <label>Lương cơ bản toàn thời gian (VND/tháng)<input name="baseSalary" type="number" min="0" max="9999999999999999.99" step="0.01" value="0" required></label>
+                    <label>Đơn giá bán thời gian (VND/giờ)<input name="partTimeSalary" type="number" min="0" max="9999999999999999.99" step="0.01" value="0" required></label>
                     <label>Ngày sinh<input name="dateOfBirth" type="date" min="1900-01-01" required></label>
                     <label>Giới tính<select name="gender"><option value="Male">Nam</option><option value="Female">Nữ</option><option value="Other">Khác</option></select></label>
                     <label>Email<input name="email" type="email" maxlength="200" required></label>
@@ -61,7 +61,7 @@
                 <label>Ngày làm việc cuối cùng<input name="lastWorkingDate" type="date" required></label>
                 <label>Ghi chú<textarea name="notes" maxlength="1000"></textarea></label>
                 <div>
-                    <h3>Checklist bàn giao</h3>
+                    <h3>Danh sách bàn giao</h3>
                     <p class="help">Nhập từng hạng mục và chọn những mục bắt buộc phải hoàn thành.</p>
                     <div id="checklistInputs"></div>
                     <button id="addChecklistItem" type="button" class="secondary">Thêm hạng mục</button>
@@ -88,11 +88,12 @@
             </form>
             <h3>Tiến độ bàn giao</h3>
             <div class="table"><table><thead><tr><th>Hoàn thành</th><th>Hạng mục</th><th>Ghi chú</th><th>Thao tác</th></tr></thead><tbody id="checklistRows"></tbody></table></div>
-            <p class="help">Xác nhận hoàn tất sẽ chuyển hồ sơ nhân viên sang RESIGNED và đóng quá trình công tác tại ngày làm việc cuối cùng.</p>
+            <p class="help">Xác nhận hoàn tất sẽ chuyển hồ sơ nhân viên sang đã nghỉ việc và đóng quá trình công tác tại ngày làm việc cuối cùng.</p>
             <button id="completeRecord" type="button" class="danger">Xác nhận hoàn tất nghỉ việc</button>
         </div>
     </section>
 </main>
+@await Html.PartialAsync("/Pages/Shared/_HrVietnameseLabels.cshtml")
 <script>
 const onboardingForm = document.querySelector('#onboardingForm');
 const offboardingForm = document.querySelector('#offboardingForm');
@@ -110,7 +111,7 @@ async function request(url, options = {}) {
     const response = await fetch(url, {...options, headers: {'Content-Type': 'application/json', 'X-Role': 'HR'}});
     const body = await response.json().catch(() => null);
     if (!response.ok) {
-        const message = body?.message || (body?.errors ? Object.values(body.errors).flat().join(' ') : body?.title) || response.statusText;
+        const message = body?.message || (body?.errors ? Object.values(body.errors).flat().join(' ') : body?.title) || `Yêu cầu không thành công (HTTP ${response.status}).`;
         throw Error(message);
     }
     return body;
@@ -124,7 +125,7 @@ async function perform(action) {
     recordSelect.disabled = true;
     document.querySelector('#recordStatus').disabled = true;
     try { await action(); }
-    catch (error) { statusBox.textContent = error.message; statusBox.classList.add('error'); }
+    catch (error) { statusBox.textContent = hrErrorMessage(error); statusBox.classList.add('error'); }
     finally {
         busy = false;
         document.querySelectorAll('button').forEach(button => button.disabled = false);
@@ -146,7 +147,7 @@ function updatePositionOptions() {
     const select = onboardingForm.elements.positionId;
     const partTime = onboardingForm.elements.employmentType.value === 'PART_TIME';
     const eligible = positions.filter(item => !partTime || item.seniorityLevel === 'STAFF');
-    select.replaceChildren(new Option(eligible.length ? 'Chọn chức vụ' : 'Chưa có chức vụ STAFF đã phân loại', ''));
+    select.replaceChildren(new Option(eligible.length ? 'Chọn chức vụ' : 'Chưa có chức vụ cấp nhân viên được phân loại', ''));
     for (const item of eligible) select.add(new Option(`${item.code} — ${item.name}`, item.positionId));
 }
 async function loadEmployees() {
@@ -155,7 +156,7 @@ async function loadEmployees() {
     const select = offboardingForm.elements.employeeId;
     select.replaceChildren(new Option('Chọn nhân viên', ''));
     for (const employee of data.items.filter(item => item.status !== 'RESIGNED')) {
-        select.add(new Option(`${employee.employeeCode} — ${employee.fullName} (${employee.status})`, employee.employeeId));
+        select.add(new Option(`${employee.employeeCode} — ${employee.fullName} (${hrLabel(employee.status)})`, employee.employeeId));
     }
 }
 function addChecklistInput() {
@@ -180,7 +181,7 @@ onboardingForm.onsubmit = event => {
     perform(async () => {
         const result = await request('/onboarding', {method: 'POST', body: JSON.stringify(payload)});
         const summary = document.querySelector('#onboardingResult'); summary.hidden = false;
-        summary.textContent = `Đã tiếp nhận ${result.employeeCode} · ${result.employmentType} · ${result.status}\nNgày bắt đầu: ${result.startDate}\nEmployee GUID: ${result.employeeId}`;
+        summary.textContent = `Đã tiếp nhận ${result.employeeCode} · ${hrLabel(result.employmentType)} · ${hrLabel(result.status)}\nNgày bắt đầu: ${result.startDate}\nMã định danh nhân viên (GUID): ${result.employeeId}`;
         onboardingForm.reset(); onboardingForm.elements.startDate.value = today;
         await loadEmployees(); statusBox.textContent = 'Đã tạo hồ sơ nhân viên và công tác đầu tiên.';
     });
@@ -193,14 +194,14 @@ offboardingForm.onsubmit = event => {
     perform(async () => {
         const record = await request('/offboarding', {method: 'POST', body: JSON.stringify({employeeId: data.employeeId, lastWorkingDate: data.lastWorkingDate, notes: nullable(data.notes), checklist})});
         document.querySelector('#recordStatus').value = 'IN_PROGRESS';
-        await loadRecords(record.offboardingRecordId); statusBox.textContent = 'Đã mở hồ sơ nghỉ việc. Hoàn thành checklist trước khi xác nhận.';
+        await loadRecords(record.offboardingRecordId); statusBox.textContent = 'Đã mở hồ sơ nghỉ việc. Hoàn thành các mục bàn giao trước khi xác nhận.';
     });
 };
 async function loadRecords(preferredId = recordSelect.value) {
     const status = document.querySelector('#recordStatus').value;
     const records = await request('/offboarding' + (status ? '?status=' + encodeURIComponent(status) : ''));
     recordSelect.replaceChildren(new Option('Chọn hồ sơ', ''));
-    for (const record of records) recordSelect.add(new Option(`#${record.offboardingRecordId} · ${record.employeeCode} — ${record.employeeName} · ${record.status}`, record.offboardingRecordId));
+    for (const record of records) recordSelect.add(new Option(`#${record.offboardingRecordId} · ${record.employeeCode} — ${record.employeeName} · ${hrLabel(record.status)}`, record.offboardingRecordId));
     recordSelect.value = preferredId ? String(preferredId) : '';
     if (recordSelect.value) renderRecord(await request('/offboarding/' + recordSelect.value));
     else { currentRecord = null; document.querySelector('#recordDetails').hidden = true; }
@@ -214,7 +215,7 @@ function applyRecordState() {
 function renderRecord(record) {
     currentRecord = record;
     document.querySelector('#recordDetails').hidden = false;
-    document.querySelector('#recordSummary').textContent = `${record.employeeCode} — ${record.employeeName}\nQuy trình: ${record.status} · Nhân viên: ${record.employeeStatus}${record.completedAt ? '\nHoàn tất: ' + new Date(record.completedAt).toLocaleString() : ''}`;
+    document.querySelector('#recordSummary').textContent = `${record.employeeCode} — ${record.employeeName}\nQuy trình: ${hrLabel(record.status)} · Nhân viên: ${hrLabel(record.employeeStatus)}${record.completedAt ? '\nHoàn tất: ' + new Date(record.completedAt).toLocaleString('vi-VN') : ''}`;
     recordForm.elements.lastWorkingDate.value = record.lastWorkingDate;
     recordForm.elements.notes.value = record.notes || '';
     const body = document.querySelector('#checklistRows'); body.replaceChildren();
