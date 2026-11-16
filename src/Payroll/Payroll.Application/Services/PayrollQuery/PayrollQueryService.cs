@@ -28,9 +28,11 @@ public class PayrollQueryService
                 EmployeeID = p.EmployeeID,
                 PayrollPeriodID = p.PayrollPeriodID,
 
+                EmploymentType = p.EmploymentType,
                 BaseSalary = p.BaseSalary,
                 WorkingDays = p.WorkingDays,
                 StandardWorkingDay = p.StandardWorkingDay,
+                TotalWorkingHours = p.TotalWorkingHours,
 
                 TotalAllowance = p.TotalAllowance,
                 TotalProjectAllowance = p.TotalProjectAllowance,
