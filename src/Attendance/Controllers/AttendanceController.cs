@@ -31,6 +31,21 @@ public class AttendanceController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("work-hours")]
+    public async Task<ActionResult<AttendanceWorkHoursDto>> GetWorkHours(
+        [FromQuery] Guid employeeId,
+        [FromQuery] DateOnly? date,
+        CancellationToken cancellationToken)
+    {
+        if (employeeId == Guid.Empty || !date.HasValue)
+        {
+            return BadRequest("A valid employeeId and date are required.");
+        }
+
+        var result = await _attendanceService.GetWorkHoursAsync(employeeId, date.Value, cancellationToken);
+        return result is null ? NotFound() : Ok(result);
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<AttendanceRecordDto>> GetById(Guid id, CancellationToken cancellationToken)
     {

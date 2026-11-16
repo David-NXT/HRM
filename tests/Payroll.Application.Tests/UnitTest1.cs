@@ -30,6 +30,44 @@ public class PayrollCalculatorTests
     }
 
     [Fact]
+    public void Calculate_ProjectAllowance_IsIncludedInGrossAndTotalAllowance()
+    {
+        var result = _calculator.Calculate(
+            "FULL_TIME",
+            10_000_000m,
+            null,
+            22m,
+            22m,
+            176m,
+            0m,
+            1.5m,
+            500_000m,
+            50_000m,
+            totalProjectAllowance: 1_250_000m);
+
+        Assert.Equal(1_750_000m, result.TotalAllowance);
+        Assert.Equal(11_750_000m, result.GrossSalary);
+        Assert.Equal(11_700_000m, result.NetSalary);
+    }
+
+    [Fact]
+    public void Calculate_NegativeProjectAllowance_ThrowsArgumentException()
+    {
+        Assert.Throws<ArgumentException>(() => _calculator.Calculate(
+            "FULL_TIME",
+            10_000_000m,
+            null,
+            22m,
+            22m,
+            176m,
+            0m,
+            1.5m,
+            0m,
+            0m,
+            totalProjectAllowance: -1m));
+    }
+
+    [Fact]
     public void Calculate_FullTimeHalfWorkingDays_ReturnsHalfSalary()
     {
         var result = _calculator.Calculate(

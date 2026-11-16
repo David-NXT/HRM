@@ -1,4 +1,5 @@
 using System.Net;
+using System.Globalization;
 using System.Text.Json;
 using Project.DTOs;
 using Project.Services;
@@ -8,196 +9,286 @@ namespace Project
     public partial class Form1 : Form
     {
         private readonly ProjectApiService _projectApi;
+        private readonly AttendanceApiService _attendanceApi;
+        private List<EmployeeDirectoryDto> _employees = [];
         private List<ProjectDto> _projects = [];
+        private List<ProjectMemberDto> _projectMembers = [];
+        private List<TaskDto> _tasks = [];
+        private bool _suspendSelectionEvents;
 
-        public Form1() : this(Program.ProjectApi)
+        public Form1() : this(Program.ProjectApi, Program.AttendanceApi)
         {
         }
 
-        internal Form1(ProjectApiService projectApi)
+        internal Form1(ProjectApiService projectApi, AttendanceApiService attendanceApi)
         {
             _projectApi = projectApi;
+            _attendanceApi = attendanceApi;
             InitializeComponent();
 
-            txtSearch.TextChanged += (_, _) => ApplyFilters();
-            cboStatus.SelectedIndexChanged += (_, _) => ApplyFilters();
-            Shown += async (_, _) => await LoadProjectsAsync();
+            cmbEmployee.SelectedIndexChanged += async (_, _) =>
+            {
+                if (_suspendSelectionEvents)
+                {
+                    return;
+                }
+
+                UpdateProjectOptions();
+                await LoadTimesheetsAsync();
+            };
+            cmbProject.SelectedIndexChanged += (_, _) => UpdateTaskOptions();
+            dtpWorkDate.ValueChanged += (_, _) => ResetAttendanceStatus();
+            txtHours.TextChanged += (_, _) => ResetAttendanceStatus();
+            btnSubmit.Click += async (_, _) => await SubmitTimesheetAsync();
+            btnRefresh.Click += async (_, _) => await LoadInitialDataAsync();
+            Shown += async (_, _) => await LoadInitialDataAsync();
         }
 
-        private async Task<bool> LoadProjectsAsync()
+        private async Task LoadInitialDataAsync()
         {
-            SetBusy(true);
+            SetBusy(true, keepHoursEditable: true);
+            SetStatus("Đang tải dữ liệu nhân viên, dự án và công việc...", Color.FromArgb(70, 80, 95));
+
             try
             {
+                _employees = await _projectApi.GetEmployeesAsync();
                 _projects = await _projectApi.GetAllAsync();
-                ApplyFilters();
-                return true;
+                _projectMembers = await _projectApi.GetProjectMembersAsync();
+                _tasks = await _projectApi.GetTasksAsync();
+
+                _suspendSelectionEvents = true;
+                cmbEmployee.DataSource = _employees;
+                cmbEmployee.DisplayMember = nameof(EmployeeDirectoryDto.DisplayName);
+                cmbProject.DataSource = null;
+                cmbTask.DataSource = null;
+                _suspendSelectionEvents = false;
+
+                if (_employees.Count == 0)
+                {
+                    SetStatus("Không tìm thấy nhân viên đang hoạt động.", Color.Firebrick);
+                    ClearTimesheets();
+                    return;
+                }
+
+                UpdateProjectOptions();
+                await LoadTimesheetsAsync();
+                SetStatus("Chọn ngày, dự án, công việc và số giờ để khai báo.", Color.FromArgb(70, 80, 95));
             }
             catch (HttpRequestException ex)
             {
-                ShowRequestError(ex);
-                return false;
+                _suspendSelectionEvents = false;
+                ShowServiceError(ex);
             }
             catch (JsonException)
             {
-                ShowErrorNotification("The project information could not be read. Please refresh and try again.");
-                return false;
+                _suspendSelectionEvents = false;
+                ShowError("Dữ liệu từ máy chủ không đúng định dạng. Vui lòng tải lại.");
             }
-            catch (InvalidDataException)
+            catch (InvalidDataException ex)
             {
-                ShowErrorNotification("No project information was received. Please refresh and try again.");
-                return false;
+                _suspendSelectionEvents = false;
+                ShowError(ex.Message);
             }
             catch (TaskCanceledException)
             {
-                ShowErrorNotification("The request took too long. Please try again.");
-                return false;
+                _suspendSelectionEvents = false;
+                ShowError("Yêu cầu tải dữ liệu quá thời gian. Vui lòng thử lại.");
             }
             finally
             {
+                _suspendSelectionEvents = false;
                 SetBusy(false);
             }
         }
 
-        private void ApplyFilters()
+        private void UpdateProjectOptions()
         {
-            var search = txtSearch.Text.Trim();
-            var status = cboStatus.SelectedItem?.ToString();
+            var employee = cmbEmployee.SelectedItem as EmployeeDirectoryDto;
+            var memberProjects = employee is null
+                ? []
+                : _projectMembers
+                    .Where(member => member.EmployeeId == employee.EmployeeId
+                                     && string.Equals(member.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                    .Select(member => member.ProjectId)
+                    .ToHashSet();
+            var availableProjects = _projects
+                .Where(project => memberProjects.Contains(project.ProjectId))
+                .ToList();
 
-            lvProjects.BeginUpdate();
-            lvProjects.Items.Clear();
+            _suspendSelectionEvents = true;
+            cmbProject.DataSource = null;
+            cmbProject.DisplayMember = nameof(ProjectDto.ProjectName);
+            cmbProject.DataSource = availableProjects;
+            _suspendSelectionEvents = false;
 
-            foreach (var project in _projects.Where(project =>
-                         (string.IsNullOrEmpty(search)
-                          || project.ProjectName.Contains(search, StringComparison.OrdinalIgnoreCase)
-                          || (project.Description?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false)
-                          || project.ProjectId.ToString().Contains(search, StringComparison.OrdinalIgnoreCase))
-                         && (string.IsNullOrEmpty(status)
-                             || status == "All"
-                             || string.Equals(project.Status, status, StringComparison.OrdinalIgnoreCase))))
+            UpdateTaskOptions();
+
+            if (employee is not null && availableProjects.Count == 0)
             {
-                var item = new ListViewItem(project.ProjectId.ToString("N")[..8]);
-                item.SubItems.Add(project.ProjectName);
-                item.SubItems.Add(project.StartDate.ToString("MM/dd/yyyy"));
-                item.SubItems.Add(project.EndDate?.ToString("MM/dd/yyyy") ?? "Not set");
-                item.SubItems.Add(project.Status);
-                item.SubItems.Add(project.Budget.ToString("N0"));
-                item.SubItems.Add(project.Description ?? string.Empty);
-                item.Tag = project;
-                lvProjects.Items.Add(item);
+                SetStatus("Nhân viên chưa được phân vào dự án đang hoạt động.", Color.FromArgb(180, 110, 0));
             }
-
-            lvProjects.EndUpdate();
-            lblTotal.Text = $"Showing: {lvProjects.Items.Count} / {_projects.Count} projects";
-            UpdateSelectionButtons();
         }
 
-        private void SetBusy(bool isBusy)
+        private void UpdateTaskOptions()
         {
-            btnRefresh.Enabled = !isBusy;
-            btnAdd.Enabled = !isBusy;
-            btnEdit.Enabled = !isBusy && lvProjects.SelectedItems.Count > 0;
-            btnDelete.Enabled = !isBusy && lvProjects.SelectedItems.Count > 0;
-            UseWaitCursor = isBusy;
+            var project = cmbProject.SelectedItem as ProjectDto;
+            var availableTasks = project is null
+                ? []
+                : _tasks.Where(task => task.ProjectId == project.ProjectId).ToList();
+
+            _suspendSelectionEvents = true;
+            cmbTask.DataSource = null;
+            cmbTask.DisplayMember = nameof(TaskDto.TaskName);
+            cmbTask.DataSource = availableTasks;
+            _suspendSelectionEvents = false;
         }
 
-        private void UpdateSelectionButtons()
+        private async Task LoadTimesheetsAsync()
         {
-            var hasSelection = lvProjects.SelectedItems.Count > 0;
-            btnEdit.Enabled = hasSelection;
-            btnDelete.Enabled = hasSelection;
-        }
-
-        private static void ShowRequestError(HttpRequestException ex)
-        {
-            var message = ex.StatusCode switch
+            var employee = cmbEmployee.SelectedItem as EmployeeDirectoryDto;
+            if (employee is null)
             {
-                HttpStatusCode.BadRequest => "Some project details are invalid. Please review them and try again.",
-                HttpStatusCode.Unauthorized => "Your session has expired. Please sign in again.",
-                HttpStatusCode.Forbidden => "You do not have permission to perform this action.",
-                HttpStatusCode.NotFound => "The selected project could not be found. Refresh the list and try again.",
-                HttpStatusCode.Conflict => "The project has changed. Refresh the list and try again.",
-                null => "Unable to connect right now. Please check your connection and try again.",
-                _ => "We couldn't complete your request."
-            };
-
-            ShowErrorNotification(message);
-        }
-
-        private static void ShowErrorNotification(string message)
-        {
-            MessageBox.Show(message, "Notification", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-        }
-
-        private ProjectDto? GetSelectedProject()
-        {
-            return lvProjects.SelectedItems.Count > 0
-                ? lvProjects.SelectedItems[0].Tag as ProjectDto
-                : null;
-        }
-
-        private async void btnRefresh_Click(object? sender, EventArgs e)
-        {
-            await LoadProjectsAsync();
-        }
-
-        private async void btnAdd_Click(object? sender, EventArgs e)
-        {
-            using var editor = new ProjectEditorForm();
-            if (editor.ShowDialog(this) != DialogResult.OK || editor.ProjectInput is null)
-            {
+                ClearTimesheets();
                 return;
             }
 
-            await SaveProjectAsync(() => _projectApi.CreateAsync(editor.ProjectInput), "Project created successfully.");
-        }
-
-        private async void btnEdit_Click(object? sender, EventArgs e)
-        {
-            var project = GetSelectedProject();
-            if (project is null)
-            {
-                return;
-            }
-
-            using var editor = new ProjectEditorForm(project);
-            if (editor.ShowDialog(this) != DialogResult.OK || editor.ProjectInput is null)
-            {
-                return;
-            }
-
-            await SaveProjectAsync(
-                () => _projectApi.UpdateAsync(project.ProjectId, editor.ProjectInput),
-                "Project updated successfully.");
-        }
-
-        private async Task SaveProjectAsync(Func<Task> save, string successMessage)
-        {
-            SetBusy(true);
             try
             {
-                await save();
-                var refreshed = await LoadProjectsAsync();
-                var message = refreshed
-                    ? successMessage
-                    : $"{successMessage}\n\nTry refreshing the project list.";
-                MessageBox.Show(message, "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                var timesheets = await _projectApi.GetTimesheetsAsync(employee.EmployeeId);
+                lvTimesheets.BeginUpdate();
+                lvTimesheets.Items.Clear();
+
+                foreach (var timesheet in timesheets.OrderByDescending(item => item.WorkDate))
+                {
+                    var row = new ListViewItem(timesheet.WorkDate.ToString("dd/MM/yyyy"));
+                    row.SubItems.Add(timesheet.ProjectName);
+                    row.SubItems.Add(timesheet.TaskName);
+                    row.SubItems.Add(timesheet.HoursWorked.ToString("0.##"));
+                    row.SubItems.Add(GetStatusLabel(timesheet.Status));
+                    row.SubItems.Add(timesheet.Description ?? string.Empty);
+                    row.SubItems.Add(timesheet.RejectReason ?? string.Empty);
+                    lvTimesheets.Items.Add(row);
+                }
+
+                lvTimesheets.EndUpdate();
+                lblSummary.Text = $"Tổng số khai báo: {timesheets.Count}";
             }
             catch (HttpRequestException ex)
             {
-                ShowRequestError(ex);
+                ShowServiceError(ex);
             }
             catch (JsonException)
             {
-                ShowErrorNotification("The project information could not be read. Please try again.");
+                ShowError("Không đọc được danh sách timesheet. Vui lòng tải lại.");
             }
-            catch (InvalidDataException)
+            catch (InvalidDataException ex)
             {
-                ShowErrorNotification("No project information was received. Please refresh and try again.");
+                ShowError(ex.Message);
             }
             catch (TaskCanceledException)
             {
-                ShowErrorNotification("The request took too long. Please try again.");
+                ShowError("Yêu cầu tải timesheet quá thời gian. Vui lòng thử lại.");
+            }
+        }
+
+        private async Task SubmitTimesheetAsync()
+        {
+            var employee = cmbEmployee.SelectedItem as EmployeeDirectoryDto;
+            var project = cmbProject.SelectedItem as ProjectDto;
+            var task = cmbTask.SelectedItem as TaskDto;
+            if (employee is null || project is null || task is null)
+            {
+                ShowError("Vui lòng chọn nhân viên, dự án và công việc hợp lệ.");
+                return;
+            }
+
+            var member = _projectMembers.FirstOrDefault(item =>
+                item.EmployeeId == employee.EmployeeId
+                && item.ProjectId == project.ProjectId
+                && string.Equals(item.Status, "Active", StringComparison.OrdinalIgnoreCase));
+            if (member is null)
+            {
+                ShowError("Nhân viên không có phân công hợp lệ trong dự án đã chọn.");
+                return;
+            }
+
+            if (!TryParseHours(txtHours.Text, out var hoursWorked))
+            {
+                ShowError("Số giờ phải là số lớn hơn 0 và không vượt quá 24. Có thể dùng dấu chấm hoặc dấu phẩy thập phân.");
+                txtHours.Focus();
+                txtHours.SelectAll();
+                return;
+            }
+
+            var workDate = DateOnly.FromDateTime(dtpWorkDate.Value);
+
+            SetBusy(true);
+            lblAttendanceHours.Text = "Đang kiểm tra...";
+            SetStatus("Đang đối chiếu dữ liệu chấm công...", Color.FromArgb(70, 80, 95));
+            try
+            {
+                var attendance = await _attendanceApi.GetWorkHoursAsync(employee.EmployeeId, workDate);
+                if (attendance is null || attendance.RecordCount == 0)
+                {
+                    lblAttendanceHours.Text = "Không có dữ liệu";
+                    SetStatus("Từ chối gửi: không tìm thấy dữ liệu chấm công ngày này.", Color.Firebrick);
+                    return;
+                }
+
+                if (attendance.EmployeeId != employee.EmployeeId || attendance.Date != workDate)
+                {
+                    throw new InvalidDataException("Dữ liệu chấm công trả về không khớp nhân viên hoặc ngày.");
+                }
+
+                lblAttendanceHours.Text = $"{attendance.TotalWorkHours:0.##} giờ";
+                if (hoursWorked != attendance.TotalWorkHours)
+                {
+                    SetStatus(
+                        $"Từ chối gửi: khai báo {hoursWorked:0.##} giờ nhưng attendance ghi nhận {attendance.TotalWorkHours:0.##} giờ.",
+                        Color.Firebrick);
+                    MessageBox.Show(
+                        $"Số giờ khai báo ({hoursWorked:0.##}) không khớp với attendance ({attendance.TotalWorkHours:0.##}).",
+                        "Không thể gửi timesheet",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    return;
+                }
+
+                await _projectApi.CreateTimesheetAsync(new CreateTimesheetDto
+                {
+                    ProjectMemberId = member.ProjectMemberId,
+                    TaskId = task.TaskId,
+                    WorkDate = DateTime.SpecifyKind(workDate.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc),
+                    HoursWorked = hoursWorked,
+                    Description = string.IsNullOrWhiteSpace(txtDescription.Text)
+                        ? null
+                        : txtDescription.Text.Trim()
+                });
+
+                SetStatus("Timesheet đã được gửi thành công sau khi khớp với attendance.", Color.DarkGreen);
+                MessageBox.Show(
+                    "Timesheet đã được gửi thành công.",
+                    "Thành công",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                txtDescription.Clear();
+                await LoadTimesheetsAsync();
+            }
+            catch (HttpRequestException ex)
+            {
+                ShowServiceError(ex);
+            }
+            catch (JsonException)
+            {
+                ShowError("Dữ liệu phản hồi không đúng định dạng. Vui lòng tải lại.");
+            }
+            catch (InvalidDataException ex)
+            {
+                ShowError(ex.Message);
+            }
+            catch (TaskCanceledException)
+            {
+                ShowError("Yêu cầu gửi timesheet quá thời gian. Vui lòng thử lại.");
             }
             finally
             {
@@ -205,194 +296,74 @@ namespace Project
             }
         }
 
-        private async void btnDelete_Click(object? sender, EventArgs e)
+        private void ResetAttendanceStatus()
         {
-            var project = GetSelectedProject();
-            if (project is null)
-            {
-                return;
-            }
-
-            var confirm = MessageBox.Show(
-                $"Are you sure you want to delete project \"{project.ProjectName}\"?",
-                "Confirm Delete",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Warning);
-
-            if (confirm != DialogResult.Yes)
-            {
-                return;
-            }
-
-            await SaveProjectAsync(
-                () => _projectApi.DeleteAsync(project.ProjectId),
-                "Project deleted successfully.");
+            lblAttendanceHours.Text = "Chưa kiểm tra";
         }
 
-        private void lvProjects_SelectedIndexChanged(object? sender, EventArgs e)
+        private static bool TryParseHours(string input, out decimal hours)
         {
-            UpdateSelectionButtons();
-        }
-    }
-
-    internal sealed class ProjectEditorForm : Form
-    {
-        private readonly TextBox _txtName = new();
-        private readonly TextBox _txtDescription = new();
-        private readonly DateTimePicker _dtpStart = new();
-        private readonly DateTimePicker _dtpEnd = new();
-        private readonly ComboBox _cboStatus = new();
-        private readonly NumericUpDown _numBudget = new();
-
-        public ProjectInputDto? ProjectInput { get; private set; }
-
-        public ProjectEditorForm(ProjectDto? project = null)
-        {
-            Text = project is null ? "Add Project" : "Edit Project";
-            StartPosition = FormStartPosition.CenterParent;
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            MaximizeBox = false;
-            MinimizeBox = false;
-            ShowInTaskbar = false;
-            ClientSize = new Size(520, 390);
-            Font = new Font("Segoe UI", 9F);
-            BackColor = Color.FromArgb(245, 247, 250);
-
-            var layout = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                Padding = new Padding(18),
-                ColumnCount = 2,
-                RowCount = 7
-            };
-            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 125));
-            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            for (var row = 0; row < 6; row++)
-            {
-                layout.RowStyles.Add(new RowStyle(SizeType.Absolute, row == 1 ? 76 : 42));
-            }
-            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-
-            _txtName.MaxLength = 200;
-            _txtDescription.Multiline = true;
-            _txtDescription.ScrollBars = ScrollBars.Vertical;
-            _dtpStart.Format = DateTimePickerFormat.Short;
-            _dtpEnd.Format = DateTimePickerFormat.Short;
-            _dtpEnd.ShowCheckBox = true;
-            _cboStatus.DropDownStyle = ComboBoxStyle.DropDown;
-            _cboStatus.Items.AddRange(new object[] { "Planning", "In Progress", "On Hold", "Completed", "Cancelled" });
-            _numBudget.DecimalPlaces = 2;
-            _numBudget.Maximum = decimal.MaxValue;
-            _numBudget.ThousandsSeparator = true;
-            _numBudget.Dock = DockStyle.Left;
-            _numBudget.Width = 220;
-
-            AddField(layout, "Project Name:", _txtName, 0);
-            AddField(layout, "Description:", _txtDescription, 1);
-            AddField(layout, "Start Date:", _dtpStart, 2);
-            AddField(layout, "End Date:", _dtpEnd, 3);
-            AddField(layout, "Status:", _cboStatus, 4);
-            AddField(layout, "Budget:", _numBudget, 5);
-
-            var buttons = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                FlowDirection = FlowDirection.RightToLeft,
-                WrapContents = false
-            };
-            var btnSave = new Button
-            {
-                Text = "Save",
-                Width = 90,
-                Height = 32,
-                BackColor = Color.FromArgb(25, 135, 84),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat
-            };
-            var btnCancel = new Button
-            {
-                Text = "Cancel",
-                Width = 90,
-                Height = 32,
-                DialogResult = DialogResult.Cancel
-            };
-            btnSave.Click += Save_Click;
-            buttons.Controls.Add(btnSave);
-            buttons.Controls.Add(btnCancel);
-            layout.Controls.Add(buttons, 0, 6);
-            layout.SetColumnSpan(buttons, 2);
-            Controls.Add(layout);
-
-            AcceptButton = btnSave;
-            CancelButton = btnCancel;
-
-            _dtpStart.Value = project?.StartDate ?? DateTime.Today;
-            _dtpEnd.Value = project?.EndDate ?? DateTime.Today;
-            _dtpEnd.Checked = project?.EndDate is not null;
-            _txtName.Text = project?.ProjectName ?? string.Empty;
-            _txtDescription.Text = project?.Description ?? string.Empty;
-            _cboStatus.Text = project?.Status ?? "Planning";
-            _numBudget.Value = Math.Clamp(project?.Budget ?? 0m, _numBudget.Minimum, _numBudget.Maximum);
+            var normalized = input.Trim().Replace(',', '.');
+            return decimal.TryParse(
+                       normalized,
+                       NumberStyles.AllowDecimalPoint,
+                       CultureInfo.InvariantCulture,
+                       out hours)
+                   && hours > 0
+                   && hours <= 24;
         }
 
-        private static void AddField(TableLayoutPanel layout, string labelText, Control control, int row)
+        private void ClearTimesheets()
         {
-            layout.Controls.Add(new Label
-            {
-                Text = labelText,
-                AutoSize = true,
-                Anchor = AnchorStyles.Left,
-                TextAlign = ContentAlignment.MiddleLeft
-            }, 0, row);
-            control.Dock = DockStyle.Fill;
-            layout.Controls.Add(control, 1, row);
+            lvTimesheets.Items.Clear();
+            lblSummary.Text = "Tổng số khai báo: 0";
         }
 
-        private void Save_Click(object? sender, EventArgs e)
+        private void SetBusy(bool busy, bool keepHoursEditable = false)
         {
-            var name = _txtName.Text.Trim();
-            var status = _cboStatus.Text.Trim();
-            var endDate = _dtpEnd.Checked ? _dtpEnd.Value.Date : (DateTime?)null;
+            cmbEmployee.Enabled = !busy;
+            cmbProject.Enabled = !busy;
+            cmbTask.Enabled = !busy;
+            dtpWorkDate.Enabled = !busy;
+            txtHours.Enabled = !busy || keepHoursEditable;
+            txtDescription.Enabled = !busy;
+            btnSubmit.Enabled = !busy;
+            btnRefresh.Enabled = !busy;
+            UseWaitCursor = busy;
+        }
 
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                ShowValidationError("Project name is required.");
-                _txtName.Focus();
-                return;
-            }
+        private void SetStatus(string message, Color color)
+        {
+            lblStatus.Text = message;
+            lblStatus.ForeColor = color;
+        }
 
-            if (string.IsNullOrWhiteSpace(status))
-            {
-                ShowValidationError("Status is required.");
-                _cboStatus.Focus();
-                return;
-            }
+        private static string GetStatusLabel(string status) => status switch
+        {
+            "Pending" => "Chờ duyệt",
+            "Approved" => "Đã duyệt",
+            "Rejected" => "Từ chối",
+            _ => status
+        };
 
-            if (endDate.HasValue && endDate.Value < _dtpStart.Value.Date)
+        private void ShowServiceError(HttpRequestException exception)
+        {
+            var message = exception.StatusCode switch
             {
-                ShowValidationError("End date cannot be earlier than the start date.");
-                _dtpEnd.Focus();
-                return;
-            }
-
-            ProjectInput = new ProjectInputDto
-            {
-                ProjectName = name,
-                Description = string.IsNullOrWhiteSpace(_txtDescription.Text) ? null : _txtDescription.Text.Trim(),
-                StartDate = DateTime.SpecifyKind(_dtpStart.Value.Date, DateTimeKind.Utc),
-                EndDate = endDate.HasValue
-                    ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc)
-                    : null,
-                Status = status,
-                Budget = _numBudget.Value
+                HttpStatusCode.BadRequest => $"Dữ liệu khai báo không hợp lệ.\n{exception.Message}",
+                HttpStatusCode.Conflict => $"Timesheet bị từ chối do không hợp lệ hoặc không khớp attendance.\n{exception.Message}",
+                HttpStatusCode.NotFound => $"Không tìm thấy dữ liệu cần thiết.\n{exception.Message}",
+                HttpStatusCode.ServiceUnavailable => "Dịch vụ attendance hoặc timesheet hiện không khả dụng. Timesheet chưa được gửi.",
+                null => "Không thể kết nối máy chủ. Vui lòng kiểm tra kết nối và thử lại.",
+                _ => $"Không thể hoàn tất yêu cầu.\n{exception.Message}"
             };
-            DialogResult = DialogResult.OK;
-            Close();
+            ShowError(message);
         }
 
-        private void ShowValidationError(string message)
+        private void ShowError(string message)
         {
-            MessageBox.Show(message, "Invalid Input", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            SetStatus(message, Color.Firebrick);
+            MessageBox.Show(message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
     }
 }

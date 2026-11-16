@@ -35,8 +35,7 @@ public class PayslipService
             return null;
 
         if (payroll.Status != "approved" && payroll.Status != "paid")
-            throw new InvalidOperationException(
-                "Payslip is only available for approved or paid payrolls.");
+            return null;
 
         if (payroll.ApprovedAt == null)
             throw new InvalidOperationException(
@@ -55,6 +54,7 @@ public class PayslipService
             StandardWorkingDay = payroll.StandardWorkingDay,
 
             TotalAllowance = payroll.TotalAllowance,
+            TotalProjectAllowance = payroll.TotalProjectAllowance,
             TotalPayCut = payroll.TotalPayCut,
             GrossSalary = payroll.GrossSalary,
             NetSalary = payroll.NetSalary,

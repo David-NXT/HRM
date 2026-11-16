@@ -61,8 +61,9 @@
             panel_Sidebar.Controls.Add(button_Contract_Work);
             panel_Sidebar.Controls.Add(button_Dashboard);
             panel_Sidebar.Location = new Point(0, -1);
+            panel_Sidebar.Margin = new Padding(2, 2, 2, 2);
             panel_Sidebar.Name = "panel_Sidebar";
-            panel_Sidebar.Size = new Size(300, 1041);
+            panel_Sidebar.Size = new Size(185, 651);
             panel_Sidebar.TabIndex = 0;
             // 
             // label_HRM
@@ -72,24 +73,27 @@
             label_HRM.FlatStyle = FlatStyle.Flat;
             label_HRM.Font = new Font("Segoe UI", 30F, FontStyle.Bold);
             label_HRM.ForeColor = Color.White;
-            label_HRM.Location = new Point(31, 21);
+            label_HRM.Location = new Point(19, 13);
+            label_HRM.Margin = new Padding(2, 0, 2, 0);
             label_HRM.Name = "label_HRM";
-            label_HRM.Size = new Size(235, 106);
+            label_HRM.Size = new Size(148, 67);
             label_HRM.TabIndex = 8;
             label_HRM.Text = "HRM";
             // 
             // flowLayoutPanel2
             // 
-            flowLayoutPanel2.Location = new Point(301, 2);
+            flowLayoutPanel2.Location = new Point(185, 1);
+            flowLayoutPanel2.Margin = new Padding(2, 2, 2, 2);
             flowLayoutPanel2.Name = "flowLayoutPanel2";
-            flowLayoutPanel2.Size = new Size(1266, 795);
+            flowLayoutPanel2.Size = new Size(779, 497);
             flowLayoutPanel2.TabIndex = 1;
             // 
             // flowLayoutPanel1
             // 
-            flowLayoutPanel1.Location = new Point(303, 5);
+            flowLayoutPanel1.Location = new Point(186, 3);
+            flowLayoutPanel1.Margin = new Padding(2, 2, 2, 2);
             flowLayoutPanel1.Name = "flowLayoutPanel1";
-            flowLayoutPanel1.Size = new Size(1265, 786);
+            flowLayoutPanel1.Size = new Size(778, 491);
             flowLayoutPanel1.TabIndex = 1;
             // 
             // button_Project
@@ -101,9 +105,10 @@
             button_Project.FlatStyle = FlatStyle.Flat;
             button_Project.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             button_Project.ForeColor = Color.White;
-            button_Project.Location = new Point(31, 458);
+            button_Project.Location = new Point(19, 286);
+            button_Project.Margin = new Padding(2, 2, 2, 2);
             button_Project.Name = "button_Project";
-            button_Project.Size = new Size(248, 46);
+            button_Project.Size = new Size(153, 29);
             button_Project.TabIndex = 6;
             button_Project.Text = "Project";
             button_Project.TextAlign = ContentAlignment.MiddleLeft;
@@ -119,9 +124,10 @@
             button_Payroll.FlatStyle = FlatStyle.Flat;
             button_Payroll.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             button_Payroll.ForeColor = Color.White;
-            button_Payroll.Location = new Point(31, 406);
+            button_Payroll.Location = new Point(19, 254);
+            button_Payroll.Margin = new Padding(2, 2, 2, 2);
             button_Payroll.Name = "button_Payroll";
-            button_Payroll.Size = new Size(248, 46);
+            button_Payroll.Size = new Size(153, 29);
             button_Payroll.TabIndex = 5;
             button_Payroll.Text = "Payroll";
             button_Payroll.TextAlign = ContentAlignment.MiddleLeft;
@@ -137,9 +143,10 @@
             button_Attendance.FlatStyle = FlatStyle.Flat;
             button_Attendance.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             button_Attendance.ForeColor = Color.White;
-            button_Attendance.Location = new Point(31, 354);
+            button_Attendance.Location = new Point(19, 221);
+            button_Attendance.Margin = new Padding(2, 2, 2, 2);
             button_Attendance.Name = "button_Attendance";
-            button_Attendance.Size = new Size(248, 46);
+            button_Attendance.Size = new Size(153, 29);
             button_Attendance.TabIndex = 4;
             button_Attendance.Text = "Attendance";
             button_Attendance.TextAlign = ContentAlignment.MiddleLeft;
@@ -155,9 +162,10 @@
             button_Organization.FlatStyle = FlatStyle.Flat;
             button_Organization.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             button_Organization.ForeColor = Color.White;
-            button_Organization.Location = new Point(31, 302);
+            button_Organization.Location = new Point(19, 189);
+            button_Organization.Margin = new Padding(2, 2, 2, 2);
             button_Organization.Name = "button_Organization";
-            button_Organization.Size = new Size(248, 46);
+            button_Organization.Size = new Size(153, 29);
             button_Organization.TabIndex = 3;
             button_Organization.Text = "Organization";
             button_Organization.TextAlign = ContentAlignment.MiddleLeft;
@@ -173,9 +181,10 @@
             button_Employee.FlatStyle = FlatStyle.Flat;
             button_Employee.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             button_Employee.ForeColor = Color.White;
-            button_Employee.Location = new Point(31, 198);
+            button_Employee.Location = new Point(19, 124);
+            button_Employee.Margin = new Padding(2, 2, 2, 2);
             button_Employee.Name = "button_Employee";
-            button_Employee.Size = new Size(248, 46);
+            button_Employee.Size = new Size(153, 29);
             button_Employee.TabIndex = 2;
             button_Employee.Text = "Employee";
             button_Employee.TextAlign = ContentAlignment.MiddleLeft;
@@ -191,9 +200,10 @@
             button_Contract_Work.FlatStyle = FlatStyle.Flat;
             button_Contract_Work.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             button_Contract_Work.ForeColor = Color.White;
-            button_Contract_Work.Location = new Point(31, 250);
+            button_Contract_Work.Location = new Point(19, 156);
+            button_Contract_Work.Margin = new Padding(2, 2, 2, 2);
             button_Contract_Work.Name = "button_Contract_Work";
-            button_Contract_Work.Size = new Size(248, 46);
+            button_Contract_Work.Size = new Size(153, 29);
             button_Contract_Work.TabIndex = 1;
             button_Contract_Work.Text = "Contracts and Work";
             button_Contract_Work.TextAlign = ContentAlignment.MiddleLeft;
@@ -210,9 +220,10 @@
             button_Dashboard.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             button_Dashboard.ForeColor = Color.White;
             button_Dashboard.ImageAlign = ContentAlignment.MiddleLeft;
-            button_Dashboard.Location = new Point(31, 146);
+            button_Dashboard.Location = new Point(19, 91);
+            button_Dashboard.Margin = new Padding(2, 2, 2, 2);
             button_Dashboard.Name = "button_Dashboard";
-            button_Dashboard.Size = new Size(248, 46);
+            button_Dashboard.Size = new Size(153, 29);
             button_Dashboard.TabIndex = 0;
             button_Dashboard.Text = "Dashboard";
             button_Dashboard.TextAlign = ContentAlignment.MiddleLeft;
@@ -222,27 +233,31 @@
             // panel_Content
             // 
             panel_Content.BackColor = Color.FromArgb(244, 246, 249);
-            panel_Content.Location = new Point(304, 145);
+            panel_Content.Location = new Point(187, 91);
+            panel_Content.Margin = new Padding(2, 2, 2, 2);
             panel_Content.Name = "panel_Content";
-            panel_Content.Size = new Size(1815, 886);
+            panel_Content.Size = new Size(1117, 554);
             panel_Content.TabIndex = 1;
+            panel_Content.Paint += panel_Content_Paint;
             // 
             // panel_header
             // 
             panel_header.Controls.Add(label_Description);
             panel_header.Controls.Add(label_Title);
-            panel_header.Location = new Point(304, 4);
+            panel_header.Location = new Point(187, 2);
+            panel_header.Margin = new Padding(2, 2, 2, 2);
             panel_header.Name = "panel_header";
-            panel_header.Size = new Size(1815, 135);
+            panel_header.Size = new Size(1117, 84);
             panel_header.TabIndex = 2;
             // 
             // label_Description
             // 
             label_Description.AutoSize = true;
             label_Description.Font = new Font("Segoe UI", 13F);
-            label_Description.Location = new Point(8, 75);
+            label_Description.Location = new Point(5, 47);
+            label_Description.Margin = new Padding(2, 0, 2, 0);
             label_Description.Name = "label_Description";
-            label_Description.Size = new Size(196, 47);
+            label_Description.Size = new Size(122, 30);
             label_Description.TabIndex = 1;
             label_Description.Text = "Description";
             // 
@@ -250,21 +265,23 @@
             // 
             label_Title.AutoSize = true;
             label_Title.Font = new Font("Segoe UI", 16F, FontStyle.Bold);
-            label_Title.Location = new Point(8, 16);
+            label_Title.Location = new Point(5, 10);
+            label_Title.Margin = new Padding(2, 0, 2, 0);
             label_Title.Name = "label_Title";
-            label_Title.Size = new Size(140, 59);
+            label_Title.Size = new Size(91, 37);
             label_Title.TabIndex = 0;
             label_Title.Text = "Types";
             // 
             // MainForm
             // 
-            AutoScaleDimensions = new SizeF(13F, 32F);
+            AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.FromArgb(244, 246, 249);
-            ClientSize = new Size(2125, 1032);
+            ClientSize = new Size(1184, 645);
             Controls.Add(panel_header);
             Controls.Add(panel_Content);
             Controls.Add(panel_Sidebar);
+            Margin = new Padding(2, 2, 2, 2);
             Name = "MainForm";
             Text = "MainForm";
             Load += MainForm_Load;

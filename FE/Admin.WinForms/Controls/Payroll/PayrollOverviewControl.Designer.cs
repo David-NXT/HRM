@@ -37,6 +37,9 @@ namespace Admin.WinForms.Controls.Payroll
             flowLayoutPanel_Nav.Location = new Point(0, 0);
             flowLayoutPanel_Nav.Name = "flowLayoutPanel_Nav";
             flowLayoutPanel_Nav.Padding = new Padding(10, 5, 0, 5);
+            flowLayoutPanel_Nav.AutoSize = true;
+            flowLayoutPanel_Nav.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            flowLayoutPanel_Nav.WrapContents = true;
             flowLayoutPanel_Nav.Size = new Size(1815, 75);
             flowLayoutPanel_Nav.TabIndex = 0;
 

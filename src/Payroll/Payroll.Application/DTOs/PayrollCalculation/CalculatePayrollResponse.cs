@@ -19,6 +19,7 @@ public class CalculatePayrollResponse
     public decimal ProratedSalary { get; set; }
 
     public decimal TotalAllowance { get; set; }
+    public decimal TotalProjectAllowance { get; set; }
     public decimal TotalPayCut { get; set; }
 
     public decimal GrossSalary { get; set; }

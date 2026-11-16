@@ -255,13 +255,16 @@ public static class ApiConfig
     public const string AttendanceServiceUrl =
         "http://localhost:5231/";
 
-    // Bổ sung URL theo cấu hình thực tế
-    // public const string HrServiceUrl = "...";
-    // public const string PayrollServiceUrl = "...";
+    public const string PayrollServiceUrl =
+        "http://localhost:5267/";
 }
 ```
 
 Không tự đặt port cho các service chưa xác minh.
+
+`Payroll.API` hiện chạy mặc định tại `http://localhost:5267/` theo
+`src/Payroll/Payroll.API/Properties/launchSettings.json`. Có thể ghi đè địa chỉ
+này bằng biến môi trường `Services__Payroll__BaseUrl` khi chạy WinForms.
 
 ### 4.2. ServiceEndpoints.cs
 
@@ -281,7 +284,16 @@ public static class ServiceEndpoints
 
 Cần duy trì endpoint đúng với `[Route]`, `[HttpGet]`, `[HttpPost]`... trong Backend Controller.
 
-### 4.3. API Gateway
+### 4.3. Gửi timesheet theo dữ liệu attendance
+
+Ứng dụng nhân viên tại `FE/Project` sử dụng Project API (`http://localhost:5032/`) để tải nhân viên, dự án, công việc và gửi timesheet; dữ liệu giờ chấm công được đọc từ Attendance API (`http://localhost:5231/`).
+
+- WinForms kiểm tra giờ khai báo với `GET api/Attendance/work-hours?employeeId={id}&date=yyyy-MM-dd`.
+- Project API kiểm tra lại cùng dữ liệu attendance trước khi lưu `POST api/Timesheets`.
+- Chỉ chấp nhận gửi khi có bản ghi attendance và tổng số giờ khớp chính xác; thiếu hoặc lệch giờ bị từ chối, Attendance API không khả dụng thì không lưu.
+- Có thể cấu hình địa chỉ Attendance API của Project API bằng `Services:Attendance:BaseUrl`; mặc định là `http://localhost:5231/`.
+
+### 4.4. API Gateway
 
 Cần thống nhất một phương án:
 

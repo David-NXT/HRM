@@ -14,7 +14,8 @@ public class PayrollCalculator
         decimal otHours,
         decimal otMultiplier,
         decimal totalAllowance,
-        decimal totalPayCut)
+        decimal totalPayCut,
+        decimal totalProjectAllowance = 0m)
     {
         // 1. Validate common inputs
         if (workingDays < 0)
@@ -31,6 +32,10 @@ public class PayrollCalculator
 
         if (totalAllowance < 0)
             throw new ArgumentException("Total allowance cannot be negative.");
+
+        if (totalProjectAllowance < 0)
+            throw new ArgumentException(
+                "Total project allowance cannot be negative.");
 
         if (totalPayCut < 0)
             throw new ArgumentException("Total pay cut cannot be negative.");
@@ -87,7 +92,9 @@ public class PayrollCalculator
             otPay, 2, MidpointRounding.AwayFromZero);
 
         totalAllowance = Math.Round(
-            totalAllowance, 2, MidpointRounding.AwayFromZero);
+            totalAllowance + totalProjectAllowance,
+            2,
+            MidpointRounding.AwayFromZero);
 
         totalPayCut = Math.Round(
             totalPayCut, 2, MidpointRounding.AwayFromZero);

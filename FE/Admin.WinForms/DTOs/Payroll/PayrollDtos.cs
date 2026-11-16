@@ -43,6 +43,7 @@ public class PayrollListDto
     public decimal StandardWorkingDay { get; set; }
 
     public decimal TotalAllowance { get; set; }
+    public decimal TotalProjectAllowance { get; set; }
     public decimal TotalPayCut { get; set; }
 
     public decimal GrossSalary { get; set; }
@@ -65,6 +66,7 @@ public class PayrollDetailDto
     public decimal StandardWorkingDay { get; set; }
 
     public decimal TotalAllowance { get; set; }
+    public decimal TotalProjectAllowance { get; set; }
     public decimal TotalPayCut { get; set; }
 
     public decimal GrossSalary { get; set; }
@@ -136,6 +138,7 @@ public class PayslipDto
     public decimal StandardWorkingDay { get; set; }
 
     public decimal TotalAllowance { get; set; }
+    public decimal TotalProjectAllowance { get; set; }
     public decimal TotalPayCut { get; set; }
     public decimal GrossSalary { get; set; }
     public decimal NetSalary { get; set; }

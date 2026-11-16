@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
@@ -19,15 +20,7 @@ public class PayrollApiService
     // 1. Quản lý kỳ lương
     public async Task<List<PayrollPeriodDto>> GetPeriodsAsync()
     {
-        try
-        {
-            var response = await _httpClient.GetFromJsonAsync<List<PayrollPeriodDto>>("api/payroll-periods");
-            return response ?? new List<PayrollPeriodDto>();
-        }
-        catch
-        {
-            return new List<PayrollPeriodDto>();
-        }
+        return await GetListAsync<PayrollPeriodDto>("api/payroll-periods");
     }
 
     public async Task<PayrollPeriodDto?> CreatePeriodAsync(int year, int month)
@@ -55,27 +48,12 @@ public class PayrollApiService
     // 2. Tra cứu bảng lương theo kỳ
     public async Task<List<PayrollListDto>> GetPayrollsByPeriodAsync(Guid periodId)
     {
-        try
-        {
-            var response = await _httpClient.GetFromJsonAsync<List<PayrollListDto>>($"api/payrolls/periods/{periodId}");
-            return response ?? new List<PayrollListDto>();
-        }
-        catch
-        {
-            return new List<PayrollListDto>();
-        }
+        return await GetListAsync<PayrollListDto>($"api/payrolls/periods/{periodId}");
     }
 
     public async Task<PayrollDetailDto?> GetPayrollDetailAsync(Guid payrollId)
     {
-        try
-        {
-            return await _httpClient.GetFromJsonAsync<PayrollDetailDto>($"api/payrolls/{payrollId}");
-        }
-        catch
-        {
-            return null;
-        }
+        return await GetOptionalAsync<PayrollDetailDto>($"api/payrolls/{payrollId}");
     }
 
     // 3. Đồng bộ Chấm công & Lương
@@ -173,36 +151,46 @@ public class PayrollApiService
     // 7. Phiếu lương (Payslips)
     public async Task<PayslipDto?> GetPayslipAsync(Guid payrollId)
     {
-        try
-        {
-            return await _httpClient.GetFromJsonAsync<PayslipDto>($"api/payslips/{payrollId}");
-        }
-        catch
-        {
-            return null;
-        }
+        return await GetOptionalAsync<PayslipDto>($"api/payslips/{payrollId}");
     }
 
     public async Task<List<PayslipDto>> GetPayslipsByPeriodAsync(Guid periodId)
     {
-        try
-        {
-            var response = await _httpClient.GetFromJsonAsync<List<PayslipDto>>($"api/payslips/periods/{periodId}");
-            return response ?? new List<PayslipDto>();
-        }
-        catch
-        {
-            return new List<PayslipDto>();
-        }
+        return await GetListAsync<PayslipDto>($"api/payslips/periods/{periodId}");
     }
 
-    // 8. Seed dữ liệu mẫu nếu cần
-    public async Task SeedSampleDataAsync()
+    private async Task<List<T>> GetListAsync<T>(string path)
     {
-        try
+        using var response = await _httpClient.GetAsync(path);
+        await EnsureSuccessAsync(response);
+        return await response.Content.ReadFromJsonAsync<List<T>>()
+            ?? throw new InvalidDataException("Payroll API trả về danh sách rỗng hoặc không hợp lệ.");
+    }
+
+    private async Task<T?> GetOptionalAsync<T>(string path) where T : class
+    {
+        using var response = await _httpClient.GetAsync(path);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
-            await _httpClient.PostAsync("health/seed", null);
+            return null;
         }
-        catch { }
+
+        await EnsureSuccessAsync(response);
+        return await response.Content.ReadFromJsonAsync<T>()
+            ?? throw new InvalidDataException("Payroll API trả về dữ liệu rỗng hoặc không hợp lệ.");
+    }
+
+    private static async Task EnsureSuccessAsync(HttpResponseMessage response)
+    {
+        if (response.IsSuccessStatusCode)
+        {
+            return;
+        }
+
+        var details = await response.Content.ReadAsStringAsync();
+        var message = string.IsNullOrWhiteSpace(details)
+            ? $"Payroll API trả về HTTP {(int)response.StatusCode}."
+            : $"Payroll API trả về HTTP {(int)response.StatusCode}: {details}";
+        throw new HttpRequestException(message, null, response.StatusCode);
     }
 }
