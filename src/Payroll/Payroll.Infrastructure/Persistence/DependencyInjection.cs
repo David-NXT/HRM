@@ -81,6 +81,33 @@ public static class DependencyInjection
             client.DefaultRequestHeaders.Add("X-Role", "HR");
         });
 
+        // Register Project HTTP client.
+        var projectBaseUrl = configuration["ProjectService:BaseUrl"];
+
+        if (string.IsNullOrWhiteSpace(projectBaseUrl))
+        {
+            throw new InvalidOperationException(
+                "ProjectService:BaseUrl is missing.");
+        }
+
+        if (!Uri.TryCreate(
+                projectBaseUrl,
+                UriKind.Absolute,
+                out var projectUri)
+            || projectUri.Scheme is not ("http" or "https"))
+        {
+            throw new InvalidOperationException(
+                "ProjectService:BaseUrl is not a valid HTTP or HTTPS URL.");
+        }
+
+        services.AddHttpClient<IProjectServiceClient, ProjectServiceClient>(
+            client =>
+            {
+                client.BaseAddress = new Uri(
+                    projectUri.AbsoluteUri.TrimEnd('/') + "/");
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
+
         return services;
     }
 }

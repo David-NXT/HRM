@@ -33,6 +33,7 @@ public class PayrollQueryService
                 StandardWorkingDay = p.StandardWorkingDay,
 
                 TotalAllowance = p.TotalAllowance,
+                TotalProjectAllowance = p.TotalProjectAllowance,
                 TotalPayCut = p.TotalPayCut,
 
                 GrossSalary = p.GrossSalary,
@@ -77,6 +78,7 @@ public class PayrollQueryService
             StandardWorkingDay = payroll.StandardWorkingDay,
 
             TotalAllowance = payroll.TotalAllowance,
+            TotalProjectAllowance = payroll.TotalProjectAllowance,
             TotalPayCut = payroll.TotalPayCut,
 
             GrossSalary = payroll.GrossSalary,
@@ -137,6 +139,7 @@ public class PayrollQueryService
 
                 BaseSalary = p.BaseSalary,
                 TotalAllowance = p.TotalAllowance,
+                TotalProjectAllowance = p.TotalProjectAllowance,
                 TotalPayCut = p.TotalPayCut,
                 GrossSalary = p.GrossSalary,
                 NetSalary = p.NetSalary,

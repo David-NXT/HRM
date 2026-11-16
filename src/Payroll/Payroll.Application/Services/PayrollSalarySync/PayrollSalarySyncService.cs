@@ -7,13 +7,16 @@ public class PayrollSalarySyncService
 {
     private readonly IApplicationDbContext _context;
     private readonly IHRServiceClient _hrClient;
+    private readonly IProjectServiceClient _projectClient;
 
     public PayrollSalarySyncService(
         IApplicationDbContext context,
-        IHRServiceClient hrClient)
+        IHRServiceClient hrClient,
+        IProjectServiceClient projectClient)
     {
         _context = context;
         _hrClient = hrClient;
+        _projectClient = projectClient;
     }
 
     public async Task<int> SyncSalaryAsync(
@@ -155,7 +158,31 @@ public class PayrollSalarySyncService
                 (employmentType, baseSalary, hourlyRate));
         }
 
-        // 5. Update payroll records only after all HR responses are valid.
+        // 5. Retrieve approved project income for the payroll period.
+        var periodStart = new DateOnly(period.Year, period.Month, 1);
+        var periodEnd = periodStart.AddMonths(1).AddDays(-1);
+        var projectSummaries =
+            await _projectClient.GetProjectAllowanceSummaryAsync(
+                periodStart,
+                periodEnd,
+                cancellationToken);
+
+        var projectAllowanceByEmployee = new Dictionary<Guid, decimal>();
+        foreach (var summary in projectSummaries)
+        {
+            if (summary.EmployeeId == Guid.Empty ||
+                summary.TotalProjectIncome < 0)
+            {
+                throw new InvalidOperationException(
+                    "Project Service returned an invalid project allowance summary.");
+            }
+
+            projectAllowanceByEmployee[summary.EmployeeId] =
+                projectAllowanceByEmployee.GetValueOrDefault(summary.EmployeeId)
+                + summary.TotalProjectIncome;
+        }
+
+        // 6. Update payroll records only after all external data is valid.
         foreach (var payroll in payrolls)
         {
             var salary = salaryByEmployee[payroll.EmployeeID];
@@ -163,9 +190,14 @@ public class PayrollSalarySyncService
             payroll.EmploymentType = salary.EmploymentType;
             payroll.BaseSalary = salary.BaseSalary;
             payroll.HourlyRate = salary.HourlyRate;
+            payroll.TotalProjectAllowance = Math.Round(
+                projectAllowanceByEmployee.GetValueOrDefault(
+                    payroll.EmployeeID),
+                2,
+                MidpointRounding.AwayFromZero);
         }
 
-        // 6. Save changes.
+        // 7. Save changes.
         await _context.SaveChangesAsync(cancellationToken);
 
         return payrolls.Count;
