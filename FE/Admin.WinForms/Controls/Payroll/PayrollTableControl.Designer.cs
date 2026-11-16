@@ -42,9 +42,11 @@ namespace Admin.WinForms.Controls.Payroll
             listView_Payrolls = new ListView();
             col_EmpCode = new ColumnHeader();
             col_EmpName = new ColumnHeader();
+            col_EmploymentType = new ColumnHeader();
             col_BaseSalary = new ColumnHeader();
             col_StandardDays = new ColumnHeader();
             col_ActualDays = new ColumnHeader();
+            col_TotalWorkingHours = new ColumnHeader();
             col_ProjectAllowance = new ColumnHeader();
             col_Allowance = new ColumnHeader();
             col_PayCut = new ColumnHeader();
@@ -321,7 +323,7 @@ namespace Admin.WinForms.Controls.Payroll
             // listView_Payrolls
             // 
             listView_Payrolls.BorderStyle = BorderStyle.FixedSingle;
-            listView_Payrolls.Columns.AddRange(new ColumnHeader[] { col_EmpCode, col_EmpName, col_BaseSalary, col_StandardDays, col_ActualDays, col_ProjectAllowance, col_Allowance, col_PayCut, col_Gross, col_Net, col_Status, col_CalculatedAt });
+            listView_Payrolls.Columns.AddRange(new ColumnHeader[] { col_EmpCode, col_EmpName, col_EmploymentType, col_BaseSalary, col_StandardDays, col_ActualDays, col_TotalWorkingHours, col_ProjectAllowance, col_Allowance, col_PayCut, col_Gross, col_Net, col_Status, col_CalculatedAt });
             listView_Payrolls.Dock = DockStyle.Fill;
             listView_Payrolls.Font = new Font("Segoe UI", 9.5F);
             listView_Payrolls.FullRowSelect = true;
@@ -343,6 +345,12 @@ namespace Admin.WinForms.Controls.Payroll
             // 
             col_EmpName.Text = "Họ và Tên";
             col_EmpName.Width = 220;
+            //
+            // col_EmploymentType
+            //
+            col_EmploymentType.Text = "Loại nhân viên";
+            col_EmploymentType.TextAlign = HorizontalAlignment.Center;
+            col_EmploymentType.Width = 130;
             // 
             // col_BaseSalary
             // 
@@ -361,6 +369,12 @@ namespace Admin.WinForms.Controls.Payroll
             col_ActualDays.Text = "Công thực tế";
             col_ActualDays.TextAlign = HorizontalAlignment.Center;
             col_ActualDays.Width = 110;
+            //
+            // col_TotalWorkingHours
+            //
+            col_TotalWorkingHours.Text = "Giờ công thực tế";
+            col_TotalWorkingHours.TextAlign = HorizontalAlignment.Center;
+            col_TotalWorkingHours.Width = 130;
             // 
             // col_ProjectAllowance
             // 
@@ -455,9 +469,11 @@ namespace Admin.WinForms.Controls.Payroll
         private ListView listView_Payrolls;
         private ColumnHeader col_EmpCode;
         private ColumnHeader col_EmpName;
+        private ColumnHeader col_EmploymentType;
         private ColumnHeader col_BaseSalary;
         private ColumnHeader col_StandardDays;
         private ColumnHeader col_ActualDays;
+        private ColumnHeader col_TotalWorkingHours;
         private ColumnHeader col_ProjectAllowance;
         private ColumnHeader col_Allowance;
         private ColumnHeader col_PayCut;

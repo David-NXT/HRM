@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
 using Admin.WinForms.DTOs.Payroll;
+using Admin.WinForms.Models.HR;
+using Admin.WinForms.Services.HR;
 
 namespace Admin.WinForms.Services.Payroll;
 
@@ -46,9 +49,41 @@ public class PayrollApiService
     }
 
     // 2. Tra cứu bảng lương theo kỳ
-    public async Task<List<PayrollListDto>> GetPayrollsByPeriodAsync(Guid periodId)
+    public async Task<List<PayrollListDto>> GetPayrollsByPeriodAsync(
+        Guid periodId,
+        bool includeEmployeeDetails = true)
     {
-        return await GetListAsync<PayrollListDto>($"api/payrolls/periods/{periodId}");
+        var payrolls = await GetListAsync<PayrollListDto>($"api/payrolls/periods/{periodId}");
+        if (!includeEmployeeDetails || payrolls.Count == 0)
+        {
+            return payrolls;
+        }
+
+        using var hrClient = new HrApiClient();
+        var employees = await hrClient.AllEmployeesAsync(CancellationToken.None);
+        var employeesById = employees.ToDictionary(employee => employee.EmployeeId);
+        var missingEmployeeIds = new List<Guid>();
+
+        foreach (var payroll in payrolls)
+        {
+            if (!employeesById.TryGetValue(payroll.EmployeeID, out var employee))
+            {
+                missingEmployeeIds.Add(payroll.EmployeeID);
+                continue;
+            }
+
+            payroll.EmployeeCode = employee.EmployeeCode;
+            payroll.EmployeeName = employee.FullName;
+        }
+
+        if (missingEmployeeIds.Count > 0)
+        {
+            var ids = string.Join(", ", missingEmployeeIds.Select(id => id.ToString()));
+            throw new InvalidDataException(
+                $"Không tìm thấy {missingEmployeeIds.Count} nhân viên trong HR để đối chiếu bảng lương. EmployeeID: {ids}");
+        }
+
+        return payrolls;
     }
 
     public async Task<PayrollDetailDto?> GetPayrollDetailAsync(Guid payrollId)

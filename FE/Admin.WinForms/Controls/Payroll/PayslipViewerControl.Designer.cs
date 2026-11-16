@@ -117,7 +117,7 @@ namespace Admin.WinForms.Controls.Payroll
             button_ExportPayslip.Name = "button_ExportPayslip";
             button_ExportPayslip.Size = new Size(221, 54);
             button_ExportPayslip.TabIndex = 2;
-            button_ExportPayslip.Text = "Xuất Phiếu Lương";
+            button_ExportPayslip.Text = "Xuất Phiếu Lương (PDF)";
             button_ExportPayslip.UseVisualStyleBackColor = false;
             // 
             // button_Print

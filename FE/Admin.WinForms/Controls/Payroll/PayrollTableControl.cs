@@ -7,6 +7,8 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Admin.WinForms.DTOs.Payroll;
+using Admin.WinForms.Models.HR;
+using Admin.WinForms.Services.HR;
 
 namespace Admin.WinForms.Controls.Payroll
 {
@@ -14,6 +16,7 @@ namespace Admin.WinForms.Controls.Payroll
     {
         private List<PayrollPeriodDto> _periods = new();
         private PayrollPeriodDto? _selectedPeriod;
+        private bool _showingEmployeeDetails;
 
         public PayrollTableControl()
         {
@@ -30,6 +33,7 @@ namespace Admin.WinForms.Controls.Payroll
             button_CreatePayrolls.Click += async (s, e) => await OnCreatePayrollsAsync();
             button_CalculateAll.Click += async (s, e) => await OnCalculateAllAsync();
             button_ExportExcel.Click += (s, e) => ExportToCsv();
+            listView_Payrolls.MouseClick += async (s, e) => await ShowEmployeeDetailsAsync(e.Location);
 
             Load += async (s, e) =>
             {
@@ -93,9 +97,11 @@ namespace Admin.WinForms.Controls.Payroll
                     var item = new ListViewItem(empCode);
 
                     item.SubItems.Add(!string.IsNullOrWhiteSpace(p.EmployeeName) ? p.EmployeeName : $"Nhân viên {empCode}");
+                    item.SubItems.Add(FormatEmploymentType(p.EmploymentType));
                     item.SubItems.Add(p.BaseSalary.ToString("#,##0 đ"));
                     item.SubItems.Add(p.StandardWorkingDay.ToString("0.##"));
                     item.SubItems.Add(p.WorkingDays.ToString("0.##"));
+                    item.SubItems.Add(p.TotalWorkingHours.ToString("0.##"));
                     item.SubItems.Add(p.TotalProjectAllowance.ToString("#,##0 đ"));
                     item.SubItems.Add(p.TotalAllowance.ToString("#,##0 đ"));
                     item.SubItems.Add(p.TotalPayCut.ToString("#,##0 đ"));
@@ -104,7 +110,7 @@ namespace Admin.WinForms.Controls.Payroll
                     item.SubItems.Add(FormatStatus(p.Status));
                     item.SubItems.Add(p.CalculatedAt.HasValue ? p.CalculatedAt.Value.ToString("dd/MM/yyyy HH:mm") : "--");
 
-                    item.Tag = p.PayrollID;
+                    item.Tag = p;
 
                     // Màu sắc theo trạng thái
                     if (p.Status.Equals("paid", StringComparison.OrdinalIgnoreCase))
@@ -145,6 +151,56 @@ namespace Admin.WinForms.Controls.Payroll
             label_TotalPayCut.Text = "0 đ";
         }
 
+        private async Task ShowEmployeeDetailsAsync(Point location)
+        {
+            if (_showingEmployeeDetails)
+            {
+                return;
+            }
+
+            var item = listView_Payrolls.GetItemAt(location.X, location.Y);
+            if (item?.Tag is not PayrollListDto payroll)
+            {
+                return;
+            }
+
+            _showingEmployeeDetails = true;
+            try
+            {
+                var detail = await Program.PayrollApi.GetPayrollDetailAsync(payroll.PayrollID);
+                if (detail is null)
+                {
+                    MessageBox.Show("Không tìm thấy chi tiết bảng lương của nhân viên.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                EmployeeRow? employee = null;
+                string? employeeLoadError = null;
+                try
+                {
+                    using var hrClient = new HrApiClient();
+                    employee = await hrClient.GetAsync<EmployeeRow>(
+                        $"employees/{payroll.EmployeeID}",
+                        System.Threading.CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    employeeLoadError = ex.Message;
+                }
+
+                using var dialog = new PayrollEmployeeDetailsDialog(payroll, detail, employee, employeeLoadError);
+                dialog.ShowDialog(FindForm());
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Không thể tải chi tiết nhân viên: {ex.Message}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _showingEmployeeDetails = false;
+            }
+        }
+
         private static string FormatStatus(string status)
         {
             return status?.ToLowerInvariant() switch
@@ -154,6 +210,21 @@ namespace Admin.WinForms.Controls.Payroll
                 "approved" => "Đã phê duyệt",
                 "paid" => "Đã chi trả",
                 _ => status ?? "--"
+            };
+        }
+
+        private static string FormatEmploymentType(string? employmentType)
+        {
+            if (string.IsNullOrWhiteSpace(employmentType))
+            {
+                return "--";
+            }
+
+            return employmentType.ToUpperInvariant() switch
+            {
+                "FULL_TIME" => "Chính thức",
+                "PART_TIME" => "Part-time",
+                _ => employmentType
             };
         }
 
@@ -292,7 +363,9 @@ namespace Admin.WinForms.Controls.Payroll
                 return;
             }
 
-            var payrolls = await Program.PayrollApi.GetPayrollsByPeriodAsync(_selectedPeriod.PayrollPeriodID);
+            var payrolls = await Program.PayrollApi.GetPayrollsByPeriodAsync(
+                _selectedPeriod.PayrollPeriodID,
+                includeEmployeeDetails: false);
             if (payrolls.Count == 0)
             {
                 MessageBox.Show("Chưa có nhân sự trong bảng lương của kỳ này. Vui lòng bấm 'Tạo Bảng Lương' trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
