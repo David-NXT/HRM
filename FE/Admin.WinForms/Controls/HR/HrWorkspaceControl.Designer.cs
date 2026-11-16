@@ -14,11 +14,14 @@ partial class HrWorkspaceControl
         profileReviewControl = new ProfileReviewControl();
         alertsPage = new TabPage();
         contractAlertsControl = new ContractAlertsControl();
+        statisticsPage = new TabPage();
+        hrStatisticsControl = new HrStatisticsControl();
         tabs.SuspendLayout();
         employeesPage.SuspendLayout();
         offboardingPage.SuspendLayout();
         reviewPage.SuspendLayout();
         alertsPage.SuspendLayout();
+        statisticsPage.SuspendLayout();
         SuspendLayout();
         // 
         // tabs
@@ -27,6 +30,7 @@ partial class HrWorkspaceControl
         tabs.Controls.Add(offboardingPage);
         tabs.Controls.Add(reviewPage);
         tabs.Controls.Add(alertsPage);
+        tabs.Controls.Add(statisticsPage);
         tabs.Dock = DockStyle.Fill;
         tabs.Location = new Point(0, 0);
         tabs.Name = "tabs";
@@ -110,6 +114,23 @@ partial class HrWorkspaceControl
         contractAlertsControl.Size = new Size(1092, 667);
         contractAlertsControl.TabIndex = 0;
         // 
+        // statisticsPage
+        //
+        statisticsPage.Controls.Add(hrStatisticsControl);
+        statisticsPage.Location = new Point(4, 29);
+        statisticsPage.Name = "statisticsPage";
+        statisticsPage.Size = new Size(1092, 667);
+        statisticsPage.TabIndex = 4;
+        statisticsPage.Text = "Thống kê HR";
+        //
+        // hrStatisticsControl
+        //
+        hrStatisticsControl.Dock = DockStyle.Fill;
+        hrStatisticsControl.Location = new Point(0, 0);
+        hrStatisticsControl.Name = "hrStatisticsControl";
+        hrStatisticsControl.Size = new Size(1092, 667);
+        hrStatisticsControl.TabIndex = 0;
+        //
         // HrWorkspaceControl
         // 
         AutoScaleDimensions = new SizeF(8F, 20F);
@@ -122,6 +143,7 @@ partial class HrWorkspaceControl
         offboardingPage.ResumeLayout(false);
         reviewPage.ResumeLayout(false);
         alertsPage.ResumeLayout(false);
+        statisticsPage.ResumeLayout(false);
         ResumeLayout(false);
     }
     private TabControl tabs;
@@ -129,8 +151,10 @@ partial class HrWorkspaceControl
     private TabPage offboardingPage;
     private TabPage reviewPage;
     private TabPage alertsPage;
+    private TabPage statisticsPage;
     private EmployeeManagementControl employeeManagementControl;
     private OffboardingControl offboardingControl;
     private ProfileReviewControl profileReviewControl;
     private ContractAlertsControl contractAlertsControl;
+    private HrStatisticsControl hrStatisticsControl;
 }

@@ -10,6 +10,10 @@ namespace HR.API.Controllers;
 [ServiceFilter(typeof(HrRoleFilter))]
 public sealed class ContractAlertsController(ContractAlertService service) : ControllerBase
 {
+    [HttpPost("scan")]
+    public async Task<ActionResult<ContractAlertScanResult>> Scan(CancellationToken cancellationToken) =>
+        Ok(await service.GenerateAlertsAsync(cancellationToken));
+
     [HttpGet]
     public async Task<ActionResult<ContractAlertListDto>> List(
         [FromQuery] string? status, [FromQuery] Guid? employeeId,

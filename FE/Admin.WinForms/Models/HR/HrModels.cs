@@ -16,6 +16,8 @@ public sealed record EmployeeRow(Guid EmployeeId, string EmployeeCode, string Fu
     public string DisplayName => $"{EmployeeCode} — {FullName}";
 }
 public sealed record EmployeePage(List<EmployeeRow> Items, int Page, int PageSize, int Total);
+public sealed record EmployeeStatistics(int TotalEmployees, int ActiveEmployees, int LockedEmployees,
+    int ResignedEmployees, int FullTimeEmployees, int PartTimeEmployees);
 public sealed record PersonalInfo(string FullName, DateOnly DateOfBirth, string Gender,
     string Email, string Phone, string CitizenId, string? Address);
 public sealed record CreateEmployee(string EmployeeCode, string FullName, DateOnly DateOfBirth,
@@ -72,6 +74,7 @@ public sealed record AlertRow(Guid ContractAlertId, Guid ContractId, Guid Employ
     DateOnly? CurrentContractEndDate, DateOnly ExpiryDate, int DaysRemaining, bool IsCurrentCycle,
     string Status, int Version, DateTime CreatedAt, DateTime UpdatedAt);
 public sealed record AlertPage(List<AlertRow> Items, int Page, int PageSize, int Total);
+public sealed record AlertScanResult(DateOnly ScanDate, int ScannedCount, int CreatedCount, int SkippedCount, int FailedCount);
 public sealed record Choice(object? Value, string Text)
 {
     public override string ToString() => Text;

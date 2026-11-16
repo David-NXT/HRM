@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddScoped<ProfileUpdateService>();
         services.AddScoped<LifecycleService>();
         services.AddScoped<ContractAlertService>();
+        services.AddScoped<IContractAlertGenerator>(provider => provider.GetRequiredService<ContractAlertService>());
         services.AddSingleton<TimeProvider>(TimeProvider.System);
         return services;
     }

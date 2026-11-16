@@ -1,6 +1,8 @@
 using HR.Application.Interfaces.Repositories;
+using HR.Application.Interfaces.Services;
 using HR.Application.Interfaces.Storage;
 using HR.Infrastructure.Jobs;
+using HR.Infrastructure.Exports;
 using HR.Infrastructure.Persistence;
 using HR.Infrastructure.Repositories;
 using HR.Infrastructure.Storage;
@@ -20,6 +22,7 @@ public static class DependencyInjection
 
         services.AddDbContext<HrDbContext>(options => options.UseNpgsql(connectionString));
         services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+        services.AddScoped<IEmployeeExportService, EmployeeExportService>();
         services.AddScoped<IOrgStructureRepository, OrgStructureRepository>();
         services.AddScoped<IEmploymentRepository, EmploymentRepository>();
         services.AddScoped<IProfileUpdateRepository, ProfileUpdateRepository>();

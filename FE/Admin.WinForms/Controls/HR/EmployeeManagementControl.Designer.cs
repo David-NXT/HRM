@@ -25,6 +25,7 @@ public sealed partial class EmployeeManagementControl
     private Button _detailsButton;
     private Button _salaryButton;
     private Button _deleteButton;
+    private Button _exportButton;
     private DataGridViewTextBoxColumn _employeeCodeColumn;
     private DataGridViewTextBoxColumn _fullNameColumn;
     private DataGridViewTextBoxColumn _employmentTypeColumn;
@@ -55,9 +56,18 @@ public sealed partial class EmployeeManagementControl
         _detailsButton = new Button();
         _salaryButton = new Button();
         _deleteButton = new Button();
+        _exportButton = new Button();
         Status = new Label();
         Body = new Panel();
         _grid = new DataGridView();
+        _employeeCodeColumn = new DataGridViewTextBoxColumn();
+        _fullNameColumn = new DataGridViewTextBoxColumn();
+        _employmentTypeColumn = new DataGridViewTextBoxColumn();
+        _salaryColumn = new DataGridViewTextBoxColumn();
+        _departmentColumn = new DataGridViewTextBoxColumn();
+        _positionColumn = new DataGridViewTextBoxColumn();
+        _emailColumn = new DataGridViewTextBoxColumn();
+        _statusColumn = new DataGridViewTextBoxColumn();
         Footer = new FlowLayoutPanel();
         _previous = new Button();
         _summary = new Label();
@@ -101,6 +111,7 @@ public sealed partial class EmployeeManagementControl
         Toolbar.Controls.Add(_detailsButton);
         Toolbar.Controls.Add(_salaryButton);
         Toolbar.Controls.Add(_deleteButton);
+        Toolbar.Controls.Add(_exportButton);
         Toolbar.Dock = DockStyle.Fill;
         Toolbar.Location = new Point(19, 19);
         Toolbar.Name = "Toolbar";
@@ -209,6 +220,18 @@ public sealed partial class EmployeeManagementControl
         _deleteButton.TabIndex = 8;
         _deleteButton.Text = "Xóa nhân viên";
         _deleteButton.UseVisualStyleBackColor = true;
+        //
+        // _exportButton
+        //
+        _exportButton.AutoSize = true;
+        _exportButton.Location = new Point(266, 43);
+        _exportButton.Margin = new Padding(3, 3, 8, 3);
+        _exportButton.MinimumSize = new Size(110, 34);
+        _exportButton.Name = "_exportButton";
+        _exportButton.Size = new Size(110, 34);
+        _exportButton.TabIndex = 9;
+        _exportButton.Text = "Xuất Excel";
+        _exportButton.UseVisualStyleBackColor = true;
         // 
         // Status
         // 
@@ -234,6 +257,7 @@ public sealed partial class EmployeeManagementControl
         // 
         _grid.AllowUserToAddRows = false;
         _grid.AllowUserToDeleteRows = false;
+        _grid.AutoGenerateColumns = false;
         dataGridViewCellStyle1.BackColor = Color.FromArgb(247, 249, 252);
         _grid.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle1;
         _grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
@@ -247,6 +271,11 @@ public sealed partial class EmployeeManagementControl
         dataGridViewCellStyle2.WrapMode = DataGridViewTriState.True;
         _grid.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle2;
         _grid.ColumnHeadersHeight = 29;
+        _grid.Columns.AddRange(new DataGridViewColumn[]
+        {
+            _employeeCodeColumn, _fullNameColumn, _employmentTypeColumn, _salaryColumn,
+            _departmentColumn, _positionColumn, _emailColumn, _statusColumn
+        });
         _grid.Dock = DockStyle.Fill;
         _grid.EnableHeadersVisualStyles = false;
         _grid.Location = new Point(0, 0);
@@ -258,6 +287,86 @@ public sealed partial class EmployeeManagementControl
         _grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
         _grid.Size = new Size(1062, 440);
         _grid.TabIndex = 0;
+        //
+        // _employeeCodeColumn
+        //
+        _employeeCodeColumn.DataPropertyName = "EmployeeCode";
+        _employeeCodeColumn.FillWeight = 75F;
+        _employeeCodeColumn.HeaderText = "Mã NV";
+        _employeeCodeColumn.MinimumWidth = 70;
+        _employeeCodeColumn.Name = "_employeeCodeColumn";
+        _employeeCodeColumn.ReadOnly = true;
+        _employeeCodeColumn.SortMode = DataGridViewColumnSortMode.NotSortable;
+        //
+        // _fullNameColumn
+        //
+        _fullNameColumn.DataPropertyName = "FullName";
+        _fullNameColumn.FillWeight = 125F;
+        _fullNameColumn.HeaderText = "Họ tên";
+        _fullNameColumn.MinimumWidth = 70;
+        _fullNameColumn.Name = "_fullNameColumn";
+        _fullNameColumn.ReadOnly = true;
+        _fullNameColumn.SortMode = DataGridViewColumnSortMode.NotSortable;
+        //
+        // _employmentTypeColumn
+        //
+        _employmentTypeColumn.DataPropertyName = "EmploymentTypeLabel";
+        _employmentTypeColumn.FillWeight = 75F;
+        _employmentTypeColumn.HeaderText = "Loại";
+        _employmentTypeColumn.MinimumWidth = 70;
+        _employmentTypeColumn.Name = "_employmentTypeColumn";
+        _employmentTypeColumn.ReadOnly = true;
+        _employmentTypeColumn.SortMode = DataGridViewColumnSortMode.NotSortable;
+        //
+        // _salaryColumn
+        //
+        _salaryColumn.DataPropertyName = "SalaryLabel";
+        _salaryColumn.FillWeight = 110F;
+        _salaryColumn.HeaderText = "Lương";
+        _salaryColumn.MinimumWidth = 70;
+        _salaryColumn.Name = "_salaryColumn";
+        _salaryColumn.ReadOnly = true;
+        _salaryColumn.SortMode = DataGridViewColumnSortMode.NotSortable;
+        //
+        // _departmentColumn
+        //
+        _departmentColumn.DataPropertyName = "DepartmentName";
+        _departmentColumn.FillWeight = 110F;
+        _departmentColumn.HeaderText = "Phòng ban";
+        _departmentColumn.MinimumWidth = 70;
+        _departmentColumn.Name = "_departmentColumn";
+        _departmentColumn.ReadOnly = true;
+        _departmentColumn.SortMode = DataGridViewColumnSortMode.NotSortable;
+        //
+        // _positionColumn
+        //
+        _positionColumn.DataPropertyName = "PositionName";
+        _positionColumn.FillWeight = 100F;
+        _positionColumn.HeaderText = "Chức vụ";
+        _positionColumn.MinimumWidth = 70;
+        _positionColumn.Name = "_positionColumn";
+        _positionColumn.ReadOnly = true;
+        _positionColumn.SortMode = DataGridViewColumnSortMode.NotSortable;
+        //
+        // _emailColumn
+        //
+        _emailColumn.DataPropertyName = "Email";
+        _emailColumn.FillWeight = 145F;
+        _emailColumn.HeaderText = "Email";
+        _emailColumn.MinimumWidth = 70;
+        _emailColumn.Name = "_emailColumn";
+        _emailColumn.ReadOnly = true;
+        _emailColumn.SortMode = DataGridViewColumnSortMode.NotSortable;
+        //
+        // _statusColumn
+        //
+        _statusColumn.DataPropertyName = "Status";
+        _statusColumn.FillWeight = 80F;
+        _statusColumn.HeaderText = "Trạng thái";
+        _statusColumn.MinimumWidth = 70;
+        _statusColumn.Name = "_statusColumn";
+        _statusColumn.ReadOnly = true;
+        _statusColumn.SortMode = DataGridViewColumnSortMode.NotSortable;
         // 
         // Footer
         // 
