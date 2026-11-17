@@ -52,9 +52,11 @@ public class PayrollListDto
             : $"{EmployeeCode ?? EmployeeID.ToString()[..8].ToUpper()} — {EmployeeName}";
     public Guid PayrollPeriodID { get; set; }
 
+    public string? EmploymentType { get; set; }
     public decimal BaseSalary { get; set; }
     public decimal WorkingDays { get; set; }
     public decimal StandardWorkingDay { get; set; }
+    public decimal TotalWorkingHours { get; set; }
 
     public decimal TotalAllowance { get; set; }
     public decimal TotalProjectAllowance { get; set; }

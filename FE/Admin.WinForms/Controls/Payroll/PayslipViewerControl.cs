@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Admin.WinForms.DTOs.Payroll;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
 
 namespace Admin.WinForms.Controls.Payroll
 {
@@ -224,60 +226,101 @@ namespace Admin.WinForms.Controls.Payroll
             {
                 using var sfd = new SaveFileDialog
                 {
-                    Filter = "Text File (*.txt)|*.txt",
-                    FileName = $"PhieuLuong_{_selectedPayroll.EmployeeCode}_{DateTime.Now:yyyyMMdd_HHmmss}.txt"
+                    Filter = "PDF Document (*.pdf)|*.pdf",
+                    DefaultExt = "pdf",
+                    AddExtension = true,
+                    FileName = $"PhieuLuong_{SafeFileName(_selectedPayroll.EmployeeCode ?? _selectedPayroll.EmployeeID.ToString())}_{_currentPayslip.Month:D2}_{_currentPayslip.Year}.pdf"
                 };
 
                 if (sfd.ShowDialog() == DialogResult.OK)
                 {
-                    var sb = new StringBuilder();
-                    sb.AppendLine("=============================================================");
-                    sb.AppendLine("            TẬP ĐOÀN CÔNG NGHỆ & NHÂN SỰ HRM");
-                    sb.AppendLine($"        PHIẾU LƯƠNG NHÂN VIÊN - THÁNG {_currentPayslip.Month:D2}/{_currentPayslip.Year}");
-                    sb.AppendLine("=============================================================");
-                    sb.AppendLine($"Mã nhân viên: {_selectedPayroll.EmployeeCode}");
-                    sb.AppendLine($"Họ và tên:    {_selectedPayroll.EmployeeName}");
-                    sb.AppendLine($"Trạng thái:   {FormatStatus(_currentPayslip.Status)}");
-                    sb.AppendLine("-------------------------------------------------------------");
-                    sb.AppendLine("1. LƯƠNG & CÔNG LÀM VIỆC:");
-                    sb.AppendLine($" - Lương cơ bản:    {_currentPayslip.BaseSalary:#,##0 đ}");
-                    sb.AppendLine($" - Ngày công chuẩn: {_currentPayslip.StandardWorkingDay:0.##} ngày");
-                    sb.AppendLine($" - Ngày công làm:   {_currentPayslip.WorkingDays:0.##} ngày");
-                    sb.AppendLine($" - Lương Gross:     {_currentPayslip.GrossSalary:#,##0 đ}");
-                    sb.AppendLine("-------------------------------------------------------------");
-                    sb.AppendLine("2. CÁC KHOẢN PHỤ CẤP (+):");
-                    sb.AppendLine($" + {"Phụ cấp dự án",-35} : {_currentPayslip.TotalProjectAllowance,15:#,##0 đ}");
-                    if (_currentPayslip.Allowances != null && _currentPayslip.Allowances.Count > 0)
+                    QuestPDF.Settings.License = LicenseType.Community;
+                    Document.Create(document =>
                     {
-                        foreach (var a in _currentPayslip.Allowances)
+                        document.Page(page =>
                         {
-                            sb.AppendLine($" + {a.AllowanceTypeName,-35} : {a.Amount,15:#,##0 đ}");
-                        }
-                    }
-                    else if (_currentPayslip.TotalProjectAllowance <= 0)
-                    {
-                        sb.AppendLine(" (Không có phụ cấp)");
-                    }
-                    sb.AppendLine($" + {"TỔNG PHỤ CẤP",-35} : {_currentPayslip.TotalAllowance,15:#,##0 đ}");
-                    sb.AppendLine("-------------------------------------------------------------");
-                    sb.AppendLine("3. CÁC KHOẢN TRÍCH ĐÓNG & KHẤU TRỪ (-):");
-                    if (_currentPayslip.PayCuts != null && _currentPayslip.PayCuts.Count > 0)
-                    {
-                        foreach (var c in _currentPayslip.PayCuts)
-                        {
-                            sb.AppendLine($" - {c.PayCutReasonName,-35} : {c.Amount,15:#,##0 đ}");
-                        }
-                    }
-                    else
-                    {
-                        sb.AppendLine(" (Không có khoản giảm trừ)");
-                    }
-                    sb.AppendLine("=============================================================");
-                    sb.AppendLine($"  THỰC LĨNH (NET SALARY): {_currentPayslip.NetSalary:#,##0 đ}");
-                    sb.AppendLine("=============================================================");
-                    sb.AppendLine($"Ngày xuất phiếu: {DateTime.Now:dd/MM/yyyy HH:mm:ss}");
+                            page.Size(PageSizes.A4);
+                            page.Margin(36);
+                            page.DefaultTextStyle(style => style.FontSize(10));
 
-                    File.WriteAllText(sfd.FileName, sb.ToString(), Encoding.UTF8);
+                            page.Header().Column(column =>
+                            {
+                                column.Item().AlignCenter().Text("TẬP ĐOÀN CÔNG NGHỆ & NHÂN SỰ HRM")
+                                    .FontSize(12).SemiBold();
+                                column.Item().PaddingTop(8).AlignCenter()
+                                    .Text($"PHIẾU LƯƠNG NHÂN VIÊN - THÁNG {_currentPayslip.Month:D2}/{_currentPayslip.Year}")
+                                    .FontSize(16).Bold();
+                            });
+
+                            page.Content().PaddingTop(20).Column(column =>
+                            {
+                                column.Spacing(8);
+                                column.Item().Text($"Mã nhân viên: {_selectedPayroll.EmployeeCode ?? _currentPayslip.EmployeeCode ?? "--"}");
+                                column.Item().Text($"Họ và tên: {_selectedPayroll.EmployeeName ?? _currentPayslip.EmployeeName ?? "--"}");
+                                column.Item().Text($"Trạng thái: {FormatStatus(_currentPayslip.Status)}");
+
+                                AddPdfSection(column, "1. LƯƠNG & NGÀY CÔNG");
+                                AddPdfRow(column, "Lương cơ bản", $"{_currentPayslip.BaseSalary:#,##0 đ}");
+                                AddPdfRow(column, "Ngày công chuẩn", $"{_currentPayslip.StandardWorkingDay:0.##} ngày");
+                                AddPdfRow(column, "Ngày công thực tế", $"{_currentPayslip.WorkingDays:0.##} ngày");
+                                AddPdfRow(column, "Lương Gross", $"{_currentPayslip.GrossSalary:#,##0 đ}");
+
+                                AddPdfSection(column, "2. CÁC KHOẢN PHỤ CẤP (+)");
+                                if (_currentPayslip.TotalProjectAllowance > 0)
+                                {
+                                    AddPdfDetailRow(column, "Phụ cấp dự án", "--", _currentPayslip.TotalProjectAllowance);
+                                }
+                                foreach (var allowance in _currentPayslip.Allowances)
+                                {
+                                    AddPdfDetailRow(
+                                        column,
+                                        allowance.AllowanceTypeName,
+                                        allowance.Description,
+                                        allowance.Amount);
+                                }
+                                if (_currentPayslip.TotalProjectAllowance <= 0 && _currentPayslip.Allowances.Count == 0)
+                                {
+                                    column.Item().Text("(Không có phụ cấp)").Italic();
+                                }
+                                AddPdfRow(column, "TỔNG PHỤ CẤP", $"{_currentPayslip.TotalAllowance:#,##0 đ}", true);
+
+                                AddPdfSection(column, "3. CÁC KHOẢN KHẤU TRỪ (-)");
+                                if (_currentPayslip.PayCuts.Count == 0)
+                                {
+                                    column.Item().Text("(Không có khoản giảm trừ)").Italic();
+                                }
+                                foreach (var payCut in _currentPayslip.PayCuts)
+                                {
+                                    AddPdfDetailRow(
+                                        column,
+                                        payCut.PayCutReasonName,
+                                        payCut.Description,
+                                        payCut.Amount);
+                                }
+                                AddPdfRow(column, "TỔNG KHẤU TRỪ", $"{_currentPayslip.TotalPayCut:#,##0 đ}", true);
+
+                                column.Item().PaddingTop(8).BorderTop(1).BorderColor(Colors.Grey.Lighten1)
+                                    .PaddingTop(10).Row(row =>
+                                    {
+                                        row.RelativeItem().Text("THỰC LĨNH (NET SALARY)").Bold().FontSize(14);
+                                        row.ConstantItem(180).AlignRight()
+                                            .Text($"{_currentPayslip.NetSalary:#,##0 đ}").Bold().FontSize(14)
+                                            .FontColor(Colors.Green.Darken2);
+                                    });
+                                column.Item().PaddingTop(12).AlignRight()
+                                    .Text($"Ngày xuất phiếu: {DateTime.Now:dd/MM/yyyy HH:mm:ss}")
+                                    .FontSize(8).FontColor(Colors.Grey.Darken1);
+                            });
+
+                            page.Footer().AlignCenter().Text(text =>
+                            {
+                                text.Span("Trang ");
+                                text.CurrentPageNumber();
+                                text.Span(" / ");
+                                text.TotalPages();
+                            });
+                        });
+                    }).GeneratePdf(sfd.FileName);
                     MessageBox.Show("Xuất file phiếu lương thành công!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
@@ -285,6 +328,47 @@ namespace Admin.WinForms.Controls.Payroll
             {
                 MessageBox.Show($"Lỗi xuất phiếu lương: {ex.Message}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        private static void AddPdfSection(ColumnDescriptor column, string title)
+        {
+            column.Item().PaddingTop(8).BorderBottom(1).BorderColor(Colors.Grey.Lighten1)
+                .PaddingBottom(4).Text(title).Bold().FontSize(11);
+        }
+
+        private static void AddPdfRow(ColumnDescriptor column, string label, string value, bool bold = false)
+        {
+            column.Item().Row(row =>
+            {
+                var labelText = row.RelativeItem().Text(label);
+                var valueText = row.ConstantItem(180).AlignRight().Text(value);
+                if (bold)
+                {
+                    labelText.Bold();
+                    valueText.Bold();
+                }
+            });
+        }
+
+        private static void AddPdfDetailRow(ColumnDescriptor column, string name, string? description, decimal amount)
+        {
+            column.Item().Row(row =>
+            {
+                row.RelativeItem(3).Text(name);
+                row.RelativeItem(4).Text(string.IsNullOrWhiteSpace(description) ? "--" : description)
+                    .FontColor(Colors.Grey.Darken1);
+                row.RelativeItem(2).AlignRight().Text($"{amount:#,##0 đ}");
+            });
+        }
+
+        private static string SafeFileName(string value)
+        {
+            foreach (var invalidCharacter in Path.GetInvalidFileNameChars())
+            {
+                value = value.Replace(invalidCharacter, '_');
+            }
+
+            return value;
         }
     }
 }
