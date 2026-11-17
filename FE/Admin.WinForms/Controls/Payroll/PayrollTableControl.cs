@@ -45,7 +45,7 @@ namespace Admin.WinForms.Controls.Payroll
         {
             try
             {
-                _periods = await Program.PayrollApi.GetPeriodsAsync();
+                _periods = await Program.PayrollPeriods.GetPeriodsAsync();
                 comboBox_Periods.Items.Clear();
 
                 foreach (var p in _periods)
@@ -78,7 +78,7 @@ namespace Admin.WinForms.Controls.Payroll
 
             try
             {
-                var payrolls = await Program.PayrollApi.GetPayrollsByPeriodAsync(_selectedPeriod.PayrollPeriodID);
+                var payrolls = await Program.PayrollManagement.GetPayrollsByPeriodAsync(_selectedPeriod.PayrollPeriodID);
 
                 listView_Payrolls.BeginUpdate();
                 listView_Payrolls.Items.Clear();
@@ -167,7 +167,7 @@ namespace Admin.WinForms.Controls.Payroll
             _showingEmployeeDetails = true;
             try
             {
-                var detail = await Program.PayrollApi.GetPayrollDetailAsync(payroll.PayrollID);
+                var detail = await Program.PayrollManagement.GetPayrollDetailAsync(payroll.PayrollID);
                 if (detail is null)
                 {
                     MessageBox.Show("Không tìm thấy chi tiết bảng lương của nhân viên.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -257,7 +257,7 @@ namespace Admin.WinForms.Controls.Payroll
             {
                 try
                 {
-                    var created = await Program.PayrollApi.CreatePeriodAsync((int)numYear.Value, (int)numMonth.Value);
+                    var created = await Program.PayrollPeriods.CreatePeriodAsync((int)numYear.Value, (int)numMonth.Value);
                     MessageBox.Show("Mở kỳ lương mới thành công!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     await LoadPeriodsAsync();
                 }
@@ -291,7 +291,7 @@ namespace Admin.WinForms.Controls.Payroll
 
             try
             {
-                var count = await Program.PayrollApi.SyncAttendanceAsync(_selectedPeriod.PayrollPeriodID);
+                var count = await Program.PayrollManagement.SyncAttendanceAsync(_selectedPeriod.PayrollPeriodID);
                 MessageBox.Show($"Đồng bộ chấm công thành công! Đã cập nhật công cho {count} nhân sự.", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 await LoadPayrollsAsync();
             }
@@ -311,7 +311,7 @@ namespace Admin.WinForms.Controls.Payroll
 
             try
             {
-                var count = await Program.PayrollApi.SyncSalaryAsync(_selectedPeriod.PayrollPeriodID);
+                var count = await Program.PayrollManagement.SyncSalaryAsync(_selectedPeriod.PayrollPeriodID);
                 MessageBox.Show($"Đồng bộ lương cơ bản và phụ cấp dự án thành công! Đã cập nhật lương cho {count} nhân sự.", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 await LoadPayrollsAsync();
             }
@@ -345,7 +345,7 @@ namespace Admin.WinForms.Controls.Payroll
                     return;
                 }
 
-                await Program.PayrollApi.CreatePayrollsAsync(_selectedPeriod.PayrollPeriodID, empIds);
+                await Program.PayrollManagement.CreatePayrollsAsync(_selectedPeriod.PayrollPeriodID, empIds);
                 MessageBox.Show($"Đã khởi tạo bảng lương thành công cho {empIds.Count} nhân sự!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 await LoadPayrollsAsync();
             }
@@ -363,7 +363,7 @@ namespace Admin.WinForms.Controls.Payroll
                 return;
             }
 
-            var payrolls = await Program.PayrollApi.GetPayrollsByPeriodAsync(
+            var payrolls = await Program.PayrollManagement.GetPayrollsByPeriodAsync(
                 _selectedPeriod.PayrollPeriodID,
                 includeEmployeeDetails: false);
             if (payrolls.Count == 0)
@@ -378,7 +378,7 @@ namespace Admin.WinForms.Controls.Payroll
             {
                 try
                 {
-                    await Program.PayrollApi.CalculatePayrollAsync(p.PayrollID);
+                    await Program.PayrollManagement.CalculatePayrollAsync(p.PayrollID);
                     success++;
                 }
                 catch (Exception ex)

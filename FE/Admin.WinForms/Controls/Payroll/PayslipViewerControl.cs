@@ -45,7 +45,7 @@ namespace Admin.WinForms.Controls.Payroll
         {
             try
             {
-                _periods = await Program.PayrollApi.GetPeriodsAsync();
+                _periods = await Program.PayrollPeriods.GetPeriodsAsync();
                 comboBox_Periods.Items.Clear();
 
                 foreach (var p in _periods)
@@ -77,7 +77,7 @@ namespace Admin.WinForms.Controls.Payroll
 
             try
             {
-                _payrolls = await Program.PayrollApi.GetPayrollsByPeriodAsync(period.PayrollPeriodID);
+                _payrolls = await Program.PayrollManagement.GetPayrollsByPeriodAsync(period.PayrollPeriodID);
                 comboBox_Employees.Items.Clear();
 
                 foreach (var p in _payrolls)
@@ -115,7 +115,7 @@ namespace Admin.WinForms.Controls.Payroll
 
             try
             {
-                _currentPayslip = await Program.PayrollApi.GetPayslipAsync(_selectedPayroll.PayrollID);
+                _currentPayslip = await Program.Payslips.GetPayslipAsync(_selectedPayroll.PayrollID);
 
                 if (_currentPayslip == null)
                 {

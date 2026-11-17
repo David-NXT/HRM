@@ -251,7 +251,7 @@ namespace Admin.WinForms.Controls.Dashboard
             label_KpiPayTitle.Location = new Point(12, 10);
             label_KpiPayTitle.Name = "label_KpiPayTitle";
             label_KpiPayTitle.Size = new Size(210, 25);
-            label_KpiPayTitle.Text = "💰 QUỸ LƯƠNG GẦN NHẤT";
+            label_KpiPayTitle.Text = "💸 LƯƠNG ĐÃ CHI THÁNG NÀY";
 
             label_KpiPayVal.AutoSize = true;
             label_KpiPayVal.Font = new Font("Segoe UI", 18F, FontStyle.Bold);

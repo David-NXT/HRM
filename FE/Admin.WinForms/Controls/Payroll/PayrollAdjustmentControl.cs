@@ -45,7 +45,7 @@ namespace Admin.WinForms.Controls.Payroll
         {
             try
             {
-                _periods = await Program.PayrollApi.GetPeriodsAsync();
+                _periods = await Program.PayrollPeriods.GetPeriodsAsync();
                 comboBox_Periods.Items.Clear();
 
                 foreach (var p in _periods)
@@ -79,7 +79,7 @@ namespace Admin.WinForms.Controls.Payroll
 
             try
             {
-                _payrolls = await Program.PayrollApi.GetPayrollsByPeriodAsync(period.PayrollPeriodID);
+                _payrolls = await Program.PayrollManagement.GetPayrollsByPeriodAsync(period.PayrollPeriodID);
                 comboBox_Employees.Items.Clear();
 
                 foreach (var p in _payrolls)
@@ -208,7 +208,7 @@ namespace Admin.WinForms.Controls.Payroll
 
             try
             {
-                var detail = await Program.PayrollApi.GetPayrollDetailAsync(_selectedPayroll.PayrollID);
+                var detail = await Program.PayrollManagement.GetPayrollDetailAsync(_selectedPayroll.PayrollID);
 
                 // 1. Render Allowances
                 listView_Allowances.BeginUpdate();
@@ -282,8 +282,8 @@ namespace Admin.WinForms.Controls.Payroll
             try
             {
                 catalogItems = isAllowance
-                    ? await Program.PayrollApi.GetAllowanceTypesAsync(activeOnly: true)
-                    : await Program.PayrollApi.GetPayCutReasonsAsync(activeOnly: true);
+                    ? await Program.PayrollCatalog.GetAllowanceTypesAsync(activeOnly: true)
+                    : await Program.PayrollCatalog.GetPayCutReasonsAsync(activeOnly: true);
             }
             catch (Exception ex)
             {
@@ -331,7 +331,7 @@ namespace Admin.WinForms.Controls.Payroll
                 {
                     if (isAllowance)
                     {
-                        await Program.PayrollApi.AddAllowanceAsync(payroll.PayrollID, new CreateAllowanceDto
+                        await Program.PayrollManagement.AddAllowanceAsync(payroll.PayrollID, new CreateAllowanceDto
                         {
                             AllowanceTypeID = dialog.SelectedCatalogItem.ID,
                             Amount = dialog.GetAmount(payroll),
@@ -343,7 +343,7 @@ namespace Admin.WinForms.Controls.Payroll
                     }
                     else
                     {
-                        await Program.PayrollApi.AddPayCutAsync(payroll.PayrollID, new CreatePayCutDto
+                        await Program.PayrollManagement.AddPayCutAsync(payroll.PayrollID, new CreatePayCutDto
                         {
                             PayCutReasonID = dialog.SelectedCatalogItem.ID,
                             Amount = dialog.GetAmount(payroll),
