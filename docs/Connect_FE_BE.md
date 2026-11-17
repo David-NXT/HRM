@@ -248,7 +248,7 @@ Tập trung khai báo URL Backend tại:
 Ví dụ:
 
 ```csharp
-namespace Admin.WinForms.Config;
+namespace Admin.WinForms.DAO.Config;
 
 public static class ApiConfig
 {
@@ -273,7 +273,7 @@ Có thể dùng file này để tập trung khai báo các đường dẫn API k
 Ví dụ:
 
 ```csharp
-namespace Admin.WinForms.Config;
+namespace Admin.WinForms.DAO.Config;
 
 public static class ServiceEndpoints
 {

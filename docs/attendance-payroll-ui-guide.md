@@ -8,7 +8,7 @@ Tài liệu này mô tả các màn hình WinForms, chức năng nút và luồn
 - **Attendance WinForms**: ứng dụng riêng cho nhân viên, có các mục **Chấm công**, **Đơn từ** và **Nội quy**.
 - Admin kết nối Attendance API tại `http://localhost:5231/` và Payroll API tại `http://localhost:5267/`. Payroll URL có thể ghi đè bằng biến môi trường `Services__Payroll__BaseUrl`.
 
-Vị trí mã: [MainForm.cs](../FE/Admin.WinForms/MainForm.cs#L133), [MainForm.cs](../FE/Attendance.WinForms/MainForm.cs#L119), [ApiConfig.cs](../FE/Admin.WinForms/Config/ApiConfig.cs#L8), [Program.cs](../FE/Admin.WinForms/Program.cs#L18).
+Vị trí mã: [MainForm.cs](../FE/Admin.WinForms/MainForm.cs#L133), [MainForm.cs](../FE/Attendance.WinForms/MainForm.cs#L119), [ApiConfig.cs](../FE/Admin.WinForms/DAO/Config/ApiConfig.cs#L8), [Program.cs](../FE/Admin.WinForms/Program.cs#L18).
 
 ## 2. Attendance trong Admin WinForms
 
@@ -23,7 +23,7 @@ Thanh điều hướng Attendance có bốn trang:
 
 Nút **Xuất Excel/CSV** xuất dữ liệu cục bộ, không gọi API riêng. Nút **In** ở trang Tổng quan chỉ hiển thị thông báo; nút **Xuất PDF** ở trang Báo cáo cũng đang là placeholder, chưa tạo tệp PDF.
 
-Vị trí mã: điều hướng và tạo trang con ở [AttendanceOverviewControl.cs](../FE/Admin.WinForms/Controls/Attendance/AttendanceOverviewControl.cs#L18); thao tác Tổng quan ở [AttendanceOverviewPageControl.cs](../FE/Admin.WinForms/Controls/Attendance/AttendanceOverviewPageControl.cs#L243); phê duyệt ở [AttendanceApprovalControl.cs](../FE/Admin.WinForms/Controls/Attendance/AttendanceApprovalControl.cs#L56); báo cáo ở [AttendanceReportControl.cs](../FE/Admin.WinForms/Controls/Attendance/AttendanceReportControl.cs#L99); cấu hình ở [AttendanceConfigControl.cs](../FE/Admin.WinForms/Controls/Attendance/AttendanceConfigControl.cs#L72).
+Vị trí mã: điều hướng và tạo trang con ở [AttendanceOverviewControl.cs](../FE/Admin.WinForms/GUI/Controls/Attendance/AttendanceOverviewControl.cs#L18); thao tác Tổng quan ở [AttendanceOverviewPageControl.cs](../FE/Admin.WinForms/GUI/Controls/Attendance/AttendanceOverviewPageControl.cs#L243); phê duyệt ở [AttendanceApprovalControl.cs](../FE/Admin.WinForms/GUI/Controls/Attendance/AttendanceApprovalControl.cs#L56); báo cáo ở [AttendanceReportControl.cs](../FE/Admin.WinForms/GUI/Controls/Attendance/AttendanceReportControl.cs#L99); cấu hình ở [AttendanceConfigControl.cs](../FE/Admin.WinForms/GUI/Controls/Attendance/AttendanceConfigControl.cs#L72).
 
 ## 3. Attendance trong ứng dụng nhân viên
 
@@ -50,10 +50,10 @@ Thanh Payroll có bốn trang:
 
 Nút **Chốt & Đồng Bộ Công** được khai báo trong Designer và gắn trực tiếp với handler `button_SyncAttendance_Click`; handler chuyển tiếp đến xử lý đồng bộ, kiểm tra kỳ lương, hỏi xác nhận rồi gọi Payroll API.
 
-Vị trí mã: điều hướng các trang ở [PayrollOverviewControl.Designer.cs](../FE/Admin.WinForms/Controls/Payroll/PayrollOverviewControl.Designer.cs#L60); các thao tác bảng lương và handler đồng bộ ở [PayrollTableControl.cs](../FE/Admin.WinForms/Controls/Payroll/PayrollTableControl.cs#L207); khai báo nút và đăng ký sự kiện ở [PayrollTableControl.Designer.cs](../FE/Admin.WinForms/Controls/Payroll/PayrollTableControl.Designer.cs#L299); phụ cấp/khấu trừ ở [PayrollAdjustmentControl.cs](../FE/Admin.WinForms/Controls/Payroll/PayrollAdjustmentControl.cs#L186); phê duyệt/chi trả ở [PayrollApprovalPaymentControl.cs](../FE/Admin.WinForms/Controls/Payroll/PayrollApprovalPaymentControl.cs#L178); phiếu lương ở [PayslipViewerControl.cs](../FE/Admin.WinForms/Controls/Payroll/PayslipViewerControl.cs#L112).
+Vị trí mã: điều hướng các trang ở [PayrollOverviewControl.Designer.cs](../FE/Admin.WinForms/GUI/Controls/Payroll/PayrollOverviewControl.Designer.cs#L60); các thao tác bảng lương và handler đồng bộ ở [PayrollTableControl.cs](../FE/Admin.WinForms/GUI/Controls/Payroll/PayrollTableControl.cs#L207); khai báo nút và đăng ký sự kiện ở [PayrollTableControl.Designer.cs](../FE/Admin.WinForms/GUI/Controls/Payroll/PayrollTableControl.Designer.cs#L299); phụ cấp/khấu trừ ở [PayrollAdjustmentControl.cs](../FE/Admin.WinForms/GUI/Controls/Payroll/PayrollAdjustmentControl.cs#L186); phê duyệt/chi trả ở [PayrollApprovalPaymentControl.cs](../FE/Admin.WinForms/GUI/Controls/Payroll/PayrollApprovalPaymentControl.cs#L178); phiếu lương ở [PayslipViewerControl.cs](../FE/Admin.WinForms/GUI/Controls/Payroll/PayslipViewerControl.cs#L112).
 
 ## 5. API client và bố cục
 
-- Admin dùng [AttendanceApiService.cs](../FE/Admin.WinForms/Services/Attendance/AttendanceApiService.cs#L19) cho Attendance; Payroll được chia thành các service nghiệp vụ trong `Services/Payroll` và lớp truy cập API [PayrollApiClient.cs](../FE/Admin.WinForms/Data/Payroll/PayrollApiClient.cs).
+- Admin dùng [AttendanceApiService.cs](../FE/Admin.WinForms/DAO/Attendance/AttendanceApiService.cs#L19) cho Attendance; Payroll được chia thành các service nghiệp vụ trong `BUS/Services/Payroll` và lớp truy cập API [PayrollApiClient.cs](../FE/Admin.WinForms/DAO/Payroll/PayrollApiClient.cs).
 - Khi đồng bộ mức lương, Payroll API gọi [PayrollData/summary của Project API](../src/Project/Project.API/Controllers/PayrollDataController.cs#L57); địa chỉ local mặc định là `http://localhost:5032/` trong [appsettings.Development.json](../src/Payroll/Payroll.API/appsettings.Development.json). Môi trường khác cấu hình `ProjectService__BaseUrl`.
 - Thanh điều hướng Attendance/Payroll được phép tự xuống dòng khi cửa sổ hẹp.

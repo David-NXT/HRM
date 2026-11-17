@@ -1,18 +1,21 @@
 
-using Admin.WinForms.Config;
-using Admin.WinForms.Data.Payroll;
-using Admin.WinForms.Services.Attendance;
-using Admin.WinForms.Services.Payroll;
+using Admin.WinForms.DAO.Config;
+using Admin.WinForms.DAO.Payroll;
+using Admin.WinForms.DAO.Attendance;
+using Admin.WinForms.GUI;
+using Admin.WinForms.BUS.Presenters.Payroll;
+using Admin.WinForms.BUS.Services.Payroll;
 
 namespace Admin.WinForms
 {
     internal static class Program
     {
         public static AttendanceApiService AttendanceApi { get; private set; } = null!;
-        public static PayrollPeriodService PayrollPeriods { get; private set; } = null!;
-        public static PayrollManagementService PayrollManagement { get; private set; } = null!;
-        public static PayrollCatalogService PayrollCatalog { get; private set; } = null!;
-        public static PayslipService Payslips { get; private set; } = null!;
+        private static PayrollPeriodService PayrollPeriods { get; set; } = null!;
+        private static PayrollManagementService PayrollManagement { get; set; } = null!;
+        private static PayrollCatalogService PayrollCatalog { get; set; } = null!;
+        private static PayslipService Payslips { get; set; } = null!;
+        public static PayrollPresenter PayrollPresenter { get; private set; } = null!;
 
         [STAThread]
         static void Main()
@@ -53,6 +56,11 @@ namespace Admin.WinForms
                 PayrollPeriods,
                 Payslips);
             PayrollCatalog = new PayrollCatalogService(payrollApiClient);
+            PayrollPresenter = new PayrollPresenter(
+                PayrollPeriods,
+                PayrollManagement,
+                PayrollCatalog,
+                Payslips);
 
             Application.Run(new MainForm());
         }

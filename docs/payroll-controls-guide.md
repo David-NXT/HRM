@@ -1,6 +1,6 @@
 # Hướng dẫn các Control Payroll và API
 
-Tài liệu này giải thích các control trong thư mục `FE/Admin.WinForms/Controls/Payroll`: chức năng, hàm xử lý, endpoint được gọi, dữ liệu đi qua các lớp nào và những đoạn code tiêu biểu. Endpoint được ghi theo URL tương đối; ứng dụng ghép với `HttpClient.BaseAddress` của Payroll API (mặc định `http://localhost:5267/`, có thể thay bằng `Services__Payroll__BaseUrl`).
+Tài liệu này giải thích các control trong thư mục `FE/Admin.WinForms/GUI/Controls/Payroll`: chức năng, hàm xử lý, endpoint được gọi, dữ liệu đi qua các lớp nào và những đoạn code tiêu biểu. Endpoint được ghi theo URL tương đối; ứng dụng ghép với `HttpClient.BaseAddress` của Payroll API (mặc định `http://localhost:5267/`, có thể thay bằng `Services__Payroll__BaseUrl`).
 
 ## 1. Luồng tổng quát
 
@@ -9,7 +9,7 @@ Control / Dialog
     ↓ gọi
 Payroll service theo chức năng hoặc AttendanceApi / HrApiClient
     ↓ nghiệp vụ
-PayrollApiClient (Data/Payroll)
+PayrollApiClient (DAO/Payroll)
     ↓ HTTP
 Payroll.API Controller
     ↓ gọi
@@ -22,7 +22,7 @@ Ví dụ khi control tải danh sách payroll:
 
 ```csharp
 // PayrollTableControl
-var payrolls = await Program.PayrollManagement.GetPayrollsByPeriodAsync(periodId);
+var payrolls = await Program.PayrollPresenter.GetPayrollsByPeriodAsync(periodId);
 ```
 
 ```csharp
@@ -138,7 +138,7 @@ var employeeIds = attendanceRecords
     .Distinct()
     .ToList();
 
-await Program.PayrollManagement.CreatePayrollsAsync(
+await Program.PayrollPresenter.CreatePayrollsAsync(
     _selectedPeriod.PayrollPeriodID,
     employeeIds);
 ```
@@ -154,7 +154,7 @@ await Program.PayrollManagement.CreatePayrollsAsync(
 HR lỗi thì dialog vẫn có thể hiển thị chi tiết payroll và thông báo lỗi hồ sơ; lỗi Payroll detail được báo ở control.
 
 ```csharp
-var detail = await Program.PayrollManagement.GetPayrollDetailAsync(payroll.PayrollID);
+var detail = await Program.PayrollPresenter.GetPayrollDetailAsync(payroll.PayrollID);
 using var hr = new HrApiClient();
 var employee = await hr.GetAsync<EmployeeRow>(
     $"employees/{payroll.EmployeeID}",
@@ -194,7 +194,7 @@ File: [PayrollAdjustmentControl.cs](./PayrollAdjustmentControl.cs)
 Request phụ cấp minh họa:
 
 ```csharp
-await Program.PayrollManagement.AddAllowanceAsync(payroll.PayrollID,
+await Program.PayrollPresenter.AddAllowanceAsync(payroll.PayrollID,
     new CreateAllowanceDto
     {
         AllowanceTypeID = selectedItem.ID,
@@ -256,7 +256,7 @@ File: [PayslipViewerControl.cs](./PayslipViewerControl.cs)
 Ví dụ tải phiếu:
 
 ```csharp
-_currentPayslip = await Program.Payslips.GetPayslipAsync(
+_currentPayslip = await Program.PayrollPresenter.GetPayslipAsync(
     _selectedPayroll.PayrollID);
 
 if (_currentPayslip == null)
@@ -323,11 +323,11 @@ Payroll nằm trong cùng project `Admin.WinForms`, được phân theo ba lớp
 
 | Lớp | Vị trí | Trách nhiệm |
 |---|---|---|
-| Presentation | `Controls/Payroll` và `Controls/Dashboard` | Hiển thị giao diện, nhận thao tác và gọi service phù hợp |
-| Business/Services | `Services/Payroll` | Cache list trong vòng đời ứng dụng, phối hợp nghiệp vụ và làm mới dữ liệu sau thao tác ghi |
-| Data Access | `Data/Payroll/PayrollApiClient.cs` | Gửi HTTP đến Payroll API, đọc DTO và xử lý phản hồi |
+| Presentation/View | `GUI/Controls/Payroll` và `GUI/Controls/Dashboard` | Hiển thị giao diện và chuyển thao tác payroll qua Presenter |
+| Business/Presenter + Services | `BUS/Presenters/Payroll` và `BUS/Services/Payroll` | Điều phối thao tác UI, giữ cache `List<T>` trong vòng đời ứng dụng và làm mới list liên quan sau khi ghi |
+| Data Access/DAO | `DAO/Payroll/PayrollApiClient.cs` | Gửi HTTP đến Payroll API, đọc DTO và xử lý phản hồi |
 
-Các service nghiệp vụ được chia theo chức năng: `PayrollPeriodService` (kỳ lương), `PayrollManagementService` (bảng lương và thống kê), `PayrollCatalogService` (danh mục), `PayslipService` (phiếu lương). `Program` tạo một `PayrollApiClient` dùng chung và truyền vào các service; các control gọi service tương ứng thay vì gọi HTTP trực tiếp.
+`Program` tạo một `PayrollPresenter` dùng chung cho các màn hình Payroll. Presenter điều phối các service theo chức năng: `PayrollPeriodService` (kỳ lương), `PayrollManagementService` (bảng lương và thống kê), `PayrollCatalogService` (danh mục), `PayslipService` (phiếu lương). Các service dùng chung `PayrollApiClient`; UI không gọi DAO hoặc HTTP trực tiếp.
 
 ## 11. Những thao tác không gọi endpoint
 

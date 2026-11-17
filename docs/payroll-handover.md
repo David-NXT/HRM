@@ -14,16 +14,17 @@ Hãy đọc theo thứ tự này nếu đây là lần đầu tiếp cận repo:
 4. **Tạo nghiệp vụ theo luồng:** mở kỳ → tạo payroll từng nhân viên → đồng bộ công và lương → tính → duyệt → chi trả → xuất phiếu.
 5. **Kết nối service ngoài qua HTTP:** khai báo interface/response DTO ở Application, tạo typed client ở Infrastructure, cấu hình BaseUrl rồi inject client vào nghiệp vụ.
 6. **Lưu schema bằng migration:** thay đổi entity → cập nhật `PayrollDbContext` → sinh migration → build → khi Payroll API khởi động, `Database.MigrateAsync()` áp dụng migration.
-7. **Kết nối UI:** WinForms chia ba lớp trong cùng project: `Controls` (Presentation), `Services/Payroll` (nghiệp vụ) và `Data/Payroll/PayrollApiClient` (truy cập Payroll API). UI không gọi database hoặc HTTP trực tiếp. Khi thêm field mới, đồng bộ entity → response DTO → WinForms DTO → màn hình.
+7. **Kết nối UI:** WinForms chia ba lớp trong cùng project: `GUI` (View), `BUS/Presenters` và `BUS/Services` (điều phối/nghiệp vụ), `DAO` (truy cập API). UI không gọi HTTP hoặc database trực tiếp. Khi thêm field mới, đồng bộ entity → response DTO → WinForms DTO → màn hình.
 8. **Kiểm chứng:** chạy unit tests, build API/UI, sau đó kiểm tra API phụ thuộc đang chạy đúng URL.
 
 Luồng đồng bộ lương hiện tại là ví dụ đầy đủ của các lớp trên:
 
 ```text
 Payroll UI: "Đồng Bộ Mức Lương"
-  → Controls/Payroll
-  → Services/Payroll/PayrollManagementService
-  → Data/Payroll/PayrollApiClient
+  → GUI/Controls/Payroll
+  → BUS/Presenters/Payroll/PayrollPresenter
+  → BUS/Services/Payroll/PayrollManagementService
+  → DAO/Payroll/PayrollApiClient
   → POST /api/payroll-salary/periods/{periodId}/sync
   → PayrollSalarySyncController
   → PayrollSalarySyncService

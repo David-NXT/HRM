@@ -903,4 +903,4 @@ ContractExpiryJob tạo ContractAlert nền theo cấu hình. Lỗi trên từng
 | EF model | src/HR/HR.Infrastructure/Persistence/HrDbContext.cs |
 | API examples | src/HR/HR.API/HR.http |
 | HR web pages | src/HR/HR.API/Pages/ |
-| HR forms in desktop app | FE/Admin.WinForms/Controls/HR/ |
+| HR forms in desktop app | FE/Admin.WinForms/GUI/Controls/HR/ |
