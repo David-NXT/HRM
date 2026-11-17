@@ -323,7 +323,7 @@ public class AttendanceApiService
 
     public async Task<List<EmployeeDirectoryDto>> GetAllEmployeesAsync()
     {
-        const int pageSize = 500;
+        const int pageSize = 100;
         var employees = new List<EmployeeDirectoryDto>();
         var pageNumber = 1;
 
