@@ -141,35 +141,21 @@ public class AttendanceApiService
     // GET: api/attendance/analytics/trends
     public async Task<List<AttendanceWeeklyTrendDto>> GetWeeklyTrendsAsync(int? month = null, int? year = null)
     {
-        try
-        {
-            var url = (month.HasValue && year.HasValue)
-                ? $"api/attendance/analytics/trends?month={month.Value}&year={year.Value}"
-                : "api/attendance/analytics/trends";
-            var response = await _httpClient.GetFromJsonAsync<List<AttendanceWeeklyTrendDto>>(url);
-            return response ?? new List<AttendanceWeeklyTrendDto>();
-        }
-        catch
-        {
-            return new List<AttendanceWeeklyTrendDto>();
-        }
+        var url = (month.HasValue && year.HasValue)
+            ? $"api/attendance/analytics/trends?month={month.Value}&year={year.Value}"
+            : "api/attendance/analytics/trends";
+        var response = await _httpClient.GetFromJsonAsync<List<AttendanceWeeklyTrendDto>>(url);
+        return response ?? new List<AttendanceWeeklyTrendDto>();
     }
 
     // GET: api/attendance/analytics/departments
     public async Task<List<AttendanceDepartmentTrendDto>> GetDepartmentTrendsAsync(int? month = null, int? year = null)
     {
-        try
-        {
-            var url = (month.HasValue && year.HasValue)
-                ? $"api/attendance/analytics/departments?month={month.Value}&year={year.Value}"
-                : "api/attendance/analytics/departments";
-            var response = await _httpClient.GetFromJsonAsync<List<AttendanceDepartmentTrendDto>>(url);
-            return response ?? new List<AttendanceDepartmentTrendDto>();
-        }
-        catch
-        {
-            return new List<AttendanceDepartmentTrendDto>();
-        }
+        var url = (month.HasValue && year.HasValue)
+            ? $"api/attendance/analytics/departments?month={month.Value}&year={year.Value}"
+            : "api/attendance/analytics/departments";
+        var response = await _httpClient.GetFromJsonAsync<List<AttendanceDepartmentTrendDto>>(url);
+        return response ?? new List<AttendanceDepartmentTrendDto>();
     }
 
     // GET: api/WorkShifts

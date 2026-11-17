@@ -84,169 +84,81 @@ namespace Admin.WinForms.Controls.Attendance
                 var targetMonth = dateTimePicker1.Value.Month;
                 var targetYear = dateTimePicker1.Value.Year;
                 var periodName = $"Kỳ công Tháng {targetMonth:D2}/{targetYear}";
+                DisplayReportSummaries(new List<TimesheetSummaryDto>(), periodName);
 
                 List<TimesheetSummaryDto>? summaries = null;
 
-                // 1. Thử lấy danh sách tổng hợp công từ TimesheetPeriods của Backend
-                try
+                var periods = await Program.AttendanceApi.GetTimesheetPeriodsAsync(targetYear);
+                var activePeriod = periods.FirstOrDefault(p => p.Month == targetMonth && p.Year == targetYear);
+
+                if (activePeriod != null)
                 {
-                    var periods = await Program.AttendanceApi.GetTimesheetPeriodsAsync(targetYear);
-                    var activePeriod = periods.FirstOrDefault(p => p.Month == targetMonth) ?? periods.FirstOrDefault();
-
-                    if (activePeriod != null)
-                    {
-                        periodName = activePeriod.Name;
-                        summaries = await Program.AttendanceApi.GetTimesheetSummariesByPeriodAsync(activePeriod.Id);
-                    }
+                    periodName = activePeriod.Name;
+                    summaries = await Program.AttendanceApi.GetTimesheetSummariesByPeriodAsync(activePeriod.Id);
                 }
-                catch { }
 
-                // 2. Nếu chưa có summaries trong kỳ công, tổng hợp trực tiếp từ lượt quẹt thẻ (AttendanceRecords)
+                // Nếu kỳ công chưa có summary, tổng hợp từ bản ghi chấm công thực tế.
                 if (summaries == null || summaries.Count == 0)
                 {
-                    try
-                    {
-                        var allRecords = await Program.AttendanceApi.GetAllAsync();
-                        var monthRecords = allRecords
-                            .Where(r => r.Date.Month == targetMonth && r.Date.Year == targetYear)
-                            .ToList();
+                    var allRecords = await Program.AttendanceApi.GetAllAsync();
+                    var monthRecords = allRecords
+                        .Where(r => r.Date.Month == targetMonth && r.Date.Year == targetYear)
+                        .ToList();
 
-                        if (monthRecords.Count > 0)
+                    var standardWorkingDays = Enumerable.Range(1, DateTime.DaysInMonth(targetYear, targetMonth))
+                        .Count(day =>
                         {
-                            summaries = monthRecords
-                                .GroupBy(r => r.EmployeeId)
-                                .Select(g =>
-                                {
-                                    var first = g.First();
-                                    var actualDays = g.Count(r => r.WorkHour > 0 || r.Status.Equals("Present", StringComparison.OrdinalIgnoreCase) || r.TimeIn.HasValue);
-                                    var lateCount = g.Count(r => r.IsLate || r.LateMins > 0 || r.Status.Equals("Late", StringComparison.OrdinalIgnoreCase));
-                                    var lateMins = g.Sum(r => r.LateMins);
-                                    var earlyCount = g.Count(r => r.IsEarlyLeave || r.EarlyLeaveMins > 0);
-                                    var earlyMins = g.Sum(r => r.EarlyLeaveMins);
-                                    var totalHours = g.Sum(r => (decimal)r.WorkHour);
+                            var dayOfWeek = new DateTime(targetYear, targetMonth, day).DayOfWeek;
+                            return dayOfWeek != DayOfWeek.Saturday && dayOfWeek != DayOfWeek.Sunday;
+                        });
 
-                                    return new TimesheetSummaryDto
-                                    {
-                                        Id = Guid.NewGuid(),
-                                        EmployeeId = g.Key,
-                                        EmployeeCode = !string.IsNullOrWhiteSpace(first.EmployeeCode) ? first.EmployeeCode : g.Key.ToString()[..8].ToUpper(),
-                                        EmployeeName = !string.IsNullOrWhiteSpace(first.EmployeeName) ? first.EmployeeName : $"Nhân viên {first.EmployeeCode}",
-                                        StandardWorkingDays = 22,
-                                        ActualWorkingDays = actualDays,
-                                        TotalWorkingHours = totalHours,
-                                        PaidLeaveDays = 0,
-                                        UnpaidLeaveDays = Math.Max(0, 22 - actualDays),
-                                        LateOccurrences = lateCount,
-                                        TotalLateMinutes = lateMins,
-                                        EarlyLeaveOccurrences = earlyCount,
-                                        TotalEarlyLeaveMinutes = earlyMins,
-                                        NormalOTHours = 0,
-                                        WeekendOTHours = 0,
-                                        HolidayOTHours = 0
-                                    };
-                                }).ToList();
-                        }
-                    }
-                    catch { }
+                    summaries = monthRecords
+                        .GroupBy(r => r.EmployeeId)
+                        .Select(g =>
+                        {
+                            var first = g.First();
+                            var employeeCode = !string.IsNullOrWhiteSpace(first.EmployeeCode)
+                                ? first.EmployeeCode
+                                : g.Key.ToString()[..8].ToUpperInvariant();
+
+                            return new TimesheetSummaryDto
+                            {
+                                Id = Guid.NewGuid(),
+                                EmployeeId = g.Key,
+                                EmployeeCode = employeeCode,
+                                EmployeeName = !string.IsNullOrWhiteSpace(first.EmployeeName)
+                                    ? first.EmployeeName
+                                    : $"Nhân viên {employeeCode}",
+                                StandardWorkingDays = standardWorkingDays,
+                                ActualWorkingDays = g.Count(r =>
+                                    r.WorkHour > 0
+                                    || string.Equals(r.Status, "Present", StringComparison.OrdinalIgnoreCase)
+                                    || r.TimeIn.HasValue),
+                                TotalWorkingHours = g.Sum(r => r.WorkHour),
+                                LateOccurrences = g.Count(r =>
+                                    r.IsLate
+                                    || r.LateMins > 0
+                                    || string.Equals(r.Status, "Late", StringComparison.OrdinalIgnoreCase)),
+                                TotalLateMinutes = g.Sum(r => r.LateMins),
+                                EarlyLeaveOccurrences = g.Count(r => r.IsEarlyLeave || r.EarlyLeaveMins > 0),
+                                TotalEarlyLeaveMinutes = g.Sum(r => r.EarlyLeaveMins),
+                                NormalOTHours = g.Sum(r => r.ActualOTMins > 0 ? r.ActualOTMins : r.OTMins) / 60m
+                            };
+                        })
+                        .ToList();
                 }
 
-                // 3. Fallback: Nếu hệ thống mới tinh chưa có dữ liệu chấm công tháng này, sinh dữ liệu nhân viên thực tế để hiển thị bảng công và chỉ số KPI
-                if (summaries == null || summaries.Count == 0)
-                {
-                    summaries = await GenerateFallbackSummariesAsync(targetMonth, targetYear);
-                }
-
-                DisplayReportSummaries(summaries, periodName);
+                DisplayReportSummaries(summaries ?? new List<TimesheetSummaryDto>(), periodName);
             }
             catch (Exception ex)
             {
+                DisplayReportSummaries(new List<TimesheetSummaryDto>(), $"Kỳ công Tháng {dateTimePicker1.Value:MM/yyyy}");
                 MessageBox.Show(
                     $"Không thể tải báo cáo công: {ex.Message}",
                     "Lỗi",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
             }
-        }
-
-        private async Task<List<TimesheetSummaryDto>> GenerateFallbackSummariesAsync(int month, int year)
-        {
-            var result = new List<TimesheetSummaryDto>();
-            try
-            {
-                var employees = await Program.AttendanceApi.GetEmployeesAsync();
-                if (employees != null && employees.Count > 0)
-                {
-                    int index = 0;
-                    foreach (var emp in employees.Take(15))
-                    {
-                        index++;
-                        decimal actualDays = 22 - (index % 3 == 0 ? 1 : (index % 5 == 0 ? 2 : 0));
-                        int lateCount = index % 4 == 0 ? 1 : 0;
-                        int lateMins = lateCount * 15;
-                        decimal totalHours = actualDays * 8;
-
-                        result.Add(new TimesheetSummaryDto
-                        {
-                            Id = Guid.NewGuid(),
-                            EmployeeId = emp.EmployeeId,
-                            EmployeeCode = !string.IsNullOrWhiteSpace(emp.EmployeeCode) ? emp.EmployeeCode : $"NV{index:D3}",
-                            EmployeeName = !string.IsNullOrWhiteSpace(emp.FullName) ? emp.FullName : $"Nhân viên {index}",
-                            StandardWorkingDays = 22,
-                            ActualWorkingDays = actualDays,
-                            TotalWorkingHours = totalHours,
-                            PaidLeaveDays = (index % 3 == 0) ? 1 : 0,
-                            UnpaidLeaveDays = (index % 5 == 0) ? 1 : 0,
-                            LateOccurrences = lateCount,
-                            TotalLateMinutes = lateMins,
-                            EarlyLeaveOccurrences = 0,
-                            TotalEarlyLeaveMinutes = 0,
-                            NormalOTHours = (index % 2 == 0) ? 4 : 0,
-                            WeekendOTHours = 0,
-                            HolidayOTHours = 0
-                        });
-                    }
-                    return result;
-                }
-            }
-            catch { }
-
-            // Nếu HR Directory cũng chưa kết nối, dùng danh sách mẫu chuẩn
-            var sampleEmployees = new[]
-            {
-                ("NV001", "Nguyễn Văn An", 22m, 176m, 0, 0),
-                ("NV002", "Trần Thị Mai", 21m, 168m, 1, 15),
-                ("NV003", "Lê Hoàng Nam", 22m, 180m, 0, 0),
-                ("NV004", "Phạm Hương Giang", 20m, 160m, 1, 20),
-                ("NV005", "Đặng Văn Bình", 22m, 176m, 0, 0),
-                ("NV006", "Bùi Thu Trang", 21.5m, 172m, 0, 0),
-                ("NV007", "Vũ Minh Quân", 22m, 182m, 0, 0),
-                ("NV008", "Đỗ Kim Ngân", 22m, 176m, 0, 0)
-            };
-
-            foreach (var (code, name, actualDays, totalHours, lateCount, lateMins) in sampleEmployees)
-            {
-                result.Add(new TimesheetSummaryDto
-                {
-                    Id = Guid.NewGuid(),
-                    EmployeeId = Guid.NewGuid(),
-                    EmployeeCode = code,
-                    EmployeeName = name,
-                    StandardWorkingDays = 22,
-                    ActualWorkingDays = actualDays,
-                    TotalWorkingHours = totalHours,
-                    PaidLeaveDays = (22m - actualDays > 0) ? (22m - actualDays) : 0,
-                    UnpaidLeaveDays = 0,
-                    LateOccurrences = lateCount,
-                    TotalLateMinutes = lateMins,
-                    EarlyLeaveOccurrences = 0,
-                    TotalEarlyLeaveMinutes = 0,
-                    NormalOTHours = totalHours > 176m ? (totalHours - 176m) : 0,
-                    WeekendOTHours = 0,
-                    HolidayOTHours = 0
-                });
-            }
-
-            return result;
         }
 
         private async Task LoadAnalyticsChartsAsync()
@@ -259,49 +171,18 @@ namespace Admin.WinForms.Controls.Attendance
                 var weeklyTrends = await Program.AttendanceApi.GetWeeklyTrendsAsync(targetMonth, targetYear);
                 var deptTrends = await Program.AttendanceApi.GetDepartmentTrendsAsync(targetMonth, targetYear);
 
-                if (weeklyTrends == null || weeklyTrends.Count == 0)
-                {
-                    weeklyTrends = new List<AttendanceWeeklyTrendDto>
-                    {
-                        new() { Name = "Week 1", Present = 96, Absent = 4 },
-                        new() { Name = "Week 2", Present = 92, Absent = 8 },
-                        new() { Name = "Week 3", Present = 95, Absent = 5 },
-                        new() { Name = "Week 4", Present = 98, Absent = 2 }
-                    };
-                }
-
-                if (deptTrends == null || deptTrends.Count == 0)
-                {
-                    deptTrends = new List<AttendanceDepartmentTrendDto>
-                    {
-                        new() { Name = "Phòng Công Nghệ Thông Tin", Percentage = 96 },
-                        new() { Name = "Phòng Hành Chính Nhân Sự", Percentage = 94 },
-                        new() { Name = "Phòng Marketing", Percentage = 90 },
-                        new() { Name = "Phòng Kinh Doanh", Percentage = 92 }
-                    };
-                }
-
                 RenderWeeklyTrends(weeklyTrends);
                 RenderDepartmentTrends(deptTrends);
             }
-            catch
+            catch (Exception ex)
             {
-                // Fallback nếu API có sự cố
-                RenderWeeklyTrends(new List<AttendanceWeeklyTrendDto>
-                {
-                    new() { Name = "Week 1", Present = 96, Absent = 4 },
-                    new() { Name = "Week 2", Present = 92, Absent = 8 },
-                    new() { Name = "Week 3", Present = 95, Absent = 5 },
-                    new() { Name = "Week 4", Present = 98, Absent = 2 }
-                });
-
-                RenderDepartmentTrends(new List<AttendanceDepartmentTrendDto>
-                {
-                    new() { Name = "Phòng Công Nghệ Thông Tin", Percentage = 96 },
-                    new() { Name = "Phòng Hành Chính Nhân Sự", Percentage = 94 },
-                    new() { Name = "Phòng Marketing", Percentage = 90 },
-                    new() { Name = "Phòng Kinh Doanh", Percentage = 92 }
-                });
+                RenderWeeklyTrends(new List<AttendanceWeeklyTrendDto>());
+                RenderDepartmentTrends(new List<AttendanceDepartmentTrendDto>());
+                MessageBox.Show(
+                    $"Không thể tải thống kê biểu đồ: {ex.Message}",
+                    "Lỗi",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
         }
 
@@ -319,6 +200,9 @@ namespace Admin.WinForms.Controls.Attendance
             label_NumberPresent.Text = presentEmployees.ToString();
             label_NumberLate.Text = totalLateOccurrences.ToString();
             label_NumberAbsent.Text = absentEmployees.ToString();
+            label_ReportList.Text = totalEmployees == 0
+                ? $"Không có dữ liệu chấm công trong {periodName}."
+                : "Monthly Timesheet Summary";
 
             if (summaries != null)
             {
