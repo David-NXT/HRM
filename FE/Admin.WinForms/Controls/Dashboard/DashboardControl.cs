@@ -23,7 +23,11 @@ namespace Admin.WinForms.Controls.Dashboard
         {
             InitializeComponent();
 
-            button_Refresh.Click += async (s, e) => await LoadDashboardDataAsync();
+            button_Refresh.Click += async (s, e) =>
+            {
+                await Program.PayrollManagement.RefreshPayrollDataAsync();
+                await LoadDashboardDataAsync();
+            };
 
             btnNav_HR.Click += (s, e) => (FindForm() as MainForm)?.NavigateTo("hr");
             btnNav_Attendance.Click += (s, e) => (FindForm() as MainForm)?.NavigateTo("attendance");
@@ -147,29 +151,19 @@ namespace Admin.WinForms.Controls.Dashboard
         {
             try
             {
-                var periods = await Program.PayrollApi.GetPeriodsAsync();
+                var today = DateTime.Today;
+                var summary = await Program.PayrollManagement.GetPaidPayrollSummaryForMonthAsync(today.Year, today.Month);
                 token.ThrowIfCancellationRequested();
 
-                if (periods.Count > 0)
-                {
-                    var latestPeriod = periods.OrderByDescending(p => p.Year).ThenByDescending(p => p.Month).First();
-                    var payrolls = await Program.PayrollApi.GetPayrollsByPeriodAsync(latestPeriod.PayrollPeriodID);
-                    token.ThrowIfCancellationRequested();
-
-                    decimal totalNet = payrolls.Sum(p => p.NetSalary);
-                    label_KpiPayVal.Text = $"{totalNet.ToString("N0", _vnCulture)} đ";
-                    label_KpiPaySub.Text = $"Kỳ {latestPeriod.Month:D2}/{latestPeriod.Year} ({payrolls.Count} nhân sự)";
-                }
-                else
-                {
-                    label_KpiPayVal.Text = "0 đ";
-                    label_KpiPaySub.Text = "Chưa có kỳ lương nào";
-                }
+                label_KpiPayVal.Text = $"{summary.TotalNetSalary.ToString("N0", _vnCulture)} đ";
+                label_KpiPaySub.Text = summary.PaidPayrollCount == 0
+                    ? $"Chưa ghi nhận chi trả tháng {today:MM/yyyy}"
+                    : $"{summary.PaidPayrollCount} phiếu đã chi trong {today:MM/yyyy}";
             }
             catch (Exception ex)
             {
                 label_KpiPayVal.Text = "--";
-                label_KpiPaySub.Text = "Không thể kết nối Payroll";
+                label_KpiPaySub.Text = "Không thể tải dữ liệu chi trả";
                 System.Diagnostics.Debug.WriteLine($"[Dashboard] Payroll KPI Error: {ex.Message}");
             }
         }

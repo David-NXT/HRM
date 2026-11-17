@@ -54,6 +54,6 @@ Vị trí mã: điều hướng các trang ở [PayrollOverviewControl.Designer.
 
 ## 5. API client và bố cục
 
-- Admin dùng [AttendanceApiService.cs](../FE/Admin.WinForms/Services/Attendance/AttendanceApiService.cs#L19) và [PayrollApiService.cs](../FE/Admin.WinForms/Services/Payroll/PayrollApiService.cs#L23) để ánh xạ thao tác UI sang HTTP route.
+- Admin dùng [AttendanceApiService.cs](../FE/Admin.WinForms/Services/Attendance/AttendanceApiService.cs#L19) cho Attendance; Payroll được chia thành các service nghiệp vụ trong `Services/Payroll` và lớp truy cập API [PayrollApiClient.cs](../FE/Admin.WinForms/Data/Payroll/PayrollApiClient.cs).
 - Khi đồng bộ mức lương, Payroll API gọi [PayrollData/summary của Project API](../src/Project/Project.API/Controllers/PayrollDataController.cs#L57); địa chỉ local mặc định là `http://localhost:5032/` trong [appsettings.Development.json](../src/Payroll/Payroll.API/appsettings.Development.json). Môi trường khác cấu hình `ProjectService__BaseUrl`.
 - Thanh điều hướng Attendance/Payroll được phép tự xuống dòng khi cửa sổ hẹp.

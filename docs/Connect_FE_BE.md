@@ -232,7 +232,7 @@ Tiếp tục áp dụng cấu trúc tương tự cho các service đã có hoặ
 | Leave          | Leave             | Leave          | LeaveApiService      |
 | Shift          | Shift             | Shift          | ShiftApiService      |
 | Timesheet      | Timesheet         | Timesheet      | TimesheetApiService  |
-| Payroll        | Payroll           | Payroll        | PayrollApiService    |
+| Payroll        | Payroll           | Payroll        | PayrollPeriodService, PayrollManagementService, PayrollCatalogService, PayslipService |
 | Authentication | Authentication    | Authentication | AuthApiService       |
 
 Các nhóm Payroll và Authentication là định hướng tổ chức, cần đối chiếu với các project Backend thực tế trước khi triển khai.

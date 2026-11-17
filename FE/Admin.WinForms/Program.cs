@@ -1,5 +1,6 @@
 
 using Admin.WinForms.Config;
+using Admin.WinForms.Data.Payroll;
 using Admin.WinForms.Services.Attendance;
 using Admin.WinForms.Services.Payroll;
 
@@ -8,7 +9,10 @@ namespace Admin.WinForms
     internal static class Program
     {
         public static AttendanceApiService AttendanceApi { get; private set; } = null!;
-        public static PayrollApiService PayrollApi { get; private set; } = null!;
+        public static PayrollPeriodService PayrollPeriods { get; private set; } = null!;
+        public static PayrollManagementService PayrollManagement { get; private set; } = null!;
+        public static PayrollCatalogService PayrollCatalog { get; private set; } = null!;
+        public static PayslipService Payslips { get; private set; } = null!;
 
         [STAThread]
         static void Main()
@@ -41,7 +45,14 @@ namespace Admin.WinForms
             };
 
             AttendanceApi = new AttendanceApiService(attendanceClient);
-            PayrollApi = new PayrollApiService(payrollClient);
+            var payrollApiClient = new PayrollApiClient(payrollClient);
+            PayrollPeriods = new PayrollPeriodService(payrollApiClient);
+            Payslips = new PayslipService(payrollApiClient, PayrollPeriods);
+            PayrollManagement = new PayrollManagementService(
+                payrollApiClient,
+                PayrollPeriods,
+                Payslips);
+            PayrollCatalog = new PayrollCatalogService(payrollApiClient);
 
             Application.Run(new MainForm());
         }
