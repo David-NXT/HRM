@@ -1,4 +1,4 @@
-using Admin.WinForms.Models.HR;
+using Admin.WinForms.BUS.Models.HR;
 using Xunit;
 
 namespace HR.Tests;
