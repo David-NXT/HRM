@@ -1,10 +1,17 @@
 ﻿using Admin.WinForms.DTOs.Attendance;
 using Admin.WinForms.DTOs.Department;
+using QuestPDF.Drawing;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
+using Color = System.Drawing.Color;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Reflection.Metadata;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -29,7 +36,7 @@ namespace Admin.WinForms.Controls.Attendance
             button_CreateMonthlySummary.Click += async (s, e) => await CreateMonthlySummaryAsync();
             button_LockTimesheetPeriod.Click += async (s, e) => await LockMonthlyTimesheetPeriodAsync();
             button_ExportExcel.Click += button_ExportExcel_Click;
-            button_ExportPDF.Click += (s, e) => MessageBox.Show("Tính năng xuất PDF đang sẵn sàng.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            button_ExportPDF.Click += button_ExportPDF_Click;
             dateTimePicker1.ValueChanged += async (s, e) =>
             {
                 await LoadReportDataAsync();
@@ -65,37 +72,9 @@ namespace Admin.WinForms.Controls.Attendance
 
         private async void AttendanceReportControl_Load(object? sender, EventArgs e)
         {
-            await LoadDepartmentsAsync();
+            //await LoadDepartmentsAsync();
             await LoadReportDataAsync();
             await LoadAnalyticsChartsAsync();
-        }
-
-        private async Task LoadDepartmentsAsync()
-        {
-            try
-            {
-                var departments = await Program.AttendanceApi.GetDepartmentsAsync();
-                comboBox_Department.Items.Clear();
-                comboBox_Department.Items.Add(new DepartmentDto { Id = Guid.Empty, Name = "All Departments" });
-
-                if (departments != null && departments.Count > 0)
-                {
-                    foreach (var dept in departments)
-                    {
-                        comboBox_Department.Items.Add(dept);
-                    }
-                }
-
-                comboBox_Department.DisplayMember = "Name";
-                comboBox_Department.ValueMember = "Id";
-                comboBox_Department.SelectedIndex = 0;
-            }
-            catch
-            {
-                comboBox_Department.Items.Clear();
-                comboBox_Department.Items.Add(new DepartmentDto { Id = Guid.Empty, Name = "All Departments" });
-                comboBox_Department.SelectedIndex = 0;
-            }
         }
 
         private async Task LoadReportDataAsync()
@@ -678,7 +657,7 @@ namespace Admin.WinForms.Controls.Attendance
                 var panelBar = new Panel
                 {
                     Location = new Point(20, barY),
-                    Size = new Size(barWidth, 18),
+                    Size = new System.Drawing.Size(barWidth, 18),
                     BackColor = Color.FromArgb(229, 231, 235)
                 };
 
@@ -688,7 +667,7 @@ namespace Admin.WinForms.Controls.Attendance
                     var panelPresent = new Panel
                     {
                         Location = new Point(0, 0),
-                        Size = new Size(presentWidth, panelBar.Height),
+                        Size = new System.Drawing.Size(presentWidth, panelBar.Height),
                         BackColor = primaryColor
                     };
                     panelBar.Controls.Add(panelPresent);
@@ -699,7 +678,7 @@ namespace Admin.WinForms.Controls.Attendance
                     var panelAbsent = new Panel
                     {
                         Location = new Point(presentWidth, 0),
-                        Size = new Size(barWidth - presentWidth, panelBar.Height),
+                        Size = new System.Drawing.Size(barWidth - presentWidth, panelBar.Height),
                         BackColor = secondaryColor
                     };
                     panelBar.Controls.Add(panelAbsent);
@@ -767,7 +746,7 @@ namespace Admin.WinForms.Controls.Attendance
                 var panelBar = new Panel
                 {
                     Location = new Point(20, barY),
-                    Size = new Size(barWidth, 18),
+                    Size = new System.Drawing.Size(barWidth, 18),
                     BackColor = Color.FromArgb(229, 231, 235)
                 };
 
@@ -777,7 +756,7 @@ namespace Admin.WinForms.Controls.Attendance
                     var panelFill = new Panel
                     {
                         Location = new Point(0, 0),
-                        Size = new Size(fillWidth, panelBar.Height),
+                        Size = new System.Drawing.Size(fillWidth, panelBar.Height),
                         BackColor = successColor
                     };
                     panelBar.Controls.Add(panelFill);
@@ -792,5 +771,248 @@ namespace Admin.WinForms.Controls.Attendance
 
             panel_TrendByDepartment.ResumeLayout();
         }
+
+
+        // ==========================================
+        // EXPORT ATTENDANCE REPORT TO PDF
+        // ==========================================
+
+        private void button_ExportPDF_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                // 1. Kiểm tra dữ liệu
+                if (listView_Report.Items.Count == 0)
+                {
+                    MessageBox.Show(
+                        "Không có dữ liệu để xuất PDF.",
+                        "Thông báo",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    return;
+                }
+
+                var headers = listView_Report.Columns
+                    .Cast<ColumnHeader>()
+                    .Select(c => c.Text)
+                    .ToList();
+
+                if (headers.Count == 0)
+                {
+                    MessageBox.Show(
+                        "Không tìm thấy cột dữ liệu.",
+                        "Thông báo",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    return;
+                }
+
+                // 2. Chọn nơi lưu file
+                using var sfd = new SaveFileDialog
+                {
+                    Filter = "PDF File (*.pdf)|*.pdf",
+                    DefaultExt = "pdf",
+                    AddExtension = true,
+                    OverwritePrompt = true,
+                    FileName = $"AttendanceReport_{dateTimePicker1.Value:yyyy_MM}.pdf",
+                    Title = "Xuất báo cáo chấm công"
+                };
+
+                if (sfd.ShowDialog() != DialogResult.OK)
+                    return;
+
+                // 3. Lấy dữ liệu từ ListView
+                var rows = listView_Report.Items
+                    .Cast<ListViewItem>()
+                    .Select(item => Enumerable.Range(0, headers.Count)
+                        .Select(index =>
+                            index < item.SubItems.Count
+                                ? item.SubItems[index].Text
+                                : string.Empty)
+                        .ToList())
+                    .ToList();
+
+                // 4. Cấu hình QuestPDF
+                QuestPDF.Settings.License = LicenseType.Community;
+
+                // Đăng ký font Arial để hỗ trợ tiếng Việt
+                string fontPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.Fonts),
+                    "arial.ttf");
+
+                if (File.Exists(fontPath))
+                {
+                    using var fontStream = File.OpenRead(fontPath);
+                    FontManager.RegisterFont(fontStream);
+                }
+
+                string monthYear = dateTimePicker1.Value.ToString("MM/yyyy");
+
+                // 5. Tạo PDF
+                QuestPDF.Fluent.Document.Create(document =>
+                {
+                    document.Page(page =>
+                    {
+                        // Khổ giấy A3 ngang
+                        page.Size(PageSizes.A3.Landscape());
+                        page.Margin(18);
+                        page.PageColor(Colors.White);
+
+                        page.DefaultTextStyle(style =>
+                            style.FontFamily("Arial").FontSize(7));
+
+                        // HEADER
+                        page.Header()
+                            .PaddingBottom(12)
+                            .Column(column =>
+                            {
+                                column.Item()
+                                    .AlignCenter()
+                                    .Text("BÁO CÁO CHẤM CÔNG NHÂN VIÊN")
+                                    .FontSize(18)
+                                    .Bold();
+
+                                column.Item()
+                                    .PaddingTop(3)
+                                    .AlignCenter()
+                                    .Text($"Kỳ công tháng {monthYear}")
+                                    .FontSize(11);
+
+                                column.Item()
+                                    .PaddingTop(5)
+                                    .AlignRight()
+                                    .Text($"Ngày xuất: {DateTime.Now:dd/MM/yyyy HH:mm}")
+                                    .FontSize(8);
+                            });
+
+                        // CONTENT
+                        page.Content().Table(table =>
+                        {
+                            // Chia độ rộng các cột
+                            table.ColumnsDefinition(columns =>
+                            {
+                                for (int i = 0; i < headers.Count; i++)
+                                {
+                                    columns.RelativeColumn(GetPdfColumnWeight(i));
+                                }
+                            });
+
+                            // Tiêu đề bảng
+                            table.Header(header =>
+                            {
+                                foreach (var title in headers)
+                                {
+                                    header.Cell()
+                                        .Element(HeaderStyle)
+                                        .AlignCenter()
+                                        .Text(title)
+                                        .Bold()
+                                        .FontSize(7);
+                                }
+                            });
+
+                            // Nội dung bảng
+                            foreach (var row in rows)
+                            {
+                                for (int i = 0; i < headers.Count; i++)
+                                {
+                                    var cell = table.Cell().Element(BodyStyle);
+
+                                    if (i == 1)
+                                    {
+                                        // Họ tên căn trái
+                                        cell.AlignLeft()
+                                            .Text(row[i])
+                                            .FontSize(6.5f);
+                                    }
+                                    else
+                                    {
+                                        cell.AlignCenter()
+                                            .Text(row[i])
+                                            .FontSize(6.5f);
+                                    }
+                                }
+                            }
+                        });
+
+                        // FOOTER
+                        page.Footer()
+                            .PaddingTop(8)
+                            .AlignCenter()
+                            .Text(text =>
+                            {
+                                text.Span("Trang ");
+                                text.CurrentPageNumber();
+                                text.Span(" / ");
+                                text.TotalPages();
+                            });
+                    });
+                })
+                .GeneratePdf(sfd.FileName);
+
+                // 6. Thông báo thành công
+                MessageBox.Show(
+                    $"Xuất báo cáo PDF thành công!\n\n{sfd.FileName}",
+                    "Hoàn tất",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+
+                // Mở file PDF bằng ứng dụng mặc định
+                try
+                {
+                    System.Diagnostics.Process.Start(
+                        new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = sfd.FileName,
+                            UseShellExecute = true
+                        });
+                }
+                catch
+                {
+                    // File đã xuất thành công, không ảnh hưởng nếu không mở được.
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Lỗi xuất PDF: {ex.Message}",
+                    "Lỗi",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+        }
+
+        // Điều chỉnh độ rộng cột
+        private static float GetPdfColumnWeight(int index)
+        {
+            return index switch
+            {
+                0 => 1.1f, // Mã nhân viên
+                1 => 2.2f, // Họ và tên
+                2 => 1.6f, // Kỳ công
+                _ => 1.0f
+            };
+        }
+
+        private QuestPDF.Infrastructure.IContainer HeaderStyle(
+    QuestPDF.Infrastructure.IContainer container)
+        {
+            return container
+                .Background(Colors.Grey.Lighten2)
+                .Padding(4)
+                .DefaultTextStyle(x => x.SemiBold());
+        }
+
+        private QuestPDF.Infrastructure.IContainer BodyStyle(
+            QuestPDF.Infrastructure.IContainer container)
+        {
+            return container
+                .BorderBottom(1)
+                .BorderColor(Colors.Grey.Lighten2)
+                .Padding(4);
+        }
+
+
     }
+
 }

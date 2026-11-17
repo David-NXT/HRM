@@ -24,4 +24,8 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="QuestPDF" Version="2026.9.2" />
+  </ItemGroup>
+
 </Project>

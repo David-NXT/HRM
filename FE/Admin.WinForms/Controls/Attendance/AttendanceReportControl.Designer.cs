@@ -30,25 +30,23 @@
         {
             panel_Statistics = new Panel();
             tableLayout_Statistics = new TableLayoutPanel();
-            panel_TotalAbsent = new Panel();
-            label_TotalAbsent = new Label();
-            label_NumberAbsent = new Label();
-            panel_TotalLate = new Panel();
-            label_TotalLate = new Label();
-            label_NumberLate = new Label();
-            panel_TotalPresent = new Panel();
-            label_TotalPresent = new Label();
-            label_NumberPresent = new Label();
             panel_TotalEmployees = new Panel();
             label_TotalRecords = new Label();
             label_NumberRecords = new Label();
+            panel_TotalPresent = new Panel();
+            label_TotalPresent = new Label();
+            label_NumberPresent = new Label();
+            panel_TotalLate = new Panel();
+            label_TotalLate = new Label();
+            label_NumberLate = new Label();
+            panel_TotalAbsent = new Panel();
+            label_TotalAbsent = new Label();
+            label_NumberAbsent = new Label();
             panel_Filter = new Panel();
             button_ExportPDF = new Button();
             button_Generate = new Button();
-            button_CreateMonthlySummary = new Button();
             button_LockTimesheetPeriod = new Button();
-            comboBox_Status = new ComboBox();
-            comboBox_Department = new ComboBox();
+            button_CreateMonthlySummary = new Button();
             dateTimePicker1 = new DateTimePicker();
             panel_Reports = new Panel();
             tabControl_Reports = new TabControl();
@@ -74,14 +72,14 @@
             col_Report_HolidayOT = new ColumnHeader();
             tabPage_Charts = new TabPage();
             tableLayout_Charts = new TableLayoutPanel();
-            panel_TrendByDepartment = new Panel();
             panel_Trend = new Panel();
+            panel_TrendByDepartment = new Panel();
             panel_Statistics.SuspendLayout();
             tableLayout_Statistics.SuspendLayout();
-            panel_TotalAbsent.SuspendLayout();
-            panel_TotalLate.SuspendLayout();
-            panel_TotalPresent.SuspendLayout();
             panel_TotalEmployees.SuspendLayout();
+            panel_TotalPresent.SuspendLayout();
+            panel_TotalLate.SuspendLayout();
+            panel_TotalAbsent.SuspendLayout();
             panel_Filter.SuspendLayout();
             panel_Reports.SuspendLayout();
             tabControl_Reports.SuspendLayout();
@@ -118,102 +116,6 @@
             tableLayout_Statistics.Size = new Size(1808, 142);
             tableLayout_Statistics.TabIndex = 0;
             // 
-            // panel_TotalAbsent
-            // 
-            panel_TotalAbsent.BackColor = Color.FromArgb(253, 237, 240);
-            panel_TotalAbsent.Controls.Add(label_TotalAbsent);
-            panel_TotalAbsent.Controls.Add(label_NumberAbsent);
-            panel_TotalAbsent.Dock = DockStyle.Fill;
-            panel_TotalAbsent.Location = new Point(1359, 3);
-            panel_TotalAbsent.Margin = new Padding(6);
-            panel_TotalAbsent.Name = "panel_TotalAbsent";
-            panel_TotalAbsent.Size = new Size(443, 136);
-            panel_TotalAbsent.TabIndex = 3;
-            // 
-            // label_TotalAbsent
-            // 
-            label_TotalAbsent.AutoSize = true;
-            label_TotalAbsent.Font = new Font("Segoe UI", 10F);
-            label_TotalAbsent.Location = new Point(16, 68);
-            label_TotalAbsent.Name = "label_TotalAbsent";
-            label_TotalAbsent.Size = new Size(99, 37);
-            label_TotalAbsent.TabIndex = 7;
-            label_TotalAbsent.Text = "Absent";
-            // 
-            // label_NumberAbsent
-            // 
-            label_NumberAbsent.AutoSize = true;
-            label_NumberAbsent.Font = new Font("Segoe UI", 15F, FontStyle.Bold);
-            label_NumberAbsent.Location = new Point(16, 12);
-            label_NumberAbsent.Name = "label_NumberAbsent";
-            label_NumberAbsent.Size = new Size(46, 54);
-            label_NumberAbsent.TabIndex = 6;
-            label_NumberAbsent.Text = "0";
-            // 
-            // panel_TotalLate
-            // 
-            panel_TotalLate.BackColor = Color.FromArgb(254, 244, 234);
-            panel_TotalLate.Controls.Add(label_TotalLate);
-            panel_TotalLate.Controls.Add(label_NumberLate);
-            panel_TotalLate.Dock = DockStyle.Fill;
-            panel_TotalLate.Location = new Point(908, 3);
-            panel_TotalLate.Margin = new Padding(6);
-            panel_TotalLate.Name = "panel_TotalLate";
-            panel_TotalLate.Size = new Size(439, 136);
-            panel_TotalLate.TabIndex = 2;
-            // 
-            // label_TotalLate
-            // 
-            label_TotalLate.AutoSize = true;
-            label_TotalLate.Font = new Font("Segoe UI", 10F);
-            label_TotalLate.Location = new Point(16, 68);
-            label_TotalLate.Name = "label_TotalLate";
-            label_TotalLate.Size = new Size(67, 37);
-            label_TotalLate.TabIndex = 5;
-            label_TotalLate.Text = "Late";
-            // 
-            // label_NumberLate
-            // 
-            label_NumberLate.AutoSize = true;
-            label_NumberLate.Font = new Font("Segoe UI", 15F, FontStyle.Bold);
-            label_NumberLate.Location = new Point(16, 12);
-            label_NumberLate.Name = "label_NumberLate";
-            label_NumberLate.Size = new Size(46, 54);
-            label_NumberLate.TabIndex = 4;
-            label_NumberLate.Text = "0";
-            // 
-            // panel_TotalPresent
-            // 
-            panel_TotalPresent.BackColor = Color.FromArgb(236, 249, 240);
-            panel_TotalPresent.Controls.Add(label_TotalPresent);
-            panel_TotalPresent.Controls.Add(label_NumberPresent);
-            panel_TotalPresent.Dock = DockStyle.Fill;
-            panel_TotalPresent.Location = new Point(457, 3);
-            panel_TotalPresent.Margin = new Padding(6);
-            panel_TotalPresent.Name = "panel_TotalPresent";
-            panel_TotalPresent.Size = new Size(439, 136);
-            panel_TotalPresent.TabIndex = 1;
-            // 
-            // label_TotalPresent
-            // 
-            label_TotalPresent.AutoSize = true;
-            label_TotalPresent.Font = new Font("Segoe UI", 10F);
-            label_TotalPresent.Location = new Point(16, 68);
-            label_TotalPresent.Name = "label_TotalPresent";
-            label_TotalPresent.Size = new Size(104, 37);
-            label_TotalPresent.TabIndex = 3;
-            label_TotalPresent.Text = "Present";
-            // 
-            // label_NumberPresent
-            // 
-            label_NumberPresent.AutoSize = true;
-            label_NumberPresent.Font = new Font("Segoe UI", 15F, FontStyle.Bold);
-            label_NumberPresent.Location = new Point(16, 12);
-            label_NumberPresent.Name = "label_NumberPresent";
-            label_NumberPresent.Size = new Size(46, 54);
-            label_NumberPresent.TabIndex = 2;
-            label_NumberPresent.Text = "0";
-            // 
             // panel_TotalEmployees
             // 
             panel_TotalEmployees.BackColor = Color.FromArgb(229, 238, 253);
@@ -221,10 +123,10 @@
             panel_TotalEmployees.Controls.Add(label_NumberRecords);
             panel_TotalEmployees.Dock = DockStyle.Fill;
             panel_TotalEmployees.Font = new Font("Segoe UI", 13F);
-            panel_TotalEmployees.Location = new Point(6, 3);
+            panel_TotalEmployees.Location = new Point(6, 6);
             panel_TotalEmployees.Margin = new Padding(6);
             panel_TotalEmployees.Name = "panel_TotalEmployees";
-            panel_TotalEmployees.Size = new Size(439, 136);
+            panel_TotalEmployees.Size = new Size(440, 130);
             panel_TotalEmployees.TabIndex = 0;
             // 
             // label_TotalRecords
@@ -247,6 +149,102 @@
             label_NumberRecords.TabIndex = 0;
             label_NumberRecords.Text = "0";
             // 
+            // panel_TotalPresent
+            // 
+            panel_TotalPresent.BackColor = Color.FromArgb(236, 249, 240);
+            panel_TotalPresent.Controls.Add(label_TotalPresent);
+            panel_TotalPresent.Controls.Add(label_NumberPresent);
+            panel_TotalPresent.Dock = DockStyle.Fill;
+            panel_TotalPresent.Location = new Point(458, 6);
+            panel_TotalPresent.Margin = new Padding(6);
+            panel_TotalPresent.Name = "panel_TotalPresent";
+            panel_TotalPresent.Size = new Size(440, 130);
+            panel_TotalPresent.TabIndex = 1;
+            // 
+            // label_TotalPresent
+            // 
+            label_TotalPresent.AutoSize = true;
+            label_TotalPresent.Font = new Font("Segoe UI", 10F);
+            label_TotalPresent.Location = new Point(16, 68);
+            label_TotalPresent.Name = "label_TotalPresent";
+            label_TotalPresent.Size = new Size(104, 37);
+            label_TotalPresent.TabIndex = 3;
+            label_TotalPresent.Text = "Present";
+            // 
+            // label_NumberPresent
+            // 
+            label_NumberPresent.AutoSize = true;
+            label_NumberPresent.Font = new Font("Segoe UI", 15F, FontStyle.Bold);
+            label_NumberPresent.Location = new Point(16, 12);
+            label_NumberPresent.Name = "label_NumberPresent";
+            label_NumberPresent.Size = new Size(46, 54);
+            label_NumberPresent.TabIndex = 2;
+            label_NumberPresent.Text = "0";
+            // 
+            // panel_TotalLate
+            // 
+            panel_TotalLate.BackColor = Color.FromArgb(254, 244, 234);
+            panel_TotalLate.Controls.Add(label_TotalLate);
+            panel_TotalLate.Controls.Add(label_NumberLate);
+            panel_TotalLate.Dock = DockStyle.Fill;
+            panel_TotalLate.Location = new Point(910, 6);
+            panel_TotalLate.Margin = new Padding(6);
+            panel_TotalLate.Name = "panel_TotalLate";
+            panel_TotalLate.Size = new Size(440, 130);
+            panel_TotalLate.TabIndex = 2;
+            // 
+            // label_TotalLate
+            // 
+            label_TotalLate.AutoSize = true;
+            label_TotalLate.Font = new Font("Segoe UI", 10F);
+            label_TotalLate.Location = new Point(16, 68);
+            label_TotalLate.Name = "label_TotalLate";
+            label_TotalLate.Size = new Size(67, 37);
+            label_TotalLate.TabIndex = 5;
+            label_TotalLate.Text = "Late";
+            // 
+            // label_NumberLate
+            // 
+            label_NumberLate.AutoSize = true;
+            label_NumberLate.Font = new Font("Segoe UI", 15F, FontStyle.Bold);
+            label_NumberLate.Location = new Point(16, 12);
+            label_NumberLate.Name = "label_NumberLate";
+            label_NumberLate.Size = new Size(46, 54);
+            label_NumberLate.TabIndex = 4;
+            label_NumberLate.Text = "0";
+            // 
+            // panel_TotalAbsent
+            // 
+            panel_TotalAbsent.BackColor = Color.FromArgb(253, 237, 240);
+            panel_TotalAbsent.Controls.Add(label_TotalAbsent);
+            panel_TotalAbsent.Controls.Add(label_NumberAbsent);
+            panel_TotalAbsent.Dock = DockStyle.Fill;
+            panel_TotalAbsent.Location = new Point(1362, 6);
+            panel_TotalAbsent.Margin = new Padding(6);
+            panel_TotalAbsent.Name = "panel_TotalAbsent";
+            panel_TotalAbsent.Size = new Size(440, 130);
+            panel_TotalAbsent.TabIndex = 3;
+            // 
+            // label_TotalAbsent
+            // 
+            label_TotalAbsent.AutoSize = true;
+            label_TotalAbsent.Font = new Font("Segoe UI", 10F);
+            label_TotalAbsent.Location = new Point(16, 68);
+            label_TotalAbsent.Name = "label_TotalAbsent";
+            label_TotalAbsent.Size = new Size(99, 37);
+            label_TotalAbsent.TabIndex = 7;
+            label_TotalAbsent.Text = "Absent";
+            // 
+            // label_NumberAbsent
+            // 
+            label_NumberAbsent.AutoSize = true;
+            label_NumberAbsent.Font = new Font("Segoe UI", 15F, FontStyle.Bold);
+            label_NumberAbsent.Location = new Point(16, 12);
+            label_NumberAbsent.Name = "label_NumberAbsent";
+            label_NumberAbsent.Size = new Size(46, 54);
+            label_NumberAbsent.TabIndex = 6;
+            label_NumberAbsent.Text = "0";
+            // 
             // panel_Filter
             // 
             panel_Filter.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
@@ -254,8 +252,6 @@
             panel_Filter.Controls.Add(button_Generate);
             panel_Filter.Controls.Add(button_LockTimesheetPeriod);
             panel_Filter.Controls.Add(button_CreateMonthlySummary);
-            panel_Filter.Controls.Add(comboBox_Status);
-            panel_Filter.Controls.Add(comboBox_Department);
             panel_Filter.Controls.Add(dateTimePicker1);
             panel_Filter.Location = new Point(5, 155);
             panel_Filter.Name = "panel_Filter";
@@ -271,26 +267,7 @@
             button_ExportPDF.TabIndex = 4;
             button_ExportPDF.Text = "Export PDF";
             button_ExportPDF.UseVisualStyleBackColor = true;
-            //
-            // button_CreateMonthlySummary
-            //
-            button_CreateMonthlySummary.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            button_CreateMonthlySummary.Location = new Point(1002, 16);
-            button_CreateMonthlySummary.Name = "button_CreateMonthlySummary";
-            button_CreateMonthlySummary.Size = new Size(220, 46);
-            button_CreateMonthlySummary.TabIndex = 5;
-            button_CreateMonthlySummary.Text = "Tạo summary kỳ công";
-            button_CreateMonthlySummary.UseVisualStyleBackColor = true;
-            //
-            // button_LockTimesheetPeriod
-            //
-            button_LockTimesheetPeriod.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            button_LockTimesheetPeriod.Location = new Point(1232, 16);
-            button_LockTimesheetPeriod.Name = "button_LockTimesheetPeriod";
-            button_LockTimesheetPeriod.Size = new Size(175, 46);
-            button_LockTimesheetPeriod.TabIndex = 6;
-            button_LockTimesheetPeriod.Text = "Khóa kỳ công tháng";
-            button_LockTimesheetPeriod.UseVisualStyleBackColor = true;
+            button_ExportPDF.Click += button_ExportPDF_Click;
             // 
             // button_Generate
             // 
@@ -302,24 +279,30 @@
             button_Generate.Text = "Generate Report";
             button_Generate.UseVisualStyleBackColor = true;
             // 
-            // comboBox_Status
+            // button_LockTimesheetPeriod
             // 
-            comboBox_Status.FormattingEnabled = true;
-            comboBox_Status.Location = new Point(695, 20);
-            comboBox_Status.Name = "comboBox_Status";
-            comboBox_Status.Size = new Size(242, 40);
-            comboBox_Status.TabIndex = 2;
+            button_LockTimesheetPeriod.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            button_LockTimesheetPeriod.Location = new Point(1232, 16);
+            button_LockTimesheetPeriod.Name = "button_LockTimesheetPeriod";
+            button_LockTimesheetPeriod.Size = new Size(175, 46);
+            button_LockTimesheetPeriod.TabIndex = 6;
+            button_LockTimesheetPeriod.Text = "Khóa kỳ công tháng";
+            button_LockTimesheetPeriod.UseVisualStyleBackColor = true;
             // 
-            // comboBox_Department
+            // button_CreateMonthlySummary
             // 
-            comboBox_Department.FormattingEnabled = true;
-            comboBox_Department.Location = new Point(427, 20);
-            comboBox_Department.Name = "comboBox_Department";
-            comboBox_Department.Size = new Size(242, 40);
-            comboBox_Department.TabIndex = 1;
+            button_CreateMonthlySummary.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            button_CreateMonthlySummary.Location = new Point(1002, 16);
+            button_CreateMonthlySummary.Name = "button_CreateMonthlySummary";
+            button_CreateMonthlySummary.Size = new Size(220, 46);
+            button_CreateMonthlySummary.TabIndex = 5;
+            button_CreateMonthlySummary.Text = "Tạo summary kỳ công";
+            button_CreateMonthlySummary.UseVisualStyleBackColor = true;
             // 
             // dateTimePicker1
             // 
+            dateTimePicker1.CustomFormat = "MM/yyyy";
+            dateTimePicker1.Format = DateTimePickerFormat.Custom;
             dateTimePicker1.Location = new Point(11, 21);
             dateTimePicker1.Name = "dateTimePicker1";
             dateTimePicker1.Size = new Size(400, 39);
@@ -365,7 +348,7 @@
             label_ReportList.Font = new Font("Segoe UI", 11F, FontStyle.Bold);
             label_ReportList.Location = new Point(6, 12);
             label_ReportList.Name = "label_ReportList";
-            label_ReportList.Size = new Size(432, 40);
+            label_ReportList.Size = new Size(433, 41);
             label_ReportList.TabIndex = 1;
             label_ReportList.Text = "Monthly Timesheet Summary";
             // 
@@ -388,6 +371,24 @@
             button_ExportExcel.TabIndex = 2;
             button_ExportExcel.Text = "Export Excel";
             button_ExportExcel.UseVisualStyleBackColor = true;
+            // 
+            // listView_Report
+            // 
+            listView_Report.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            listView_Report.BackColor = Color.White;
+            listView_Report.BorderStyle = BorderStyle.FixedSingle;
+            listView_Report.Columns.AddRange(new ColumnHeader[] { col_Report_EmpId, col_Report_EmpName, col_Report_Period, col_Report_StandardDays, col_Report_ActualDays, col_Report_TotalHours, col_Report_PaidLeave, col_Report_UnpaidLeave, col_Report_LateOccurrences, col_Report_TotalLateMins, col_Report_EarlyLeaveOccurrences, col_Report_TotalEarlyLeaveMins, col_Report_NormalOT, col_Report_WeekendOT, col_Report_HolidayOT });
+            listView_Report.Font = new Font("Segoe UI", 9F);
+            listView_Report.ForeColor = Color.FromArgb(37, 48, 74);
+            listView_Report.FullRowSelect = true;
+            listView_Report.GridLines = true;
+            listView_Report.HeaderStyle = ColumnHeaderStyle.Nonclickable;
+            listView_Report.Location = new Point(6, 60);
+            listView_Report.Name = "listView_Report";
+            listView_Report.Size = new Size(1780, 520);
+            listView_Report.TabIndex = 0;
+            listView_Report.UseCompatibleStateImageBehavior = false;
+            listView_Report.View = View.Details;
             // 
             // col_Report_EmpId
             // 
@@ -464,41 +465,6 @@
             col_Report_HolidayOT.Text = "OT Ngày lễ (h)";
             col_Report_HolidayOT.Width = 125;
             // 
-            // listView_Report
-            // 
-            listView_Report.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            listView_Report.Columns.AddRange(new ColumnHeader[] {
-                col_Report_EmpId,
-                col_Report_EmpName,
-                col_Report_Period,
-                col_Report_StandardDays,
-                col_Report_ActualDays,
-                col_Report_TotalHours,
-                col_Report_PaidLeave,
-                col_Report_UnpaidLeave,
-                col_Report_LateOccurrences,
-                col_Report_TotalLateMins,
-                col_Report_EarlyLeaveOccurrences,
-                col_Report_TotalEarlyLeaveMins,
-                col_Report_NormalOT,
-                col_Report_WeekendOT,
-                col_Report_HolidayOT
-            });
-            listView_Report.BackColor = Color.White;
-            listView_Report.BorderStyle = BorderStyle.FixedSingle;
-            listView_Report.Font = new Font("Segoe UI", 9F);
-            listView_Report.ForeColor = Color.FromArgb(37, 48, 74);
-            listView_Report.FullRowSelect = true;
-            listView_Report.GridLines = true;
-            listView_Report.HeaderStyle = ColumnHeaderStyle.Nonclickable;
-            listView_Report.HideSelection = false;
-            listView_Report.Location = new Point(6, 60);
-            listView_Report.Name = "listView_Report";
-            listView_Report.Size = new Size(1780, 520);
-            listView_Report.TabIndex = 0;
-            listView_Report.UseCompatibleStateImageBehavior = false;
-            listView_Report.View = View.Details;
-            // 
             // tabPage_Charts
             // 
             tabPage_Charts.Controls.Add(tableLayout_Charts);
@@ -558,14 +524,14 @@
             Size = new Size(1815, 884);
             panel_Statistics.ResumeLayout(false);
             tableLayout_Statistics.ResumeLayout(false);
-            panel_TotalAbsent.ResumeLayout(false);
-            panel_TotalAbsent.PerformLayout();
-            panel_TotalLate.ResumeLayout(false);
-            panel_TotalLate.PerformLayout();
-            panel_TotalPresent.ResumeLayout(false);
-            panel_TotalPresent.PerformLayout();
             panel_TotalEmployees.ResumeLayout(false);
             panel_TotalEmployees.PerformLayout();
+            panel_TotalPresent.ResumeLayout(false);
+            panel_TotalPresent.PerformLayout();
+            panel_TotalLate.ResumeLayout(false);
+            panel_TotalLate.PerformLayout();
+            panel_TotalAbsent.ResumeLayout(false);
+            panel_TotalAbsent.PerformLayout();
             panel_Filter.ResumeLayout(false);
             panel_Reports.ResumeLayout(false);
             tabControl_Reports.ResumeLayout(false);
@@ -597,8 +563,6 @@
         private Button button_Generate;
         private Button button_CreateMonthlySummary;
         private Button button_LockTimesheetPeriod;
-        private ComboBox comboBox_Status;
-        private ComboBox comboBox_Department;
         private DateTimePicker dateTimePicker1;
         private Panel panel_Reports;
         private TabControl tabControl_Reports;
