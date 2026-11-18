@@ -82,7 +82,7 @@ public class PayrollCalculator
         }
 
         // 3. Calculate overtime pay
-        var otPay = otHourlyRate * otHours * otMultiplier;
+        decimal otPay = otHourlyRate * otHours * otMultiplier;
 
         // 4. Round monetary values
         regularSalary = Math.Round(
@@ -100,12 +100,12 @@ public class PayrollCalculator
             totalPayCut, 2, MidpointRounding.AwayFromZero);
 
         // 5. Calculate gross and net salary
-        var grossSalary = Math.Round(
+        decimal grossSalary = Math.Round(
             regularSalary + totalAllowance + otPay,
             2,
             MidpointRounding.AwayFromZero);
 
-        var netSalary = Math.Round(
+        decimal netSalary = Math.Round(
             grossSalary - totalPayCut,
             2,
             MidpointRounding.AwayFromZero);

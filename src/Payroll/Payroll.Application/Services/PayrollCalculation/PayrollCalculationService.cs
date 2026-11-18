@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Payroll.Application.DTOs.PayrollCalculation;
 using Payroll.Application.Interfaces;
+using PayrollEntity = global::Payroll.Domain.Entities.Payroll;
 
 namespace Payroll.Application.Services.PayrollCalculation;
 
@@ -22,7 +23,7 @@ public class PayrollCalculationService
         CancellationToken cancellationToken = default)
     {
         // 1. Find payroll and load its allowances and pay cuts.
-        var payroll = await _context.Payrolls
+        PayrollEntity? payroll = await _context.Payrolls
             .Include(p => p.Allowances)
                 .ThenInclude(a => a.AllowanceDetails)
             .Include(p => p.PayCuts)
@@ -45,13 +46,13 @@ public class PayrollCalculationService
         }
 
         // 3. Calculate total allowance from active groups.
-        var totalAllowance = payroll.Allowances
+        decimal totalAllowance = payroll.Allowances
             .Where(a => a.Status == "active")
             .SelectMany(a => a.AllowanceDetails)
             .Sum(ad => ad.Amount);
 
         // 4. Calculate total pay cut from active groups.
-        var totalPayCut = payroll.PayCuts
+        decimal totalPayCut = payroll.PayCuts
             .Where(pc => pc.Status == "active")
             .SelectMany(pc => pc.Details)
             .Sum(pd => pd.Amount);
@@ -65,7 +66,7 @@ public class PayrollCalculationService
         }
 
         // 6. Calculate salary.
-        var result = _calculator.Calculate(
+        PayrollCalculationResult result = _calculator.Calculate(
             payroll.EmploymentType ?? string.Empty,
             payroll.BaseSalary,
             payroll.HourlyRate,

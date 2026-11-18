@@ -1,5 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Payroll.Application.Interfaces;
+using Payroll.Application.DTOs.PayrollAttendance;
+using PayrollEntity = global::Payroll.Domain.Entities.Payroll;
+using PayrollPeriodEntity = global::Payroll.Domain.Entities.PayrollPeriod;
 
 namespace Payroll.Application.Services.PayrollAttendance;
 
@@ -21,7 +24,7 @@ public class PayrollAttendanceService
         CancellationToken cancellationToken = default)
     {
         // 1. Find payroll period.
-        var period = await _context.PayrollPeriods
+        PayrollPeriodEntity? period = await _context.PayrollPeriods
             .FirstOrDefaultAsync(
                 p => p.PayrollPeriodID == payrollPeriodID,
                 cancellationToken);
@@ -39,7 +42,7 @@ public class PayrollAttendanceService
         }
 
         // 2. Load payroll records.
-        var payrolls = await _context.Payrolls
+        List<PayrollEntity> payrolls = await _context.Payrolls
             .Where(p => p.PayrollPeriodID == payrollPeriodID)
             .ToListAsync(cancellationToken);
 
@@ -50,7 +53,7 @@ public class PayrollAttendanceService
         }
 
         // 3. Validate payroll statuses.
-        foreach (var payroll in payrolls)
+        foreach (PayrollEntity payroll in payrolls)
         {
             if (payroll.Status != "draft")
             {
@@ -60,7 +63,7 @@ public class PayrollAttendanceService
         }
 
         // 4. Retrieve overtime multiplier once per payroll period.
-        var overtimeMultiplier =
+        decimal overtimeMultiplier =
             await _attendanceClient.GetOvertimeMultiplierAsync(
                 cancellationToken);
 
@@ -71,18 +74,22 @@ public class PayrollAttendanceService
         }
 
         // 5. Retrieve and validate attendance summaries.
-        var attendanceByEmployee =
-            new Dictionary<Guid, (
+        List<(Guid EmployeeID,
+            decimal WorkingDays,
+            decimal StandardWorkingDays,
+            decimal TotalWorkingHours,
+            decimal OTHours)> attendanceByEmployee =
+            new List<(Guid EmployeeID,
                 decimal WorkingDays,
                 decimal StandardWorkingDays,
                 decimal TotalWorkingHours,
                 decimal OTHours)>();
 
-        foreach (var payroll in payrolls)
+        foreach (PayrollEntity payroll in payrolls)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var attendance =
+            AttendanceEmployeeSummaryResponse? attendance =
                 await _attendanceClient.GetEmployeeMonthlySummaryAsync(
                     payroll.EmployeeID,
                     period.Month,
@@ -127,8 +134,8 @@ public class PayrollAttendanceService
             }
 
             attendanceByEmployee.Add(
-                payroll.EmployeeID,
                 (
+                    payroll.EmployeeID,
                     attendance.ActualWorkingDays,
                     attendance.StandardWorkingDays,
                     attendance.TotalWorkingHours,
@@ -137,9 +144,10 @@ public class PayrollAttendanceService
         }
 
         // 6. Update payroll records after all summaries are valid.
-        foreach (var payroll in payrolls)
+        foreach (PayrollEntity payroll in payrolls)
         {
-            var attendance = attendanceByEmployee[payroll.EmployeeID];
+            (Guid EmployeeID, decimal WorkingDays, decimal StandardWorkingDays, decimal TotalWorkingHours, decimal OTHours) attendance =
+                attendanceByEmployee.First(item => item.EmployeeID == payroll.EmployeeID);
 
             payroll.WorkingDays = attendance.WorkingDays;
             payroll.StandardWorkingDay = attendance.StandardWorkingDays;

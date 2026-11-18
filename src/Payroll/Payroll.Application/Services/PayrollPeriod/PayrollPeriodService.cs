@@ -47,7 +47,7 @@ public class PayrollPeriodService
         Validate(request);
         if(await IsDuplicateAsync(request,cancellationToken)) throw new InvalidOperationException("Payroll period already exists.");
 
-        var payrollPeriod = new PayrollPeriodEntity
+        PayrollPeriodEntity payrollPeriod = new PayrollPeriodEntity
         {
             Month = request.Month,
             Year = request.Year  
@@ -69,7 +69,7 @@ public class PayrollPeriodService
 
     public async Task<List<PayrollPeriodResponse>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        var periods = await _context.PayrollPeriods
+        List<PayrollPeriodEntity> periods = await _context.PayrollPeriods
             .Include(p => p.Payrolls)
             .OrderByDescending(p => p.Year)
             .ThenByDescending(p => p.Month)
@@ -92,7 +92,7 @@ public class PayrollPeriodService
             return period.Status;
         }
 
-        var statuses = period.Payrolls
+        List<string> statuses = period.Payrolls
             .Select(payroll => payroll.Status)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();

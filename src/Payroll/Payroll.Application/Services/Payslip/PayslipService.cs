@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Payroll.Application.DTOs.Payslip;
 using Payroll.Application.Interfaces;
+using PayrollEntity = global::Payroll.Domain.Entities.Payroll;
 
 namespace Payroll.Application.Services.Payslip;
 
@@ -18,7 +19,7 @@ public class PayslipService
         Guid payrollID,
         CancellationToken cancellationToken = default)
     {
-        var payroll = await _context.Payrolls
+        PayrollEntity? payroll = await _context.Payrolls
             .AsNoTracking()
             .Include(p => p.PayrollPeriod)
             .Include(p => p.Allowances)
@@ -92,17 +93,17 @@ public class PayslipService
         Guid payrollPeriodID,
         CancellationToken cancellationToken = default)
     {
-        var payrollIDs = await _context.Payrolls
+        List<Guid> payrollIDs = await _context.Payrolls
             .AsNoTracking()
             .Where(p => p.PayrollPeriodID == payrollPeriodID)
             .Select(p => p.PayrollID)
             .ToListAsync(cancellationToken);
 
-        var payslips = new List<PayslipResponse>();
+        List<PayslipResponse> payslips = new List<PayslipResponse>();
 
-        foreach (var payrollID in payrollIDs)
+        foreach (Guid payrollID in payrollIDs)
         {
-            var payslip = await GetByPayrollIDAsync(
+            PayslipResponse? payslip = await GetByPayrollIDAsync(
                 payrollID,
                 cancellationToken);
 

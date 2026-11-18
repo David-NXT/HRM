@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Payroll.Application.DTOs.PayrollQuery;
 using Payroll.Application.Interfaces;
+using PayrollEntity = global::Payroll.Domain.Entities.Payroll;
 
 namespace Payroll.Application.Services.PayrollQuery;
 
@@ -54,7 +55,7 @@ public class PayrollQueryService
         Guid payrollID,
         CancellationToken cancellationToken = default)
     {
-        var payroll = await _context.Payrolls
+        PayrollEntity? payroll = await _context.Payrolls
             .AsNoTracking()
             .Include(p => p.Allowances)
                 .ThenInclude(a => a.AllowanceDetails)

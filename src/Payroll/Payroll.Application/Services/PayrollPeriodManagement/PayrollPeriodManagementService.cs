@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Payroll.Application.DTOs.PayrollPeriodManagement;
 using Payroll.Application.Interfaces;
+using PayrollPeriodEntity = global::Payroll.Domain.Entities.PayrollPeriod;
 
 namespace Payroll.Application.Services.PayrollPeriodManagement;
 
@@ -17,7 +18,7 @@ public class PayrollPeriodManagementService
         Guid payrollPeriodID,
         CancellationToken cancellationToken = default)
     {
-        var period = await _context.PayrollPeriods
+        PayrollPeriodEntity? period = await _context.PayrollPeriods
             .Include(p => p.Payrolls)
             .FirstOrDefaultAsync(
                 p => p.PayrollPeriodID == payrollPeriodID,
