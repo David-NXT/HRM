@@ -1,4 +1,4 @@
-using Attendance.Data;
+﻿using Attendance.Data;
 using Attendance.DTOs.Holiday;
 using Attendance.Models;
 using Microsoft.EntityFrameworkCore;
@@ -35,7 +35,7 @@ public class HolidayService : IHolidayService
 
     public async Task<HolidayDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.Holidays
+        Holiday? entity = await _context.Holidays
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
@@ -59,7 +59,7 @@ public class HolidayService : IHolidayService
             throw new ArgumentException("HolidayType is required.", nameof(dto));
         }
 
-        var entity = new Holiday
+        Holiday entity = new Holiday
         {
             Id = Guid.NewGuid(),
             Date = dto.Date,
@@ -79,7 +79,7 @@ public class HolidayService : IHolidayService
 
     public async Task<HolidayDto?> UpdateAsync(Guid id, UpdateHolidayDto dto, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.Holidays
+        Holiday? entity = await _context.Holidays
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (entity == null)
@@ -124,7 +124,7 @@ public class HolidayService : IHolidayService
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.Holidays
+        Holiday? entity = await _context.Holidays
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (entity == null)

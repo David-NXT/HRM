@@ -1,4 +1,4 @@
-using Attendance.Data;
+﻿using Attendance.Data;
 using Attendance.DTOs.AttendanceExplanation;
 using Attendance.Models;
 using Microsoft.EntityFrameworkCore;
@@ -57,7 +57,7 @@ public class AttendanceExplanationsService : IAttendanceExplanationsService
 
     public async Task<AttendanceExplanationDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.AttendanceExplanations
+        AttendanceExplanation? entity = await _context.AttendanceExplanations
             .AsNoTracking()
             .Include(x => x.Attachments)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
@@ -79,7 +79,7 @@ public class AttendanceExplanationsService : IAttendanceExplanationsService
 
         await EnsureActiveEmployeeAsync(dto.EmployeeId, cancellationToken);
 
-        var reason = dto.Reason?.Trim();
+        string? reason = dto.Reason?.Trim();
         if (string.IsNullOrWhiteSpace(reason))
         {
             throw new ArgumentException("Reason is required.", nameof(dto));
@@ -90,8 +90,8 @@ public class AttendanceExplanationsService : IAttendanceExplanationsService
             throw new ArgumentException("ExplanationType is required.", nameof(dto));
         }
 
-        var explanationId = Guid.NewGuid();
-        var entity = new AttendanceExplanation
+        Guid explanationId = Guid.NewGuid();
+        AttendanceExplanation entity = new AttendanceExplanation
         {
             Id = explanationId,
             AttendanceId = dto.AttendanceId,
@@ -128,7 +128,7 @@ public class AttendanceExplanationsService : IAttendanceExplanationsService
 
     public async Task<AttendanceExplanationDto?> UpdateAsync(Guid id, UpdateAttendanceExplanationDto dto, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.AttendanceExplanations
+        AttendanceExplanation? entity = await _context.AttendanceExplanations
             .Include(x => x.Attachments)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
@@ -207,7 +207,7 @@ public class AttendanceExplanationsService : IAttendanceExplanationsService
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.AttendanceExplanations
+        AttendanceExplanation? entity = await _context.AttendanceExplanations
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (entity == null)

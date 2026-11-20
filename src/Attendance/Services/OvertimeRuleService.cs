@@ -1,4 +1,4 @@
-using Attendance.Data;
+﻿using Attendance.Data;
 using Attendance.DTOs.OvertimeRule;
 using Attendance.Models;
 using Microsoft.EntityFrameworkCore;
@@ -16,19 +16,19 @@ public class OvertimeRuleService : IOvertimeRuleService
 
     public async Task<List<OvertimeRuleDto>> GetAllAsync(bool? isActive = null, CancellationToken cancellationToken = default)
     {
-        var query = _dbContext.OvertimeRules.AsNoTracking();
+        IQueryable<OvertimeRule> query = _dbContext.OvertimeRules.AsNoTracking();
         if (isActive.HasValue)
         {
             query = query.Where(x => x.IsActive == isActive.Value);
         }
 
-        var list = await query.OrderBy(x => x.DayType).ToListAsync(cancellationToken);
+        List<OvertimeRule> list = await query.OrderBy(x => x.DayType).ToListAsync(cancellationToken);
         return list.Select(MapToDto).ToList();
     }
 
     public async Task<OvertimeRuleDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var rule = await _dbContext.OvertimeRules
+        OvertimeRule? rule = await _dbContext.OvertimeRules
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
@@ -37,7 +37,7 @@ public class OvertimeRuleService : IOvertimeRuleService
 
     public async Task<OvertimeRuleDto?> GetByDayTypeAsync(string dayType, CancellationToken cancellationToken = default)
     {
-        var rule = await _dbContext.OvertimeRules
+        OvertimeRule? rule = await _dbContext.OvertimeRules
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.DayType.ToLower() == dayType.ToLower() && x.IsActive, cancellationToken);
 
@@ -46,7 +46,7 @@ public class OvertimeRuleService : IOvertimeRuleService
 
     public async Task<OvertimeRuleDto> CreateAsync(CreateOvertimeRuleDto dto, CancellationToken cancellationToken = default)
     {
-        var rule = new OvertimeRule
+        OvertimeRule rule = new OvertimeRule
         {
             Id = Guid.NewGuid(),
             DayType = dto.DayType,
@@ -69,7 +69,7 @@ public class OvertimeRuleService : IOvertimeRuleService
 
     public async Task<OvertimeRuleDto?> UpdateAsync(Guid id, UpdateOvertimeRuleDto dto, CancellationToken cancellationToken = default)
     {
-        var rule = await _dbContext.OvertimeRules.FindAsync([id], cancellationToken);
+        OvertimeRule? rule = await _dbContext.OvertimeRules.FindAsync([id], cancellationToken);
         if (rule == null)
         {
             return null;
@@ -92,7 +92,7 @@ public class OvertimeRuleService : IOvertimeRuleService
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var rule = await _dbContext.OvertimeRules.FindAsync([id], cancellationToken);
+        OvertimeRule? rule = await _dbContext.OvertimeRules.FindAsync([id], cancellationToken);
         if (rule == null)
         {
             return false;
@@ -105,9 +105,9 @@ public class OvertimeRuleService : IOvertimeRuleService
     public async Task<decimal> GetOvertimeMultiplierAsync(
         CancellationToken cancellationToken = default)
     {
-        var currentDate = DateOnly.FromDateTime(DateTime.UtcNow);
+        DateOnly currentDate = DateOnly.FromDateTime(DateTime.UtcNow);
     
-        var rule = await _dbContext.OvertimeRules
+        OvertimeRule? rule = await _dbContext.OvertimeRules
             .AsNoTracking()
             .Where(x =>
                 x.IsActive &&

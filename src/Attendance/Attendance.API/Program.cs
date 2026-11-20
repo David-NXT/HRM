@@ -6,19 +6,19 @@ using Npgsql;
 
 static string? FindEnvFile()
 {
-    var startDirectories = new[]
+    string[] startDirectories = new[]
     {
         Directory.GetCurrentDirectory(),
         AppContext.BaseDirectory
     };
 
-    foreach (var startDirectory in startDirectories)
+    foreach (string startDirectory in startDirectories)
     {
-        var directory = new DirectoryInfo(startDirectory);
+        DirectoryInfo? directory = new DirectoryInfo(startDirectory);
 
         while (directory != null)
         {
-            var envPath = Path.Combine(directory.FullName, ".env");
+            string envPath = Path.Combine(directory.FullName, ".env");
 
             if (File.Exists(envPath))
                 return envPath;
@@ -31,19 +31,19 @@ static string? FindEnvFile()
 }
 
 // 1. Load file .env
-var envPath = FindEnvFile();
+string? envPath = FindEnvFile();
 
 if (!string.IsNullOrWhiteSpace(envPath))
 {
     Env.Load(envPath);
 }
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddEnvironmentVariables();
 
 // 2. Get connection string
-var connectionString = builder.Configuration
+string? connectionString = builder.Configuration
     .GetConnectionString("AttendanceDb");
 
 if (string.IsNullOrWhiteSpace(connectionString))
@@ -82,19 +82,18 @@ builder.Services.AddCors(options => options.AddPolicy(
         .WithOrigins("http://localhost:5500", "http://127.0.0.1:5500", "http://localhost:5501", "http://127.0.0.1:5501")
         .AllowAnyHeader()
         .AllowAnyMethod()));
-var hrBaseUrl = builder.Configuration["Services:HR:BaseUrl"] ?? "http://localhost:5012/";
+string hrBaseUrl = builder.Configuration["Services:HR:BaseUrl"] ?? "http://localhost:5012/";
 builder.Services.AddHttpClient<IHrEmployeeDirectoryClient, HrEmployeeDirectoryClient>(client =>
 {
     client.BaseAddress = new Uri(hrBaseUrl);
     client.Timeout = TimeSpan.FromSeconds(10);
-    var directoryKey = builder.Configuration["Services:HR:ApiKey"];
+    client.DefaultRequestHeaders.TryAddWithoutValidation("X-Role", "HR");
+    string? directoryKey = builder.Configuration["Services:HR:ApiKey"];
     if (!string.IsNullOrWhiteSpace(directoryKey))
         client.DefaultRequestHeaders.Add("X-HR-Directory-Key", directoryKey);
-    else
-        client.DefaultRequestHeaders.Add("X-Role", "HR");
 });
 
-var app = builder.Build();
+WebApplication app = builder.Build();
 
 app.Use(async (context, next) =>
 {
@@ -133,10 +132,10 @@ app.Use(async (context, next) =>
 });
 
 // 5. Automatically create Database if it does not exist
-var connectionBuilder =
+NpgsqlConnectionStringBuilder connectionBuilder =
     new NpgsqlConnectionStringBuilder(connectionString);
 
-var databaseName = connectionBuilder.Database;
+string databaseName = connectionBuilder.Database;
 
 if (string.IsNullOrWhiteSpace(databaseName))
 {
@@ -146,18 +145,18 @@ if (string.IsNullOrWhiteSpace(databaseName))
 }
 
 // Connect to PostgreSQL maintenance database
-var databaseConnectionBuilder =
+NpgsqlConnectionStringBuilder databaseConnectionBuilder =
     new NpgsqlConnectionStringBuilder(connectionString)
     {
         Database = "postgres"
     };
 
-await using (var connection =
+await using (NpgsqlConnection connection =
     new NpgsqlConnection(databaseConnectionBuilder.ConnectionString))
 {
     await connection.OpenAsync();
 
-    await using var command = connection.CreateCommand();
+    await using NpgsqlCommand command = connection.CreateCommand();
 
     command.CommandText = """
         SELECT EXISTS (
@@ -169,13 +168,13 @@ await using (var connection =
 
     command.Parameters.AddWithValue("databaseName", databaseName);
 
-    var exists = (bool)(await command.ExecuteScalarAsync() ?? false);
+    bool exists = (bool)(await command.ExecuteScalarAsync() ?? false);
 
     if (!exists)
     {
         command.Parameters.Clear();
 
-        var safeDatabaseName =
+        string safeDatabaseName =
             "\"" + databaseName.Replace("\"", "\"\"") + "\"";
 
         command.CommandText =
@@ -196,9 +195,9 @@ await using (var connection =
 }
 
 // 6. Automatically apply migrations
-using (var scope = app.Services.CreateScope())
+using (IServiceScope scope = app.Services.CreateScope())
 {
-    var dbContext = scope.ServiceProvider
+    AttendanceDbContext dbContext = scope.ServiceProvider
         .GetRequiredService<AttendanceDbContext>();
 
     await dbContext.Database.MigrateAsync();

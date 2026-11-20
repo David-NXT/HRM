@@ -1,4 +1,4 @@
-using Attendance.Data;
+﻿using Attendance.Data;
 using Attendance.DTOs.AttendanceConfigAuditLog;
 using Attendance.Models;
 using Microsoft.EntityFrameworkCore;
@@ -16,19 +16,19 @@ public class AttendanceConfigAuditLogService : IAttendanceConfigAuditLogService
 
     public async Task<List<AttendanceConfigAuditLogDto>> GetAllAsync(string? configType = null, CancellationToken cancellationToken = default)
     {
-        var query = _dbContext.AttendanceConfigAuditLogs.AsNoTracking();
+        IQueryable<AttendanceConfigAuditLog> query = _dbContext.AttendanceConfigAuditLogs.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(configType))
         {
             query = query.Where(x => x.ConfigType.ToLower() == configType.ToLower());
         }
 
-        var list = await query.OrderByDescending(x => x.PerformedAt).ToListAsync(cancellationToken);
+        List<AttendanceConfigAuditLog> list = await query.OrderByDescending(x => x.PerformedAt).ToListAsync(cancellationToken);
         return list.Select(MapToDto).ToList();
     }
 
     public async Task<AttendanceConfigAuditLogDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var log = await _dbContext.AttendanceConfigAuditLogs
+        AttendanceConfigAuditLog? log = await _dbContext.AttendanceConfigAuditLogs
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
@@ -37,7 +37,7 @@ public class AttendanceConfigAuditLogService : IAttendanceConfigAuditLogService
 
     public async Task<AttendanceConfigAuditLogDto> LogAsync(CreateAttendanceConfigAuditLogDto dto, CancellationToken cancellationToken = default)
     {
-        var log = new AttendanceConfigAuditLog
+        AttendanceConfigAuditLog log = new AttendanceConfigAuditLog
         {
             Id = Guid.NewGuid(),
             ConfigType = dto.ConfigType,
