@@ -18,14 +18,14 @@ public class OvertimeRulesController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<OvertimeRuleDto>>> GetAll([FromQuery] bool? isActive, CancellationToken cancellationToken)
     {
-        var result = await _overtimeRuleService.GetAllAsync(isActive, cancellationToken);
+        List<OvertimeRuleDto> result = await _overtimeRuleService.GetAllAsync(isActive, cancellationToken);
         return Ok(result);
     }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<OvertimeRuleDto>> GetById(Guid id, CancellationToken cancellationToken)
     {
-        var result = await _overtimeRuleService.GetByIdAsync(id, cancellationToken);
+        OvertimeRuleDto? result = await _overtimeRuleService.GetByIdAsync(id, cancellationToken);
         if (result == null)
         {
             return NotFound();
@@ -41,7 +41,7 @@ public class OvertimeRulesController : ControllerBase
     {
         try
         {
-            var multiplier = await _overtimeRuleService
+            Decimal multiplier = await _overtimeRuleService
                 .GetOvertimeMultiplierAsync(cancellationToken);
     
             return Ok(new
@@ -63,7 +63,7 @@ public class OvertimeRulesController : ControllerBase
     {
         try
         {
-            var result = await _overtimeRuleService.CreateAsync(dto, cancellationToken);
+            OvertimeRuleDto result = await _overtimeRuleService.CreateAsync(dto, cancellationToken);
             return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
         }
         catch (ArgumentException ex)
@@ -75,7 +75,7 @@ public class OvertimeRulesController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<OvertimeRuleDto>> Update(Guid id, [FromBody] UpdateOvertimeRuleDto dto, CancellationToken cancellationToken)
     {
-        var result = await _overtimeRuleService.UpdateAsync(id, dto, cancellationToken);
+        OvertimeRuleDto? result = await _overtimeRuleService.UpdateAsync(id, dto, cancellationToken);
         if (result == null)
         {
             return NotFound();
@@ -87,7 +87,7 @@ public class OvertimeRulesController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        var deleted = await _overtimeRuleService.DeleteAsync(id, cancellationToken);
+        bool deleted = await _overtimeRuleService.DeleteAsync(id, cancellationToken);
         if (!deleted)
         {
             return NotFound();

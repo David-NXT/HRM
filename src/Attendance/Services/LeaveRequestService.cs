@@ -1,4 +1,4 @@
-using Attendance.Data;
+﻿using Attendance.Data;
 using Attendance.DTOs.LeaveRequest;
 using Attendance.Models;
 using Microsoft.EntityFrameworkCore;
@@ -42,7 +42,7 @@ public class LeaveRequestService : ILeaveRequestService
 
     public async Task<LeaveRequestDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.LeaveRequests
+        LeaveRequest? entity = await _context.LeaveRequests
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
@@ -73,7 +73,7 @@ public class LeaveRequestService : ILeaveRequestService
             throw new ArgumentException("Reason is required.", nameof(dto));
         }
 
-        var entity = new LeaveRequest
+        LeaveRequest entity = new LeaveRequest
         {
             Id = Guid.NewGuid(),
             EmployeeId = dto.EmployeeId,
@@ -96,7 +96,7 @@ public class LeaveRequestService : ILeaveRequestService
 
     public async Task<LeaveRequestDto?> UpdateAsync(Guid id, UpdateLeaveRequestDto dto, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.LeaveRequests
+        LeaveRequest? entity = await _context.LeaveRequests
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (entity == null)
@@ -164,7 +164,7 @@ public class LeaveRequestService : ILeaveRequestService
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.LeaveRequests
+        LeaveRequest? entity = await _context.LeaveRequests
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (entity == null)

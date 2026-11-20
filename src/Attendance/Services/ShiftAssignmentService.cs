@@ -39,7 +39,7 @@ public class ShiftAssignmentService : IShiftAssignmentService
 
     public async Task<ShiftAssignmentDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.ShiftAssignments
+        ShiftAssignment? entity = await _context.ShiftAssignments
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
@@ -65,7 +65,7 @@ public class ShiftAssignmentService : IShiftAssignmentService
             throw new ArgumentException("ShiftId is required.", nameof(dto));
         }
 
-        var entity = new ShiftAssignment
+        ShiftAssignment entity = new ShiftAssignment
         {
             Id = Guid.NewGuid(),
             EmployeeId = dto.EmployeeId,
@@ -87,7 +87,7 @@ public class ShiftAssignmentService : IShiftAssignmentService
 
     public async Task<ShiftAssignmentDto?> UpdateAsync(Guid id, UpdateShiftAssignmentDto dto, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.ShiftAssignments
+        ShiftAssignment? entity = await _context.ShiftAssignments
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (entity == null)
@@ -140,7 +140,7 @@ public class ShiftAssignmentService : IShiftAssignmentService
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.ShiftAssignments
+        ShiftAssignment? entity = await _context.ShiftAssignments
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (entity == null)

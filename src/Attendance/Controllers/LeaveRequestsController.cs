@@ -18,14 +18,14 @@ public class LeaveRequestsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<LeaveRequestDto>>> GetAll(CancellationToken cancellationToken)
     {
-        var result = await _leaveRequestService.GetAllAsync(cancellationToken);
+        List<LeaveRequestDto> result = await _leaveRequestService.GetAllAsync(cancellationToken);
         return Ok(result);
     }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<LeaveRequestDto>> GetById(Guid id, CancellationToken cancellationToken)
     {
-        var result = await _leaveRequestService.GetByIdAsync(id, cancellationToken);
+        LeaveRequestDto? result = await _leaveRequestService.GetByIdAsync(id, cancellationToken);
         if (result == null)
         {
             return NotFound();
@@ -39,7 +39,7 @@ public class LeaveRequestsController : ControllerBase
     {
         try
         {
-            var result = await _leaveRequestService.CreateAsync(dto, cancellationToken);
+            LeaveRequestDto result = await _leaveRequestService.CreateAsync(dto, cancellationToken);
             return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
         }
         catch (ArgumentException ex)
@@ -51,7 +51,7 @@ public class LeaveRequestsController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<LeaveRequestDto>> Update(Guid id, [FromBody] UpdateLeaveRequestDto dto, CancellationToken cancellationToken)
     {
-        var result = await _leaveRequestService.UpdateAsync(id, dto, cancellationToken);
+        LeaveRequestDto? result = await _leaveRequestService.UpdateAsync(id, dto, cancellationToken);
         if (result == null)
         {
             return NotFound();
@@ -63,7 +63,7 @@ public class LeaveRequestsController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        var deleted = await _leaveRequestService.DeleteAsync(id, cancellationToken);
+        bool deleted = await _leaveRequestService.DeleteAsync(id, cancellationToken);
         if (!deleted)
         {
             return NotFound();

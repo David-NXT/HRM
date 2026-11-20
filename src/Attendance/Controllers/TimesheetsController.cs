@@ -24,7 +24,7 @@ public class TimesheetsController : ControllerBase
         [FromQuery] int? year, 
         CancellationToken cancellationToken)
     {
-        var periods = await _timesheetService.GetPeriodsAsync(year, cancellationToken);
+        List<TimesheetPeriodDto> periods = await _timesheetService.GetPeriodsAsync(year, cancellationToken);
         return Ok(periods);
     }
 
@@ -36,7 +36,7 @@ public class TimesheetsController : ControllerBase
         Guid periodId, 
         CancellationToken cancellationToken)
     {
-        var period = await _timesheetService.GetPeriodByIdAsync(periodId, cancellationToken);
+        TimesheetPeriodDto? period = await _timesheetService.GetPeriodByIdAsync(periodId, cancellationToken);
         if (period == null)
         {
             return NotFound($"Không tìm thấy kỳ công với Id: {periodId}");
@@ -55,7 +55,7 @@ public class TimesheetsController : ControllerBase
     {
         try
         {
-            var result = await _timesheetService.CreatePeriodAsync(dto, cancellationToken);
+            TimesheetPeriodDto result = await _timesheetService.CreatePeriodAsync(dto, cancellationToken);
             return CreatedAtAction(nameof(GetPeriodById), new { periodId = result.Id }, result);
         }
         catch (ArgumentException ex)
@@ -73,7 +73,7 @@ public class TimesheetsController : ControllerBase
         [FromQuery] string? lockedBy, 
         CancellationToken cancellationToken)
     {
-        var result = await _timesheetService.LockPeriodAsync(periodId, lockedBy ?? "HR Manager", cancellationToken);
+        TimesheetPeriodDto? result = await _timesheetService.LockPeriodAsync(periodId, lockedBy ?? "HR Manager", cancellationToken);
         if (result == null)
         {
             return NotFound($"Không tìm thấy kỳ công với Id: {periodId}");
@@ -90,7 +90,7 @@ public class TimesheetsController : ControllerBase
         Guid periodId, 
         CancellationToken cancellationToken)
     {
-        var summaries = await _timesheetService.GetSummariesByPeriodAsync(periodId, cancellationToken);
+        List<TimesheetSummaryDto> summaries = await _timesheetService.GetSummariesByPeriodAsync(periodId, cancellationToken);
         return Ok(summaries);
     }
 
@@ -110,7 +110,7 @@ public class TimesheetsController : ControllerBase
             return BadRequest(new { message = "Thông số employeeId, month (1-12) hoặc year không hợp lệ." });
         }
 
-        var result = await _timesheetService.GetEmployeeSummaryAsync(employeeId, month, year, cancellationToken);
+        EmployeeMonthlyTimesheetDto? result = await _timesheetService.GetEmployeeSummaryAsync(employeeId, month, year, cancellationToken);
         if (result == null)
         {
             return NotFound(new { message = $"Chưa có bảng công cho nhân viên trong tháng {month}/{year}." });
@@ -128,7 +128,7 @@ public class TimesheetsController : ControllerBase
         Guid employeeId, 
         CancellationToken cancellationToken)
     {
-        var result = await _timesheetService.GetEmployeeSummaryByPeriodAsync(periodId, employeeId, cancellationToken);
+        EmployeeMonthlyTimesheetDto? result = await _timesheetService.GetEmployeeSummaryByPeriodAsync(periodId, employeeId, cancellationToken);
         if (result == null)
         {
             return NotFound(new { message = "Không tìm thấy bảng công của nhân viên trong kỳ này." });
@@ -148,7 +148,7 @@ public class TimesheetsController : ControllerBase
     {
         try
         {
-            var result = await _timesheetService.GenerateOrRecalculateSummaryAsync(periodId, employeeId, cancellationToken);
+            TimesheetSummaryDto result = await _timesheetService.GenerateOrRecalculateSummaryAsync(periodId, employeeId, cancellationToken);
             return Ok(result);
         }
         catch (KeyNotFoundException ex)

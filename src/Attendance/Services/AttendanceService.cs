@@ -1,4 +1,4 @@
-using Attendance.Data;
+﻿using Attendance.Data;
 using Attendance.DTOs.AttendanceRecord;
 using Attendance.Models;
 using Microsoft.EntityFrameworkCore;
@@ -18,7 +18,7 @@ public class AttendanceService : IAttendanceService
 
     public async Task<List<AttendanceRecordDto>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        var records = await _context.AttendanceRecords
+        List<AttendanceRecordDto> records = await _context.AttendanceRecords
             .AsNoTracking()
             .OrderByDescending(x => x.Date)
             .Select(x => new AttendanceRecordDto
@@ -77,7 +77,7 @@ public class AttendanceService : IAttendanceService
 
     public async Task<AttendanceRecordDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.AttendanceRecords
+        AttendanceRecord? entity = await _context.AttendanceRecords
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
@@ -104,7 +104,7 @@ public class AttendanceService : IAttendanceService
         }
 
         // Đảm bảo có phân ca (ShiftAssignment) cho nhân viên vào ngày này
-        var assignment = await _context.ShiftAssignments
+        ShiftAssignment? assignment = await _context.ShiftAssignments
             .FirstOrDefaultAsync(sa => sa.EmployeeId == dto.EmployeeId && sa.Date == dto.Date, cancellationToken);
 
         if (assignment == null)
@@ -123,7 +123,7 @@ public class AttendanceService : IAttendanceService
             await _context.SaveChangesAsync(cancellationToken);
         }
 
-        var entity = new AttendanceRecord
+        AttendanceRecord entity = new AttendanceRecord
         {
             Id = Guid.NewGuid(),
             EmployeeId = dto.EmployeeId,
@@ -162,7 +162,7 @@ public class AttendanceService : IAttendanceService
 
     public async Task<AttendanceRecordDto?> UpdateAsync(Guid id, UpdateAttendanceRecordDto dto, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.AttendanceRecords
+        AttendanceRecord? entity = await _context.AttendanceRecords
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (entity == null)
@@ -295,7 +295,7 @@ public class AttendanceService : IAttendanceService
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.AttendanceRecords
+        AttendanceRecord? entity = await _context.AttendanceRecords
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (entity == null)
@@ -312,7 +312,7 @@ public class AttendanceService : IAttendanceService
         AttendanceSearchRequestDto request,
         CancellationToken cancellationToken = default)
     {
-        var query = _context.AttendanceRecords
+        IQueryable<AttendanceRecord> query = _context.AttendanceRecords
             .AsNoTracking()
             .AsQueryable();
 
@@ -333,10 +333,10 @@ public class AttendanceService : IAttendanceService
         {
             try
             {
-                var employeesPage = await _employees.GetActiveEmployeesAsync(request.Keyword, 1, 100, cancellationToken);
+                EmployeeDirectoryPage? employeesPage = await _employees.GetActiveEmployeesAsync(request.Keyword, 1, 100, cancellationToken);
                 if (employeesPage?.Items != null)
                 {
-                    var matchingEmployeeIds = employeesPage.Items.Select(x => x.EmployeeId).Distinct().ToList();
+                    List<Guid> matchingEmployeeIds = employeesPage.Items.Select(x => x.EmployeeId).Distinct().ToList();
                     query = query.Where(x => matchingEmployeeIds.Contains(x.EmployeeId));
                 }
             }
@@ -347,7 +347,7 @@ public class AttendanceService : IAttendanceService
         }
 
         // 4. Trả về kết quả
-        var records = await query
+        List<AttendanceRecordDto> records = await query
             .OrderByDescending(x => x.Date)
             .Select(x => new AttendanceRecordDto
             {
@@ -389,13 +389,13 @@ public class AttendanceService : IAttendanceService
         if (dtos.Count == 0) return;
         try
         {
-            var page = await _employees.GetActiveEmployeesAsync(null, 1, 100, cancellationToken);
+            EmployeeDirectoryPage? page = await _employees.GetActiveEmployeesAsync(null, 1, 100, cancellationToken);
             if (page?.Items != null && page.Items.Count > 0)
             {
-                var map = page.Items.ToDictionary(e => e.EmployeeId);
-                foreach (var dto in dtos)
+                Dictionary<Guid, EmployeeDirectoryEntry> map = page.Items.ToDictionary(e => e.EmployeeId);
+                foreach (AttendanceRecordDto dto in dtos)
                 {
-                    if (map.TryGetValue(dto.EmployeeId, out var emp))
+                    if (map.TryGetValue(dto.EmployeeId, out EmployeeDirectoryEntry? emp))
                     {
                         dto.EmployeeName = emp.FullName;
                         dto.EmployeeCode = emp.EmployeeCode;
