@@ -1,4 +1,4 @@
-using Attendance.Data;
+﻿using Attendance.Data;
 using Attendance.DTOs.TimesheetPeriod;
 using Attendance.DTOs.TimesheetSummary;
 using Attendance.Models;
@@ -19,14 +19,14 @@ public class TimesheetService : ITimesheetService
 
     public async Task<List<TimesheetPeriodDto>> GetPeriodsAsync(int? year = null, CancellationToken cancellationToken = default)
     {
-        var query = _dbContext.TimesheetPeriods.AsNoTracking();
+        IQueryable<TimesheetPeriod> query = _dbContext.TimesheetPeriods.AsNoTracking();
 
         if (year.HasValue)
         {
             query = query.Where(p => p.Year == year.Value);
         }
 
-        var periods = await query
+        List<TimesheetPeriod> periods = await query
             .OrderByDescending(p => p.Year)
             .ThenByDescending(p => p.Month)
             .ToListAsync(cancellationToken);
@@ -36,7 +36,7 @@ public class TimesheetService : ITimesheetService
 
     public async Task<TimesheetPeriodDto?> GetPeriodByIdAsync(Guid periodId, CancellationToken cancellationToken = default)
     {
-        var period = await _dbContext.TimesheetPeriods
+        TimesheetPeriod? period = await _dbContext.TimesheetPeriods
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == periodId, cancellationToken);
 
@@ -45,7 +45,7 @@ public class TimesheetService : ITimesheetService
 
     public async Task<TimesheetPeriodDto> CreatePeriodAsync(CreateTimesheetPeriodDto dto, CancellationToken cancellationToken = default)
     {
-        var existing = await _dbContext.TimesheetPeriods
+        bool existing = await _dbContext.TimesheetPeriods
             .AnyAsync(p => p.Month == dto.Month && p.Year == dto.Year, cancellationToken);
 
         if (existing)
@@ -53,7 +53,7 @@ public class TimesheetService : ITimesheetService
             throw new ArgumentException($"Kỳ công cho tháng {dto.Month}/{dto.Year} đã tồn tại.");
         }
 
-        var period = new TimesheetPeriod
+        TimesheetPeriod period = new TimesheetPeriod
         {
             Id = Guid.NewGuid(),
             Name = string.IsNullOrWhiteSpace(dto.Name) ? $"Kỳ công Tháng {dto.Month:D2}/{dto.Year}" : dto.Name,
@@ -73,7 +73,7 @@ public class TimesheetService : ITimesheetService
 
     public async Task<TimesheetPeriodDto?> LockPeriodAsync(Guid periodId, string lockedBy, CancellationToken cancellationToken = default)
     {
-        var period = await _dbContext.TimesheetPeriods.FindAsync([periodId], cancellationToken);
+        TimesheetPeriod? period = await _dbContext.TimesheetPeriods.FindAsync([periodId], cancellationToken);
         if (period == null)
         {
             return null;
@@ -90,17 +90,17 @@ public class TimesheetService : ITimesheetService
 
     public async Task<List<TimesheetSummaryDto>> GetSummariesByPeriodAsync(Guid periodId, CancellationToken cancellationToken = default)
     {
-        var summaries = await _dbContext.TimesheetSummaries
+        List<TimesheetSummary> summaries = await _dbContext.TimesheetSummaries
             .AsNoTracking()
             .Where(s => s.PeriodId == periodId)
             .ToListAsync(cancellationToken);
 
         if (summaries.Count == 0)
         {
-            var period = await _dbContext.TimesheetPeriods.FindAsync([periodId], cancellationToken);
+            TimesheetPeriod? period = await _dbContext.TimesheetPeriods.FindAsync([periodId], cancellationToken);
             if (period != null)
             {
-                var empIds = await _dbContext.AttendanceRecords
+                List<Guid> empIds = await _dbContext.AttendanceRecords
                     .Where(r => r.Date >= period.StartDate && r.Date <= period.EndDate)
                     .Select(r => r.EmployeeId)
                     .Distinct()
@@ -115,7 +115,7 @@ public class TimesheetService : ITimesheetService
                         .ToListAsync(cancellationToken);
                 }
 
-                foreach (var empId in empIds)
+                foreach (Guid empId in empIds)
                 {
                     try
                     {
@@ -133,14 +133,14 @@ public class TimesheetService : ITimesheetService
             }
         }
 
-        var result = new List<TimesheetSummaryDto>();
+        List<TimesheetSummaryDto> result = new List<TimesheetSummaryDto>();
         Dictionary<Guid, (string Code, string Name)> empMap = new();
 
         if (_employees != null)
         {
             try
             {
-                var empPage = await _employees.GetActiveEmployeesAsync(null, 1, 500, cancellationToken);
+                EmployeeDirectoryPage? empPage = await _employees.GetActiveEmployeesAsync(null, 1, 500, cancellationToken);
                 if (empPage?.Items != null)
                 {
                     empMap = empPage.Items.ToDictionary(e => e.EmployeeId, e => (e.EmployeeCode, e.FullName));
@@ -149,10 +149,10 @@ public class TimesheetService : ITimesheetService
             catch { }
         }
 
-        foreach (var s in summaries)
+        foreach (TimesheetSummary s in summaries)
         {
-            var dto = MapToSummaryDto(s);
-            if (empMap.TryGetValue(s.EmployeeId, out var info))
+            TimesheetSummaryDto dto = MapToSummaryDto(s);
+            if (empMap.TryGetValue(s.EmployeeId, out (string Code, string Name) info))
             {
                 dto.EmployeeCode = info.Code;
                 dto.EmployeeName = info.Name;
@@ -170,7 +170,7 @@ public class TimesheetService : ITimesheetService
 
     public async Task<EmployeeMonthlyTimesheetDto?> GetEmployeeSummaryAsync(Guid employeeId, int month, int year, CancellationToken cancellationToken = default)
     {
-        var summary = await _dbContext.TimesheetSummaries
+        TimesheetSummary? summary = await _dbContext.TimesheetSummaries
             .Include(s => s.Period)
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.EmployeeId == employeeId && s.Period != null && s.Period.Month == month && s.Period.Year == year, cancellationToken);
@@ -185,7 +185,7 @@ public class TimesheetService : ITimesheetService
 
     public async Task<EmployeeMonthlyTimesheetDto?> GetEmployeeSummaryByPeriodAsync(Guid periodId, Guid employeeId, CancellationToken cancellationToken = default)
     {
-        var summary = await _dbContext.TimesheetSummaries
+        TimesheetSummary? summary = await _dbContext.TimesheetSummaries
             .Include(s => s.Period)
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.PeriodId == periodId && s.EmployeeId == employeeId, cancellationToken);
@@ -200,7 +200,7 @@ public class TimesheetService : ITimesheetService
 
     public async Task<TimesheetSummaryDto> GenerateOrRecalculateSummaryAsync(Guid periodId, Guid employeeId, CancellationToken cancellationToken = default)
     {
-        var period = await _dbContext.TimesheetPeriods.FindAsync([periodId], cancellationToken);
+        TimesheetPeriod? period = await _dbContext.TimesheetPeriods.FindAsync([periodId], cancellationToken);
         if (period == null)
         {
             throw new KeyNotFoundException($"Không tìm thấy kỳ công với Id: {periodId}");
@@ -212,20 +212,20 @@ public class TimesheetService : ITimesheetService
         }
 
         // 1. Quét dữ liệu quẹt thẻ thực tế (AttendanceRecords)
-        var records = await _dbContext.AttendanceRecords
+        List<AttendanceRecord> records = await _dbContext.AttendanceRecords
             .AsNoTracking()
             .Where(r => r.EmployeeId == employeeId && r.Date >= period.StartDate && r.Date <= period.EndDate)
             .ToListAsync(cancellationToken);
 
-        var actualWorkingDays = records.Count(r => r.WorkHour > 0);
-        var totalWorkingHours = records.Sum(r => r.WorkHour);
-        var lateOccurrences = records.Count(r => r.IsLate);
-        var totalLateMinutes = records.Sum(r => r.LateMins);
-        var earlyLeaveOccurrences = records.Count(r => r.IsEarlyLeave);
-        var totalEarlyLeaveMinutes = records.Sum(r => r.EarlyLeaveMins);
+        int actualWorkingDays = records.Count(r => r.WorkHour > 0);
+        decimal totalWorkingHours = records.Sum(r => r.WorkHour);
+        int lateOccurrences = records.Count(r => r.IsLate);
+        int totalLateMinutes = records.Sum(r => r.LateMins);
+        int earlyLeaveOccurrences = records.Count(r => r.IsEarlyLeave);
+        int totalEarlyLeaveMinutes = records.Sum(r => r.EarlyLeaveMins);
 
         // 2. Quét đơn nghỉ phép đã duyệt (LeaveRequests)
-        var leaves = await _dbContext.LeaveRequests
+        List<LeaveRequest> leaves = await _dbContext.LeaveRequests
             .AsNoTracking()
             .Where(l => l.EmployeeId == employeeId 
                         && l.Status == "Approved" 
@@ -236,9 +236,9 @@ public class TimesheetService : ITimesheetService
         decimal paidLeaveDays = 0;
         decimal unpaidLeaveDays = 0;
 
-        foreach (var leave in leaves)
+        foreach (LeaveRequest leave in leaves)
         {
-            var type = leave.LeaveType?.ToLowerInvariant() ?? string.Empty;
+            string type = leave.LeaveType?.ToLowerInvariant() ?? string.Empty;
             if (type.Contains("unpaid") || type.Contains("không lương"))
             {
                 unpaidLeaveDays += leave.TotalDays;
@@ -250,7 +250,7 @@ public class TimesheetService : ITimesheetService
         }
 
         // 3. Quét đơn làm thêm đã duyệt (OTRequests)
-        var ots = await _dbContext.OTRequests
+        List<OTRequest> ots = await _dbContext.OTRequests
             .AsNoTracking()
             .Where(o => o.EmployeeId == employeeId
                         && o.Status == "Approved"
@@ -262,9 +262,9 @@ public class TimesheetService : ITimesheetService
 
         // 4. Tính số ngày công chuẩn trong tháng (loại trừ Thứ 7, Chủ Nhật)
         decimal standardWorkingDays = 0;
-        for (var date = period.StartDate; date <= period.EndDate; date = date.AddDays(1))
+        for (DateOnly date = period.StartDate; date <= period.EndDate; date = date.AddDays(1))
         {
-            var dow = date.DayOfWeek;
+            DayOfWeek dow = date.DayOfWeek;
             if (dow != DayOfWeek.Saturday && dow != DayOfWeek.Sunday)
             {
                 standardWorkingDays++;
@@ -272,7 +272,7 @@ public class TimesheetService : ITimesheetService
         }
 
         // 5. Tìm hoặc tạo mới TimesheetSummary
-        var summary = await _dbContext.TimesheetSummaries
+        TimesheetSummary? summary = await _dbContext.TimesheetSummaries
             .FirstOrDefaultAsync(s => s.PeriodId == periodId && s.EmployeeId == employeeId, cancellationToken);
 
         if (summary == null)

@@ -18,14 +18,14 @@ public class AttendanceRulesController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<AttendanceRuleDto>>> GetAll([FromQuery] bool? isActive, CancellationToken cancellationToken)
     {
-        var result = await _attendanceRuleService.GetAllAsync(isActive, cancellationToken);
+        List<AttendanceRuleDto> result = await _attendanceRuleService.GetAllAsync(isActive, cancellationToken);
         return Ok(result);
     }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<AttendanceRuleDto>> GetById(Guid id, CancellationToken cancellationToken)
     {
-        var result = await _attendanceRuleService.GetByIdAsync(id, cancellationToken);
+        AttendanceRuleDto? result = await _attendanceRuleService.GetByIdAsync(id, cancellationToken);
         if (result == null)
         {
             return NotFound();
@@ -37,7 +37,7 @@ public class AttendanceRulesController : ControllerBase
     [HttpGet("active")]
     public async Task<ActionResult<AttendanceRuleDto>> GetActiveRule(CancellationToken cancellationToken)
     {
-        var result = await _attendanceRuleService.GetActiveRuleAsync(cancellationToken);
+        AttendanceRuleDto? result = await _attendanceRuleService.GetActiveRuleAsync(cancellationToken);
         if (result == null)
         {
             return NotFound(new { message = "Chưa có quy định chấm công nào đang hoạt động." });
@@ -51,7 +51,7 @@ public class AttendanceRulesController : ControllerBase
     {
         try
         {
-            var result = await _attendanceRuleService.CreateAsync(dto, cancellationToken);
+            AttendanceRuleDto result = await _attendanceRuleService.CreateAsync(dto, cancellationToken);
             return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
         }
         catch (ArgumentException ex)
@@ -63,7 +63,7 @@ public class AttendanceRulesController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<AttendanceRuleDto>> Update(Guid id, [FromBody] UpdateAttendanceRuleDto dto, CancellationToken cancellationToken)
     {
-        var result = await _attendanceRuleService.UpdateAsync(id, dto, cancellationToken);
+        AttendanceRuleDto? result = await _attendanceRuleService.UpdateAsync(id, dto, cancellationToken);
         if (result == null)
         {
             return NotFound();
@@ -75,7 +75,7 @@ public class AttendanceRulesController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        var deleted = await _attendanceRuleService.DeleteAsync(id, cancellationToken);
+        bool deleted = await _attendanceRuleService.DeleteAsync(id, cancellationToken);
         if (!deleted)
         {
             return NotFound();

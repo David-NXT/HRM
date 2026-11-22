@@ -19,14 +19,14 @@ public class AttendanceExplanationsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<AttendanceExplanationDto>>> GetAll(CancellationToken cancellationToken)
     {
-        var result = await _attendanceExplanationsService.GetAllAsync(cancellationToken);
+        List<AttendanceExplanationDto> result = await _attendanceExplanationsService.GetAllAsync(cancellationToken);
         return Ok(result);
     }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<AttendanceExplanationDto>> GetById(Guid id, CancellationToken cancellationToken)
     {
-        var result = await _attendanceExplanationsService.GetByIdAsync(id, cancellationToken);
+        AttendanceExplanationDto? result = await _attendanceExplanationsService.GetByIdAsync(id, cancellationToken);
         if (result == null)
         {
             return NotFound();
@@ -40,7 +40,7 @@ public class AttendanceExplanationsController : ControllerBase
     {
         try
         {
-            var result = await _attendanceExplanationsService.CreateAsync(dto, cancellationToken);
+            AttendanceExplanationDto result = await _attendanceExplanationsService.CreateAsync(dto, cancellationToken);
             return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
         }
         catch (ArgumentException ex)
@@ -52,7 +52,7 @@ public class AttendanceExplanationsController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<AttendanceExplanationDto>> Update(Guid id, [FromBody] UpdateAttendanceExplanationDto dto, CancellationToken cancellationToken)
     {
-        var result = await _attendanceExplanationsService.UpdateAsync(id, dto, cancellationToken);
+        AttendanceExplanationDto? result = await _attendanceExplanationsService.UpdateAsync(id, dto, cancellationToken);
         if (result == null)
         {
             return NotFound();
@@ -64,7 +64,7 @@ public class AttendanceExplanationsController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        var deleted = await _attendanceExplanationsService.DeleteAsync(id, cancellationToken);
+        bool deleted = await _attendanceExplanationsService.DeleteAsync(id, cancellationToken);
         if (!deleted)
         {
             return NotFound();

@@ -18,14 +18,14 @@ public class HolidaysController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<HolidayDto>>> GetAll(CancellationToken cancellationToken)
     {
-        var result = await _holidayService.GetAllAsync(cancellationToken);
+        List<HolidayDto> result = await _holidayService.GetAllAsync(cancellationToken);
         return Ok(result);
     }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<HolidayDto>> GetById(Guid id, CancellationToken cancellationToken)
     {
-        var result = await _holidayService.GetByIdAsync(id, cancellationToken);
+        HolidayDto? result = await _holidayService.GetByIdAsync(id, cancellationToken);
         if (result == null)
         {
             return NotFound();
@@ -39,7 +39,7 @@ public class HolidaysController : ControllerBase
     {
         try
         {
-            var result = await _holidayService.CreateAsync(dto, cancellationToken);
+            HolidayDto result = await _holidayService.CreateAsync(dto, cancellationToken);
             return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
         }
         catch (ArgumentException ex)
@@ -51,7 +51,7 @@ public class HolidaysController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<HolidayDto>> Update(Guid id, [FromBody] UpdateHolidayDto dto, CancellationToken cancellationToken)
     {
-        var result = await _holidayService.UpdateAsync(id, dto, cancellationToken);
+        HolidayDto? result = await _holidayService.UpdateAsync(id, dto, cancellationToken);
         if (result == null)
         {
             return NotFound();
@@ -63,7 +63,7 @@ public class HolidaysController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        var deleted = await _holidayService.DeleteAsync(id, cancellationToken);
+        bool deleted = await _holidayService.DeleteAsync(id, cancellationToken);
         if (!deleted)
         {
             return NotFound();

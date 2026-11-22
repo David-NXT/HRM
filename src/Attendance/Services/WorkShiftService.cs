@@ -1,4 +1,4 @@
-using Attendance.Data;
+﻿using Attendance.Data;
 using Attendance.DTOs.WorkShift;
 using Attendance.Models;
 using Microsoft.EntityFrameworkCore;
@@ -35,7 +35,7 @@ public class WorkShiftService : IWorkShiftService
 
     public async Task<WorkShiftDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.WorkShifts
+        WorkShift? entity = await _context.WorkShifts
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
@@ -59,7 +59,7 @@ public class WorkShiftService : IWorkShiftService
             throw new ArgumentException("StartTime and EndTime are required.", nameof(dto));
         }
 
-        var entity = new WorkShift
+        WorkShift entity = new WorkShift
         {
             Id = Guid.NewGuid(),
             Name = dto.Name.Trim(),
@@ -79,7 +79,7 @@ public class WorkShiftService : IWorkShiftService
 
     public async Task<WorkShiftDto?> UpdateAsync(Guid id, UpdateWorkShiftDto dto, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.WorkShifts
+        WorkShift? entity = await _context.WorkShifts
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (entity == null)
@@ -129,7 +129,7 @@ public class WorkShiftService : IWorkShiftService
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.WorkShifts
+        WorkShift? entity = await _context.WorkShifts
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (entity == null)

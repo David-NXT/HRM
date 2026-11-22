@@ -18,14 +18,14 @@ public class WorkShiftsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<WorkShiftDto>>> GetAll(CancellationToken cancellationToken)
     {
-        var result = await _workShiftService.GetAllAsync(cancellationToken);
+        List<WorkShiftDto> result = await _workShiftService.GetAllAsync(cancellationToken);
         return Ok(result);
     }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<WorkShiftDto>> GetById(Guid id, CancellationToken cancellationToken)
     {
-        var result = await _workShiftService.GetByIdAsync(id, cancellationToken);
+        WorkShiftDto? result = await _workShiftService.GetByIdAsync(id, cancellationToken);
         if (result == null)
         {
             return NotFound();
@@ -39,7 +39,7 @@ public class WorkShiftsController : ControllerBase
     {
         try
         {
-            var result = await _workShiftService.CreateAsync(dto, cancellationToken);
+            WorkShiftDto result = await _workShiftService.CreateAsync(dto, cancellationToken);
             return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
         }
         catch (ArgumentException ex)
@@ -51,7 +51,7 @@ public class WorkShiftsController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<WorkShiftDto>> Update(Guid id, [FromBody] UpdateWorkShiftDto dto, CancellationToken cancellationToken)
     {
-        var result = await _workShiftService.UpdateAsync(id, dto, cancellationToken);
+        WorkShiftDto? result = await _workShiftService.UpdateAsync(id, dto, cancellationToken);
         if (result == null)
         {
             return NotFound();
@@ -63,7 +63,7 @@ public class WorkShiftsController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        var deleted = await _workShiftService.DeleteAsync(id, cancellationToken);
+        bool deleted = await _workShiftService.DeleteAsync(id, cancellationToken);
         if (!deleted)
         {
             return NotFound();

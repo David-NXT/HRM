@@ -34,7 +34,7 @@ public sealed class EmployeesController(IHrEmployeeDirectoryClient employees) : 
     {
         try
         {
-            var employee = await employees.GetActiveEmployeeAsync(employeeId, cancellationToken);
+            EmployeeDirectoryEntry? employee = await employees.GetActiveEmployeeAsync(employeeId, cancellationToken);
             if (employee is null)
             {
                 return NotFound();

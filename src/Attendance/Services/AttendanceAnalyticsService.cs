@@ -1,5 +1,6 @@
 using Attendance.Data;
 using Attendance.DTOs.Analytics;
+using Attendance.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace Attendance.Services;
@@ -24,26 +25,22 @@ public class AttendanceAnalyticsService : IAttendanceAnalyticsService
 
     public async Task<AttendanceOverviewStatsDto> GetOverviewStatsAsync(DateOnly? date, CancellationToken cancellationToken = default)
     {
-        var targetDate = date ?? DateOnly.FromDateTime(DateTime.Today);
+        DateOnly targetDate = date ?? DateOnly.FromDateTime(DateTime.Today);
 
-        // Lấy danh sách nhân viên từ HR
+        // Lay danh sach nhan vien tu HR
         int totalEmployees = 0;
         try
         {
-            var empPage = await _employees.GetActiveEmployeesAsync(null, 1, 500, cancellationToken);
-            totalEmployees = empPage?.Items?.Count ?? 0;
-            if (empPage != null && empPage.Total > totalEmployees)
-            {
-                totalEmployees = empPage.Total;
-            }
+            List<EmployeeDirectoryEntry> allEmployees = await _employees.GetAllActiveEmployeesAsync(cancellationToken);
+            totalEmployees = allEmployees.Count;
         }
         catch
         {
-            // Bỏ qua nếu HR API tạm thời offline
+            // Bo qua neu HR API tam thoi offline
         }
 
-        // Lấy dữ liệu quẹt thẻ trong ngày
-        var records = await _context.AttendanceRecords
+        // Lay du lieu quet the trong ngay
+        List<AttendanceRecord> records = await _context.AttendanceRecords
             .AsNoTracking()
             .Where(r => r.Date == targetDate)
             .ToListAsync(cancellationToken);
@@ -51,11 +48,11 @@ public class AttendanceAnalyticsService : IAttendanceAnalyticsService
         int presentCount = records.Count(r => r.WorkHour > 0 || r.Status.Equals("Present", StringComparison.OrdinalIgnoreCase) || r.TimeIn.HasValue);
         int lateCount = records.Count(r => r.IsLate || r.LateMins > 0 || r.Status.Equals("Late", StringComparison.OrdinalIgnoreCase));
 
-        // Lấy số người có đơn nghỉ phép đã duyệt
+        // Lay so nguoi co don nghi phep da duyet
         int onLeaveCount = 0;
         try
         {
-            var leaves = await _context.LeaveRequests
+            List<LeaveRequest> leaves = await _context.LeaveRequests
                 .AsNoTracking()
                 .Where(l => l.Status == "Approved" && l.StartDate <= targetDate && l.EndDate >= targetDate)
                 .ToListAsync(cancellationToken);
@@ -67,7 +64,7 @@ public class AttendanceAnalyticsService : IAttendanceAnalyticsService
 
         if (totalEmployees == 0)
         {
-            var uniqueEmployees = await _context.AttendanceRecords
+            int uniqueEmployees = await _context.AttendanceRecords
                 .Select(r => r.EmployeeId)
                 .Distinct()
                 .CountAsync(cancellationToken);
@@ -93,10 +90,10 @@ public class AttendanceAnalyticsService : IAttendanceAnalyticsService
 
     public async Task<List<AttendanceWeeklyTrendDto>> GetWeeklyTrendAsync(int month, int year, CancellationToken cancellationToken = default)
     {
-        var result = new List<AttendanceWeeklyTrendDto>();
+        List<AttendanceWeeklyTrendDto> result = new List<AttendanceWeeklyTrendDto>();
         int daysInMonth = DateTime.DaysInMonth(year, month);
 
-        var weeks = new[]
+        (string Name, int StartDay, int EndDay)[] weeks = new[]
         {
             (Name: "Week 1", StartDay: 1, EndDay: 7),
             (Name: "Week 2", StartDay: 8, EndDay: 14),
@@ -104,17 +101,17 @@ public class AttendanceAnalyticsService : IAttendanceAnalyticsService
             (Name: "Week 4", StartDay: 22, EndDay: daysInMonth)
         };
 
-        foreach (var w in weeks)
+        foreach ((string Name, int StartDay, int EndDay) w in weeks)
         {
-            var start = new DateOnly(year, month, w.StartDay);
-            var end = new DateOnly(year, month, w.EndDay);
+            DateOnly start = new DateOnly(year, month, w.StartDay);
+            DateOnly end = new DateOnly(year, month, w.EndDay);
 
-            var records = await _context.AttendanceRecords
+            List<AttendanceRecord> records = await _context.AttendanceRecords
                 .AsNoTracking()
                 .Where(r => r.Date >= start && r.Date <= end)
                 .ToListAsync(cancellationToken);
 
-            int presentPct = 90;
+            int presentPct = 0;
             if (records.Count > 0)
             {
                 int present = records.Count(r => r.WorkHour > 0 || r.Status.Equals("Present", StringComparison.OrdinalIgnoreCase));
@@ -122,13 +119,8 @@ public class AttendanceAnalyticsService : IAttendanceAnalyticsService
             }
             else
             {
-                presentPct = w.Name switch
-                {
-                    "Week 1" => 90,
-                    "Week 2" => 95,
-                    "Week 3" => 92,
-                    _ => 88
-                };
+                // Fallback khi khong co du lieu: 0% co mat (100% vang)
+                presentPct = 0;
             }
 
             presentPct = Math.Clamp(presentPct, 0, 100);
@@ -145,24 +137,41 @@ public class AttendanceAnalyticsService : IAttendanceAnalyticsService
 
     public async Task<List<AttendanceDepartmentTrendDto>> GetDepartmentTrendAsync(int month, int year, CancellationToken cancellationToken = default)
     {
-        var result = new List<AttendanceDepartmentTrendDto>();
+        List<AttendanceDepartmentTrendDto> result = new List<AttendanceDepartmentTrendDto>();
 
         try
         {
-            var departments = await _employees.GetDepartmentsAsync(cancellationToken);
-            var empPage = await _employees.GetActiveEmployeesAsync(null, 1, 500, cancellationToken);
-            var employees = empPage?.Items ?? Array.Empty<EmployeeDirectoryEntry>();
+            IReadOnlyList<HrDepartmentDto> departments = await _employees.GetDepartmentsAsync(cancellationToken);
+            List<EmployeeDirectoryEntry> employees = await _employees.GetAllActiveEmployeesAsync(cancellationToken);
 
+            List<string> deptNames = new List<string>();
             if (departments.Count > 0)
             {
-                foreach (var dept in departments)
+                deptNames = departments.Select(d => d.Name).Distinct().ToList();
+            }
+            else if (employees.Count > 0)
+            {
+                deptNames = employees
+                    .Where(e => !string.IsNullOrWhiteSpace(e.DepartmentName))
+                    .Select(e => e.DepartmentName!)
+                    .Distinct()
+                    .ToList();
+            }
+
+            if (deptNames.Count > 0)
+            {
+                foreach (string deptName in deptNames)
                 {
-                    var deptEmployees = employees.Where(e => e.DepartmentName == dept.Name).Select(e => e.EmployeeId).ToList();
-                    int pct = 90;
+                    List<Guid> deptEmployees = employees
+                        .Where(e => string.Equals(e.DepartmentName, deptName, StringComparison.OrdinalIgnoreCase))
+                        .Select(e => e.EmployeeId)
+                        .ToList();
+
+                    int pct = 0;
 
                     if (deptEmployees.Count > 0)
                     {
-                        var records = await _context.AttendanceRecords
+                        List<AttendanceRecord> records = await _context.AttendanceRecords
                             .AsNoTracking()
                             .Where(r => deptEmployees.Contains(r.EmployeeId) && r.Date.Month == month && r.Date.Year == year)
                             .ToListAsync(cancellationToken);
@@ -174,29 +183,17 @@ public class AttendanceAnalyticsService : IAttendanceAnalyticsService
                         }
                         else
                         {
-                            pct = dept.Code switch
-                            {
-                                "IT" or "DEV" => 95,
-                                "HR" => 92,
-                                "MKT" => 88,
-                                _ => 90
-                            };
+                            pct = 0;
                         }
                     }
                     else
                     {
-                        pct = dept.Code switch
-                        {
-                            "IT" or "DEV" => 95,
-                            "HR" => 92,
-                            "MKT" => 88,
-                            _ => 90
-                        };
+                        pct = 0;
                     }
 
                     result.Add(new AttendanceDepartmentTrendDto
                     {
-                        Name = dept.Name,
+                        Name = deptName,
                         Percentage = Math.Clamp(pct, 0, 100),
                         TotalEmployees = deptEmployees.Count
                     });
@@ -207,14 +204,15 @@ public class AttendanceAnalyticsService : IAttendanceAnalyticsService
         }
         catch
         {
+            // HR API offline hoac co loi
         }
 
-        // Dự phòng nếu chưa có kết nối HR API
+        // Fallback khi khong the ket noi HR API: tra ve 0% theo yeu cau
         result.AddRange(new[]
         {
-            new AttendanceDepartmentTrendDto { Name = "Phòng Công Nghệ Thông Tin", Percentage = 95 },
-            new AttendanceDepartmentTrendDto { Name = "Phòng Hành Chính Nhân Sự", Percentage = 92 },
-            new AttendanceDepartmentTrendDto { Name = "Phòng Marketing", Percentage = 88 }
+            new AttendanceDepartmentTrendDto { Name = "Phòng Công Nghệ Thông Tin", Percentage = 0, TotalEmployees = 0 },
+            new AttendanceDepartmentTrendDto { Name = "Phòng Hành Chính Nhân Sự", Percentage = 0, TotalEmployees = 0 },
+            new AttendanceDepartmentTrendDto { Name = "Phòng Marketing", Percentage = 0, TotalEmployees = 0 }
         });
 
         return result;

@@ -1,4 +1,4 @@
-using Attendance.Data;
+﻿using Attendance.Data;
 using Attendance.DTOs.OTRequest;
 using Attendance.Models;
 using Microsoft.EntityFrameworkCore;
@@ -46,7 +46,7 @@ public class OTRequestService : IOTRequestService
 
     public async Task<OTRequestDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.OTRequests
+        OTRequest? entity = await _context.OTRequests
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
@@ -66,14 +66,14 @@ public class OTRequestService : IOTRequestService
         }
 
         await EnsureActiveEmployeeAsync(dto.EmployeeId, cancellationToken);
-        var plannedHours = dto.PlannedHours;
+        decimal plannedHours = dto.PlannedHours;
         if (plannedHours <= 0 && dto.EndTime > dto.StartTime)
         {
-            var span = dto.EndTime - dto.StartTime;
+            TimeSpan span = dto.EndTime - dto.StartTime;
             plannedHours = (decimal)span.TotalHours;
         }
 
-        var entity = new OTRequest
+        OTRequest entity = new OTRequest
         {
             Id = Guid.NewGuid(),
             EmployeeId = dto.EmployeeId,
@@ -99,7 +99,7 @@ public class OTRequestService : IOTRequestService
 
     public async Task<OTRequestDto?> UpdateAsync(Guid id, UpdateOTRequestDto dto, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.OTRequests
+        OTRequest? entity = await _context.OTRequests
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (entity == null)
@@ -187,7 +187,7 @@ public class OTRequestService : IOTRequestService
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.OTRequests
+        OTRequest? entity = await _context.OTRequests
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (entity == null)

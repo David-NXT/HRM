@@ -18,14 +18,14 @@ public class LeaveBalancesController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<LeaveBalanceDto>>> GetAll([FromQuery] int? year, CancellationToken cancellationToken)
     {
-        var result = await _leaveBalanceService.GetAllAsync(year, cancellationToken);
+        List<LeaveBalanceDto> result = await _leaveBalanceService.GetAllAsync(year, cancellationToken);
         return Ok(result);
     }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<LeaveBalanceDto>> GetById(Guid id, CancellationToken cancellationToken)
     {
-        var result = await _leaveBalanceService.GetByIdAsync(id, cancellationToken);
+        LeaveBalanceDto? result = await _leaveBalanceService.GetByIdAsync(id, cancellationToken);
         if (result == null)
         {
             return NotFound();
@@ -37,7 +37,7 @@ public class LeaveBalancesController : ControllerBase
     [HttpGet("employee/{employeeId:guid}")]
     public async Task<ActionResult<LeaveBalanceDto>> GetByEmployee(Guid employeeId, [FromQuery] int year, CancellationToken cancellationToken)
     {
-        var result = await _leaveBalanceService.GetByEmployeeAsync(employeeId, year, cancellationToken);
+        LeaveBalanceDto? result = await _leaveBalanceService.GetByEmployeeAsync(employeeId, year, cancellationToken);
         if (result == null)
         {
             return NotFound();
@@ -51,7 +51,7 @@ public class LeaveBalancesController : ControllerBase
     {
         try
         {
-            var result = await _leaveBalanceService.CreateAsync(dto, cancellationToken);
+            LeaveBalanceDto result = await _leaveBalanceService.CreateAsync(dto, cancellationToken);
             return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
         }
         catch (ArgumentException ex)
@@ -63,7 +63,7 @@ public class LeaveBalancesController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<LeaveBalanceDto>> Update(Guid id, [FromBody] UpdateLeaveBalanceDto dto, CancellationToken cancellationToken)
     {
-        var result = await _leaveBalanceService.UpdateAsync(id, dto, cancellationToken);
+        LeaveBalanceDto? result = await _leaveBalanceService.UpdateAsync(id, dto, cancellationToken);
         if (result == null)
         {
             return NotFound();
@@ -75,7 +75,7 @@ public class LeaveBalancesController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        var deleted = await _leaveBalanceService.DeleteAsync(id, cancellationToken);
+        bool deleted = await _leaveBalanceService.DeleteAsync(id, cancellationToken);
         if (!deleted)
         {
             return NotFound();

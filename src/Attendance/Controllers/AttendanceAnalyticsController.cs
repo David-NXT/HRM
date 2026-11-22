@@ -20,7 +20,7 @@ public class AttendanceAnalyticsController : ControllerBase
         [FromQuery] DateOnly? date,
         CancellationToken cancellationToken)
     {
-        var result = await _analyticsService.GetOverviewStatsAsync(date, cancellationToken);
+        AttendanceOverviewStatsDto result = await _analyticsService.GetOverviewStatsAsync(date, cancellationToken);
         return Ok(result);
     }
 
@@ -30,9 +30,9 @@ public class AttendanceAnalyticsController : ControllerBase
         [FromQuery] int? year,
         CancellationToken cancellationToken)
     {
-        var m = month ?? DateTime.Today.Month;
-        var y = year ?? DateTime.Today.Year;
-        var result = await _analyticsService.GetWeeklyTrendAsync(m, y, cancellationToken);
+        int m = month ?? DateTime.Today.Month;
+        int y = year ?? DateTime.Today.Year;
+        List<AttendanceWeeklyTrendDto> result = await _analyticsService.GetWeeklyTrendAsync(m, y, cancellationToken);
         return Ok(result);
     }
 
@@ -42,9 +42,9 @@ public class AttendanceAnalyticsController : ControllerBase
         [FromQuery] int? year,
         CancellationToken cancellationToken)
     {
-        var m = month ?? DateTime.Today.Month;
-        var y = year ?? DateTime.Today.Year;
-        var result = await _analyticsService.GetDepartmentTrendAsync(m, y, cancellationToken);
+        int m = month ?? DateTime.Today.Month;
+        int y = year ?? DateTime.Today.Year;
+        List<AttendanceDepartmentTrendDto> result = await _analyticsService.GetDepartmentTrendAsync(m, y, cancellationToken);
         return Ok(result);
     }
 }
