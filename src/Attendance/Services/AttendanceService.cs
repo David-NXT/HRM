@@ -1,4 +1,4 @@
-using Attendance.Data;
+﻿using Attendance.Data;
 using Attendance.DTOs.AttendanceRecord;
 using Attendance.Models;
 using Microsoft.EntityFrameworkCore;
@@ -18,7 +18,7 @@ public class AttendanceService : IAttendanceService
 
     public async Task<List<AttendanceRecordDto>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        var records = await _context.AttendanceRecords
+        List<AttendanceRecordDto> records = await _context.AttendanceRecords
             .AsNoTracking()
             .OrderByDescending(x => x.Date)
             .Select(x => new AttendanceRecordDto
@@ -77,7 +77,7 @@ public class AttendanceService : IAttendanceService
 
     public async Task<AttendanceRecordDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.AttendanceRecords
+        AttendanceRecord? entity = await _context.AttendanceRecords
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
@@ -103,8 +103,17 @@ public class AttendanceService : IAttendanceService
             throw new ArgumentException("ShiftId is required.", nameof(dto));
         }
 
+        // 1. Kiểm tra không cho phép duplicate check-in cùng ca trong ngày
+        AttendanceRecord? existing = await _context.AttendanceRecords
+            .FirstOrDefaultAsync(x => x.EmployeeId == dto.EmployeeId && x.Date == dto.Date && x.ShiftId == dto.ShiftId, cancellationToken);
+
+        if (existing != null && existing.TimeIn.HasValue)
+        {
+            throw new InvalidOperationException("Nhân viên đã check-in ca này trong ngày.");
+        }
+
         // Đảm bảo có phân ca (ShiftAssignment) cho nhân viên vào ngày này
-        var assignment = await _context.ShiftAssignments
+        ShiftAssignment? assignment = await _context.ShiftAssignments
             .FirstOrDefaultAsync(sa => sa.EmployeeId == dto.EmployeeId && sa.Date == dto.Date, cancellationToken);
 
         if (assignment == null)
@@ -123,38 +132,104 @@ public class AttendanceService : IAttendanceService
             await _context.SaveChangesAsync(cancellationToken);
         }
 
-        var entity = new AttendanceRecord
-        {
-            Id = Guid.NewGuid(),
-            EmployeeId = dto.EmployeeId,
-            ShiftId = dto.ShiftId,
-            ShiftAssignmentId = assignment.Id,
-            Date = dto.Date,
-            TimeIn = dto.TimeIn,
-            TimeOut = dto.TimeOut,
-            Status = string.IsNullOrWhiteSpace(dto.Status) ? "Pending" : dto.Status,
-            WorkHour = dto.WorkHour,
-            LateMins = dto.LateMins,
-            EarlyLeaveMins = dto.EarlyLeaveMins,
-            OTMins = dto.OTMins,
-            ActualOTMins = dto.ActualOTMins,
-            IsLate = dto.IsLate,
-            IsEarlyLeave = dto.IsEarlyLeave,
-            CheckInSource = dto.CheckInSource,
-            CheckOutSource = dto.CheckOutSource,
-            CheckInLatitude = dto.CheckInLatitude,
-            CheckInLongitude = dto.CheckInLongitude,
-            CheckInLocation = dto.CheckInLocation,
-            CheckOutLatitude = dto.CheckOutLatitude,
-            CheckOutLongitude = dto.CheckOutLongitude,
-            CheckOutLocation = dto.CheckOutLocation,
-            DeviceId = dto.DeviceId,
-            Note = dto.Note,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+        // 2. Tra cứu ca làm việc & quy tắc đi trễ
+        WorkShift? shift = await _context.WorkShifts
+            .FirstOrDefaultAsync(s => s.Id == dto.ShiftId, cancellationToken);
 
-        _context.AttendanceRecords.Add(entity);
+        AttendanceRule? rule = await _context.AttendanceRules
+            .Where(r => r.IsActive)
+            .OrderByDescending(r => r.EffectiveDate)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        int allowedLate = rule?.AllowedLateMinutes ?? 15;
+        int lateMins = dto.LateMins;
+        bool isLate = dto.IsLate;
+
+        if (shift != null && dto.TimeIn.HasValue)
+        {
+            TimeOnly timeIn = dto.TimeIn.Value;
+            if (timeIn > shift.StartTime)
+            {
+                int diff = (int)(timeIn.ToTimeSpan() - shift.StartTime.ToTimeSpan()).TotalMinutes;
+                if (diff > allowedLate)
+                {
+                    lateMins = diff;
+                    isLate = true;
+                }
+                else
+                {
+                    lateMins = 0;
+                    isLate = false;
+                }
+            }
+            else
+            {
+                lateMins = 0;
+                isLate = false;
+            }
+        }
+
+        string status = !string.IsNullOrWhiteSpace(dto.Status) && dto.Status != "Pending"
+            ? dto.Status
+            : (isLate ? "Late" : "Present");
+
+        AttendanceRecord entity;
+        if (existing != null)
+        {
+            entity = existing;
+            entity.TimeIn = dto.TimeIn;
+            entity.TimeOut = dto.TimeOut;
+            entity.Status = status;
+            entity.WorkHour = dto.WorkHour;
+            entity.LateMins = lateMins;
+            entity.EarlyLeaveMins = dto.EarlyLeaveMins;
+            entity.OTMins = dto.OTMins;
+            entity.ActualOTMins = dto.ActualOTMins;
+            entity.IsLate = isLate;
+            entity.IsEarlyLeave = dto.IsEarlyLeave;
+            entity.CheckInSource = dto.CheckInSource;
+            entity.CheckInLatitude = dto.CheckInLatitude;
+            entity.CheckInLongitude = dto.CheckInLongitude;
+            entity.CheckInLocation = dto.CheckInLocation;
+            entity.DeviceId = dto.DeviceId;
+            entity.Note = dto.Note;
+            entity.UpdatedAt = DateTime.UtcNow;
+        }
+        else
+        {
+            entity = new AttendanceRecord
+            {
+                Id = Guid.NewGuid(),
+                EmployeeId = dto.EmployeeId,
+                ShiftId = dto.ShiftId,
+                ShiftAssignmentId = assignment.Id,
+                Date = dto.Date,
+                TimeIn = dto.TimeIn,
+                TimeOut = dto.TimeOut,
+                Status = status,
+                WorkHour = dto.WorkHour,
+                LateMins = lateMins,
+                EarlyLeaveMins = dto.EarlyLeaveMins,
+                OTMins = dto.OTMins,
+                ActualOTMins = dto.ActualOTMins,
+                IsLate = isLate,
+                IsEarlyLeave = dto.IsEarlyLeave,
+                CheckInSource = dto.CheckInSource,
+                CheckOutSource = dto.CheckOutSource,
+                CheckInLatitude = dto.CheckInLatitude,
+                CheckInLongitude = dto.CheckInLongitude,
+                CheckInLocation = dto.CheckInLocation,
+                CheckOutLatitude = dto.CheckOutLatitude,
+                CheckOutLongitude = dto.CheckOutLongitude,
+                CheckOutLocation = dto.CheckOutLocation,
+                DeviceId = dto.DeviceId,
+                Note = dto.Note,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _context.AttendanceRecords.Add(entity);
+        }
+
         await _context.SaveChangesAsync(cancellationToken);
 
         return MapToDto(entity);
@@ -162,7 +237,7 @@ public class AttendanceService : IAttendanceService
 
     public async Task<AttendanceRecordDto?> UpdateAsync(Guid id, UpdateAttendanceRecordDto dto, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.AttendanceRecords
+        AttendanceRecord? entity = await _context.AttendanceRecords
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (entity == null)
@@ -194,6 +269,64 @@ public class AttendanceService : IAttendanceService
         if (dto.TimeOut.HasValue)
         {
             entity.TimeOut = dto.TimeOut.Value;
+
+            WorkShift? shift = await _context.WorkShifts
+                .FirstOrDefaultAsync(s => s.Id == entity.ShiftId, cancellationToken);
+
+            AttendanceRule? rule = await _context.AttendanceRules
+                .Where(r => r.IsActive)
+                .OrderByDescending(r => r.EffectiveDate)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            int allowedEarly = rule?.AllowedEarlyLeaveMinutes ?? 15;
+
+            if (shift != null)
+            {
+                TimeOnly timeOut = dto.TimeOut.Value;
+                if (timeOut < shift.EndTime)
+                {
+                    int earlyDiff = (int)(shift.EndTime.ToTimeSpan() - timeOut.ToTimeSpan()).TotalMinutes;
+                    if (earlyDiff > allowedEarly)
+                    {
+                        entity.EarlyLeaveMins = earlyDiff;
+                        entity.IsEarlyLeave = true;
+                    }
+                    else
+                    {
+                        entity.EarlyLeaveMins = 0;
+                        entity.IsEarlyLeave = false;
+                    }
+                }
+                else
+                {
+                    entity.EarlyLeaveMins = 0;
+                    entity.IsEarlyLeave = false;
+                }
+
+                if (entity.TimeIn.HasValue)
+                {
+                    TimeSpan elapsed = timeOut.ToTimeSpan() - entity.TimeIn.Value.ToTimeSpan();
+                    if (elapsed.TotalMinutes < 0) elapsed += TimeSpan.FromHours(24);
+                    int breakM = elapsed.TotalMinutes > 240 ? shift.BreakMins : 0;
+                    decimal hours = Math.Max(0, (decimal)(elapsed.TotalMinutes - breakM) / 60m);
+                    entity.WorkHour = Math.Round(hours, 2);
+                }
+            }
+
+            // Đối soát với đơn làm thêm giờ (OTRequest) đã duyệt
+            OTRequest? otRequest = await _context.OTRequests
+                .FirstOrDefaultAsync(ot => ot.EmployeeId == entity.EmployeeId && ot.Date == entity.Date && ot.Status == "Approved", cancellationToken);
+
+            if (otRequest != null && shift != null && dto.TimeOut.Value > shift.EndTime)
+            {
+                int otMinutes = (int)(dto.TimeOut.Value.ToTimeSpan() - shift.EndTime.ToTimeSpan()).TotalMinutes;
+                if (otMinutes > 0)
+                {
+                    entity.ActualOTMins = otMinutes;
+                    otRequest.ActualHours = Math.Round((decimal)otMinutes / 60m, 2);
+                    otRequest.UpdatedAt = DateTime.UtcNow;
+                }
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(dto.Status))
@@ -295,7 +428,7 @@ public class AttendanceService : IAttendanceService
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.AttendanceRecords
+        AttendanceRecord? entity = await _context.AttendanceRecords
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (entity == null)
@@ -312,7 +445,7 @@ public class AttendanceService : IAttendanceService
         AttendanceSearchRequestDto request,
         CancellationToken cancellationToken = default)
     {
-        var query = _context.AttendanceRecords
+        IQueryable<AttendanceRecord> query = _context.AttendanceRecords
             .AsNoTracking()
             .AsQueryable();
 
@@ -333,10 +466,10 @@ public class AttendanceService : IAttendanceService
         {
             try
             {
-                var employeesPage = await _employees.GetActiveEmployeesAsync(request.Keyword, 1, 100, cancellationToken);
+                EmployeeDirectoryPage? employeesPage = await _employees.GetActiveEmployeesAsync(request.Keyword, 1, 100, cancellationToken);
                 if (employeesPage?.Items != null)
                 {
-                    var matchingEmployeeIds = employeesPage.Items.Select(x => x.EmployeeId).Distinct().ToList();
+                    List<Guid> matchingEmployeeIds = employeesPage.Items.Select(x => x.EmployeeId).Distinct().ToList();
                     query = query.Where(x => matchingEmployeeIds.Contains(x.EmployeeId));
                 }
             }
@@ -347,7 +480,7 @@ public class AttendanceService : IAttendanceService
         }
 
         // 4. Trả về kết quả
-        var records = await query
+        List<AttendanceRecordDto> records = await query
             .OrderByDescending(x => x.Date)
             .Select(x => new AttendanceRecordDto
             {
@@ -389,13 +522,13 @@ public class AttendanceService : IAttendanceService
         if (dtos.Count == 0) return;
         try
         {
-            var page = await _employees.GetActiveEmployeesAsync(null, 1, 100, cancellationToken);
+            EmployeeDirectoryPage? page = await _employees.GetActiveEmployeesAsync(null, 1, 100, cancellationToken);
             if (page?.Items != null && page.Items.Count > 0)
             {
-                var map = page.Items.ToDictionary(e => e.EmployeeId);
-                foreach (var dto in dtos)
+                Dictionary<Guid, EmployeeDirectoryEntry> map = page.Items.ToDictionary(e => e.EmployeeId);
+                foreach (AttendanceRecordDto dto in dtos)
                 {
-                    if (map.TryGetValue(dto.EmployeeId, out var emp))
+                    if (map.TryGetValue(dto.EmployeeId, out EmployeeDirectoryEntry? emp))
                     {
                         dto.EmployeeName = emp.FullName;
                         dto.EmployeeCode = emp.EmployeeCode;

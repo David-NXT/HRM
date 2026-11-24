@@ -136,11 +136,9 @@
               <form id="overtime-form" class="form-grid">
                 <div class="field full"><label>Nhân viên</label><select class="control" name="employeeId" data-employee required></select></div>
                 <div class="field"><label>Ngày làm thêm</label><input class="control" name="date" type="date" required></div>
-                <div class="field"><label>Loại ngày</label><select class="control" name="dayType"><option value="WEEKDAY">Ngày thường</option><option value="WEEKEND">Cuối tuần</option><option value="HOLIDAY">Ngày lễ</option></select></div>
                 <div class="field"><label>Bắt đầu</label><input class="control" name="startTime" type="time" required></div>
                 <div class="field"><label>Kết thúc</label><input class="control" name="endTime" type="time" required></div>
                 <div class="field"><label>Số giờ dự kiến</label><input class="control" name="plannedHours" type="number" step="0.25" min="0.25" required></div>
-                <div class="field"><label>Hệ số</label><input class="control" name="multiplier" type="number" step="0.1" min="1" value="1.5" required></div>
                 <div class="field full"><label>Lý do</label><textarea class="control" name="reason"></textarea></div>
                 <div class="full"><label style="font-size:12px;color:#68768c"><input type="checkbox" name="isUnplanned"> Đây là giờ làm thêm phát sinh</label></div>
                 <div class="full"><button class="btn primary" type="submit">Gửi đăng ký OT</button></div>
@@ -197,7 +195,7 @@
           <div class="subnav" id="config-tabs"><button class="active" data-sub="shifts">Ca làm việc</button><button data-sub="rules">Quy tắc chấm công</button><button data-sub="ot-rules">Quy tắc OT</button></div>
           <div class="subpanel active" id="config-shifts"><div class="panel"><div class="panel-head"><h2>Danh sách ca làm việc</h2><button class="btn primary" data-config-add="shifts">Thêm ca</button></div><div class="panel-body flush"><div class="table-wrap"><table><thead><tr><th>Tên ca</th><th>Bắt đầu</th><th>Kết thúc</th><th>Nghỉ giữa ca</th><th>Ngày hiệu lực</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody id="config-shifts-table"></tbody></table></div></div></div></div>
           <div class="subpanel" id="config-rules"><div class="panel"><div class="panel-head"><h2>Quy tắc chấm công</h2><button class="btn primary" data-config-add="rules">Thêm quy tắc</button></div><div class="panel-body flush"><div class="table-wrap"><table><thead><tr><th>Tên quy tắc</th><th>Trễ cho phép</th><th>Về sớm</th><th>Vi phạm/tháng</th><th>Ngày hiệu lực</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody id="config-rules-table"></tbody></table></div></div></div></div>
-          <div class="subpanel" id="config-ot-rules"><div class="panel"><div class="panel-head"><h2>Quy tắc làm thêm giờ</h2><button class="btn primary" data-config-add="ot-rules">Thêm quy tắc OT</button></div><div class="panel-body flush"><div class="table-wrap"><table><thead><tr><th>Loại ngày</th><th>Hệ số</th><th>Tối đa/ngày</th><th>Tối đa/tháng</th><th>Tối đa/năm</th><th>Ngày hiệu lực</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody id="config-ot-rules-table"></tbody></table></div></div></div></div>
+          <div class="subpanel" id="config-ot-rules"><div class="panel"><div class="panel-head"><h2>Hệ số OT chung</h2><button class="btn primary" data-config-add="ot-rules">Thêm quy tắc OT</button></div><div class="panel-body flush"><div class="table-wrap"><table><thead><tr><th>Hệ số OT</th><th>Tối đa/ngày</th><th>Tối đa/tháng</th><th>Tối đa/năm</th><th>Ngày hiệu lực</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody id="config-ot-rules-table"></tbody></table></div></div></div></div>
         </section>
       </div>
     </main>
@@ -212,6 +210,16 @@
       const $ = (selector, root = document) => root.querySelector(selector);
       const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
       const state = { employees: [], departments: [], shifts: [], records: [], explanations: [], overtime: [], periods: [], summaries: [], config: { shifts: [], rules: [], "ot-rules": [] }, currentPeriod: null, approvalSelection: null, configSelection: null };
+
+      // Biến mảng tạm (in-memory cache) trên Frontend: lưu dữ liệu tạm để mỗi lần đọc/lọc không cần gọi thẳng xuống DB
+      const localCache = {
+        records: [],         // Mảng tạm lưu AttendanceRecord
+        leaves: [],          // Mảng tạm lưu LeaveRequest
+        overtime: [],        // Mảng tạm lưu OTRequest
+        explanations: [],    // Mảng tạm lưu AttendanceExplanation
+        isRecordsLoaded: false,
+        isRequestsLoaded: false
+      };
       const localDate = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
       const today = () => localDate(new Date());
       const monthNow = () => today().slice(0, 7);
@@ -305,23 +313,80 @@
         $("#overview-count").textContent = `${number(state.records.length)} bản ghi`;
         $("#overview-table").innerHTML = state.records.length ? state.records.map(r => `<tr><td class="person">${esc(r.employeeCode || employeeCode(r.employeeId))} · ${esc(r.employeeName || employeeName(r.employeeId))}</td><td>${esc(employeeDepartment(r.employeeId))}</td><td>${dateText(r.date)}</td><td>${timeText(r.timeIn)}</td><td>${timeText(r.timeOut)}</td><td>${number(r.workHour)} giờ</td><td>${r.lateMins ? `${number(r.lateMins)} phút` : "—"}</td><td>${pill(r.status)}</td></tr>`).join("") : emptyRow(8);
       }
-      async function searchOverview() {
+      async function searchOverview(forceRefresh = false) {
         clearError();
-        const body = { date: $("#overview-date").value || null, departmentId: $("#overview-department").value || null, status: $("#overview-status").value || null, keyword: $("#overview-keyword").value.trim() || null };
+        const dateVal = $("#overview-date").value || null;
+        const deptVal = $("#overview-department").value || null;
+        const statusVal = $("#overview-status").value || null;
+        const keyword = ($("#overview-keyword").value || "").trim().toLowerCase();
+
+        // Đọc từ mảng tạm localCache.records nếu đã có dữ liệu và không yêu cầu làm mới
+        if (!forceRefresh && localCache.isRecordsLoaded && localCache.records.length > 0) {
+          let list = [...localCache.records];
+          if (dateVal) list = list.filter(r => r.date === dateVal);
+          if (statusVal) list = list.filter(r => r.status === statusVal);
+          if (keyword) {
+            list = list.filter(r => {
+              const code = (r.employeeCode || employeeCode(r.employeeId) || "").toLowerCase();
+              const name = (r.employeeName || employeeName(r.employeeId) || "").toLowerCase();
+              return code.includes(keyword) || name.includes(keyword);
+            });
+          }
+          if (deptVal) {
+            list = list.filter(r => {
+              const emp = state.employees.find(e => e.employeeId === r.employeeId);
+              return emp && (emp.departmentId === deptVal || emp.departmentName === deptVal);
+            });
+          }
+
+          const presentCount = list.filter(r => r.status === "Present" || r.status === "Late").length;
+          const lateCount = list.filter(r => r.isLate || r.status === "Late" || (r.lateMins && r.lateMins > 0)).length;
+          const totalEmployees = state.employees.length;
+          const absentCount = Math.max(0, totalEmployees - presentCount);
+
+          renderOverview(list, { totalEmployees, presentCount, lateCount, absentCount });
+          return;
+        }
+
         try {
-          const date = encodeURIComponent(body.date || today());
+          const date = encodeURIComponent(dateVal || today());
           const [records, stats] = await Promise.all([
-            post("api/Attendance/search", body),
-            api(`api/attendance/analytics/overview?date=${date}`)
+            api("api/Attendance"),
+            api(`api/attendance/analytics/overview?date=${date}`).catch(() => ({}))
           ]);
-          renderOverview(records || [], stats || {});
+          localCache.records = records || [];
+          localCache.isRecordsLoaded = true;
+
+          let list = [...localCache.records];
+          if (dateVal) list = list.filter(r => r.date === dateVal);
+          if (statusVal) list = list.filter(r => r.status === statusVal);
+          if (keyword) {
+            list = list.filter(r => {
+              const code = (r.employeeCode || employeeCode(r.employeeId) || "").toLowerCase();
+              const name = (r.employeeName || employeeName(r.employeeId) || "").toLowerCase();
+              return code.includes(keyword) || name.includes(keyword);
+            });
+          }
+          if (deptVal) {
+            list = list.filter(r => {
+              const emp = state.employees.find(e => e.employeeId === r.employeeId);
+              return emp && (emp.departmentId === deptVal || emp.departmentName === deptVal);
+            });
+          }
+
+          const presentCount = list.filter(r => r.status === "Present" || r.status === "Late").length;
+          const lateCount = list.filter(r => r.isLate || r.status === "Late" || (r.lateMins && r.lateMins > 0)).length;
+          const totalEmployees = state.employees.length || stats?.totalEmployees || 0;
+          const absentCount = Math.max(0, totalEmployees - presentCount);
+
+          renderOverview(list, { totalEmployees, presentCount, lateCount, absentCount });
         }
         catch (error) { showError(error); }
       }
-      $("#overview-search").addEventListener("click", searchOverview);
-      $("#overview-refresh").addEventListener("click", searchOverview);
+      $("#overview-search").addEventListener("click", () => searchOverview(false));
+      $("#overview-refresh").addEventListener("click", () => searchOverview(true));
       $("#overview-date").value = today();
-      $("#overview-keyword").addEventListener("keydown", event => { if (event.key === "Enter") searchOverview(); });
+      $("#overview-keyword").addEventListener("keydown", event => { if (event.key === "Enter") searchOverview(false); });
       $("#overview-export").addEventListener("click", () => downloadCsv("attendance.csv", ["Employee code", "Employee name", "Department", "Date", "Time in", "Time out", "Hours", "Late minutes", "Status"], state.records.map(r => [r.employeeCode || employeeCode(r.employeeId), r.employeeName || employeeName(r.employeeId), employeeDepartment(r.employeeId), r.date, r.timeIn, r.timeOut, r.workHour, r.lateMins, r.status])));
 
       function updateClock() {
@@ -335,16 +400,24 @@
         const id = $("#checkin-employee").value;
         $("#checkin-button").disabled = $("#checkout-button").disabled = !id;
         if (!id) { $("#checkin-state").textContent = "Chọn nhân viên để xem trạng thái chấm công hôm nay."; return; }
-        try {
-          const records = await post("api/Attendance/search", { date: today() });
-          const record = (records || []).find(r => r.employeeId === id);
-          $("#checkin-state").dataset.recordId = record?.id || "";
-          $("#checkin-state").dataset.record = record ? JSON.stringify(record) : "";
-          if (!record) { $("#checkin-state").textContent = "Chưa có chấm công hôm nay. Chọn ca làm và thực hiện check-in."; $("#checkin-button").disabled = false; $("#checkout-button").disabled = true; return; }
-          const checkedOut = Boolean(record.timeOut);
-          $("#checkin-state").innerHTML = `Check-in: <strong>${timeText(record.timeIn)}</strong> · Check-out: <strong>${timeText(record.timeOut)}</strong><br>Trạng thái: ${pill(record.status)}${record.lateMins ? ` · Trễ ${number(record.lateMins)} phút` : ""}`;
-          $("#checkin-button").disabled = true; $("#checkout-button").disabled = checkedOut || !record.timeIn;
-        } catch (error) { showError(error); $("#checkin-state").textContent = error.message; }
+
+        // Kiểm tra trong mảng tạm localCache trước
+        let record = localCache.records.find(r => r.employeeId === id && r.date === today());
+        if (!record && !localCache.isRecordsLoaded) {
+          try {
+            const records = await api("api/Attendance");
+            localCache.records = records || [];
+            localCache.isRecordsLoaded = true;
+            record = localCache.records.find(r => r.employeeId === id && r.date === today());
+          } catch (error) { showError(error); }
+        }
+
+        $("#checkin-state").dataset.recordId = record?.id || "";
+        $("#checkin-state").dataset.record = record ? JSON.stringify(record) : "";
+        if (!record) { $("#checkin-state").textContent = "Chưa có chấm công hôm nay. Chọn ca làm và thực hiện check-in."; $("#checkin-button").disabled = false; $("#checkout-button").disabled = true; return; }
+        const checkedOut = Boolean(record.timeOut);
+        $("#checkin-state").innerHTML = `Check-in: <strong>${timeText(record.timeIn)}</strong> · Check-out: <strong>${timeText(record.timeOut)}</strong><br>Trạng thái: ${pill(record.status)}${record.lateMins ? ` · Trễ ${number(record.lateMins)} phút` : ""}`;
+        $("#checkin-button").disabled = true; $("#checkout-button").disabled = checkedOut || !record.timeIn;
       }
       $("#checkin-employee").addEventListener("change", updateSelectedEmployee);
       $("#checkin-button").addEventListener("click", async () => {
@@ -353,8 +426,13 @@
         try {
           const now = new Date(), timeIn = now.toTimeString().slice(0, 8), minutesLate = Math.max(0, parseMinutes(timeIn) - parseMinutes(shift.startTime));
           const lateMins = minutesLate > 15 ? minutesLate : 0;
-          await post("api/Attendance", { employeeId, shiftId: shift.id, date: today(), timeIn, status: lateMins ? "Late" : "Present", workHour: 0, lateMins, earlyLeaveMins: 0, otMins: 0, actualOTMins: 0, isLate: Boolean(lateMins), isEarlyLeave: false, checkInSource: "Kiosk/WebTerminal", note: lateMins ? `Đi trễ ${lateMins} phút` : "Đúng giờ" });
-          toast("Check-in thành công."); await updateSelectedEmployee(); await loadCheckinHistory(); searchOverview();
+          const newRecord = await post("api/Attendance", { employeeId, shiftId: shift.id, date: today(), timeIn, status: lateMins ? "Late" : "Present", workHour: 0, lateMins, earlyLeaveMins: 0, otMins: 0, actualOTMins: 0, isLate: Boolean(lateMins), isEarlyLeave: false, checkInSource: "Kiosk/WebTerminal", note: lateMins ? `Đi trễ ${lateMins} phút` : "Đúng giờ" });
+          
+          // Cập nhật ngay vào mảng tạm localCache.records trên Frontend
+          if (newRecord) {
+            localCache.records = [newRecord, ...localCache.records.filter(r => !(r.employeeId === employeeId && r.date === today()))];
+          }
+          toast("Check-in thành công."); await updateSelectedEmployee(); loadCheckinHistory(false); searchOverview(false);
         } catch (error) { showError(error); }
       });
       $("#checkout-button").addEventListener("click", async () => {
@@ -366,59 +444,104 @@
           const elapsed = (end >= start ? end - start : end + 1440 - start);
           const workHour = Math.max(0, Math.round((elapsed - (elapsed > 240 ? (shift?.breakMins ?? 60) : 0)) / 60 * 100) / 100);
           const minutesEarly = Math.max(0, shiftEnd - end), earlyLeaveMins = minutesEarly > 15 ? minutesEarly : 0;
-          await put(`api/Attendance/${record.id}`, { timeOut, workHour, earlyLeaveMins, isEarlyLeave: Boolean(earlyLeaveMins), status: "Present", checkOutSource: "Kiosk/WebTerminal", note: earlyLeaveMins ? `Về sớm ${earlyLeaveMins} phút` : "Hoàn thành ca" });
-          toast("Check-out thành công."); await updateSelectedEmployee(); await loadCheckinHistory(); searchOverview();
+          const updated = await put(`api/Attendance/${record.id}`, { timeOut, workHour, earlyLeaveMins, isEarlyLeave: Boolean(earlyLeaveMins), status: "Present", checkOutSource: "Kiosk/WebTerminal", note: earlyLeaveMins ? `Về sớm ${earlyLeaveMins} phút` : "Hoàn thành ca" });
+          
+          // Cập nhật ngay vào mảng tạm localCache.records
+          const idx = localCache.records.findIndex(r => r.id === record.id);
+          if (idx !== -1) {
+            localCache.records[idx] = updated || { ...localCache.records[idx], timeOut, workHour, earlyLeaveMins, isEarlyLeave: Boolean(earlyLeaveMins), status: "Present" };
+          }
+          toast("Check-out thành công."); await updateSelectedEmployee(); loadCheckinHistory(false); searchOverview(false);
         } catch (error) { showError(error); }
       });
-      async function loadCheckinHistory() {
+      async function loadCheckinHistory(forceRefresh = false) {
+        // Đọc từ mảng tạm localCache nếu có
+        if (!forceRefresh && localCache.isRecordsLoaded && localCache.records.length > 0) {
+          const list = [...localCache.records].sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 50);
+          $("#checkin-history").innerHTML = list.length ? list.map(r => `<tr><td>${dateText(r.date)}</td><td>${esc(r.employeeCode || employeeCode(r.employeeId))}</td><td>${esc(r.employeeName || employeeName(r.employeeId))}</td><td>${timeText(r.timeIn)}</td><td>${timeText(r.timeOut)}</td><td>${number(r.workHour)}</td><td>${pill(r.status)}</td></tr>`).join("") : emptyRow(7);
+          return;
+        }
+
         try {
           const items = await api("api/Attendance") || [];
+          localCache.records = items;
+          localCache.isRecordsLoaded = true;
           const list = [...items].sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 50);
           $("#checkin-history").innerHTML = list.length ? list.map(r => `<tr><td>${dateText(r.date)}</td><td>${esc(r.employeeCode || employeeCode(r.employeeId))}</td><td>${esc(r.employeeName || employeeName(r.employeeId))}</td><td>${timeText(r.timeIn)}</td><td>${timeText(r.timeOut)}</td><td>${number(r.workHour)}</td><td>${pill(r.status)}</td></tr>`).join("") : emptyRow(7);
         } catch (error) { showError(error); }
       }
-      $("#checkin-refresh").addEventListener("click", async () => { await loadShifts(); await loadCheckinHistory(); await updateSelectedEmployee(); });
+      $("#checkin-refresh").addEventListener("click", async () => { await loadShifts(); await loadCheckinHistory(true); await updateSelectedEmployee(); });
 
       function formObject(form) { return Object.fromEntries(new FormData(form).entries()); }
       $("#leave-form").addEventListener("submit", async event => {
         event.preventDefault(); const f = formObject(event.currentTarget);
         try {
-          await post("api/LeaveRequests", { employeeId: f.employeeId, leaveType: f.leaveType, startDate: f.startDate, endDate: f.endDate, totalDays: Number(f.totalDays), reason: f.reason.trim(), status: "Pending" });
-          event.currentTarget.reset(); toast("Đã gửi đơn nghỉ phép."); loadRequestHistory();
+          const created = await post("api/LeaveRequests", { employeeId: f.employeeId, leaveType: f.leaveType, startDate: f.startDate, endDate: f.endDate, totalDays: Number(f.totalDays), reason: f.reason.trim(), status: "Pending" });
+          if (created) localCache.leaves.unshift(created);
+          event.currentTarget.reset(); toast("Đã gửi đơn nghỉ phép."); loadRequestHistory(false);
         } catch (error) { showError(error); }
       });
       $("#overtime-form").addEventListener("submit", async event => {
         event.preventDefault(); const f = formObject(event.currentTarget);
         try {
-          await post("api/OTRequests", { employeeId: f.employeeId, date: f.date, startTime: f.startTime, endTime: f.endTime, plannedHours: Number(f.plannedHours), dayType: f.dayType, multiplier: Number(f.multiplier), isUnplanned: event.currentTarget.elements.isUnplanned.checked, reason: f.reason || "", status: "Pending" });
-          event.currentTarget.reset(); toast("Đã gửi đăng ký làm thêm giờ."); loadRequestHistory();
+          const created = await post("api/OTRequests", { employeeId: f.employeeId, date: f.date, startTime: f.startTime, endTime: f.endTime, plannedHours: Number(f.plannedHours), isUnplanned: event.currentTarget.elements.isUnplanned.checked, reason: f.reason || "", status: "Pending" });
+          if (created) localCache.overtime.unshift(created);
+          event.currentTarget.reset(); toast("Đã gửi đăng ký làm thêm giờ."); loadRequestHistory(false);
         } catch (error) { showError(error); }
       });
       $("#explanation-form").addEventListener("submit", async event => {
         event.preventDefault(); const f = formObject(event.currentTarget);
         try {
-          await post("api/AttendanceExplanations", { employeeId: f.employeeId, date: f.date, explanationType: f.explanationType, reason: f.reason.trim(), requestedTimeIn: f.requestedTimeIn || null, requestedTimeOut: f.requestedTimeOut || null, status: "Pending" });
-          event.currentTarget.reset(); toast("Đã gửi giải trình chấm công."); loadRequestHistory();
+          const created = await post("api/AttendanceExplanations", { employeeId: f.employeeId, date: f.date, explanationType: f.explanationType, reason: f.reason.trim(), requestedTimeIn: f.requestedTimeIn || null, requestedTimeOut: f.requestedTimeOut || null, status: "Pending" });
+          if (created) localCache.explanations.unshift(created);
+          event.currentTarget.reset(); toast("Đã gửi giải trình chấm công."); loadRequestHistory(false);
         } catch (error) { showError(error); }
       });
-      async function loadRequestHistory() {
+      async function loadRequestHistory(forceRefresh = false) {
+        // Đọc từ mảng tạm localCache nếu đã tải và không yêu cầu làm mới
+        if (!forceRefresh && localCache.isRequestsLoaded) {
+          const rows = [
+            ...(localCache.leaves || []).map(x => ({ type: "Nghỉ phép", name: x.employeeName || employeeName(x.employeeId), date: `${dateText(x.startDate)} – ${dateText(x.endDate)}`, detail: `${x.leaveType} · ${x.totalDays} ngày`, status: x.status, created: x.createdAt })),
+            ...(localCache.overtime || []).map(x => ({ type: "Làm thêm", name: employeeName(x.employeeId), date: dateText(x.date), detail: `${timeText(x.startTime)}–${timeText(x.endTime)} · ${x.plannedHours} giờ`, status: x.status, created: x.createdAt })),
+            ...(localCache.explanations || []).map(x => ({ type: "Giải trình", name: employeeName(x.employeeId), date: dateText(x.date), detail: x.explanationType, status: x.status, created: x.createdAt }))
+          ].sort((a, b) => String(b.created).localeCompare(String(a.created)));
+          $("#request-history-table").innerHTML = rows.length ? rows.map(x => `<tr><td>${esc(x.type)}</td><td class="person">${esc(x.name)}</td><td>${esc(x.date)}</td><td>${esc(x.detail)}</td><td>${pill(x.status)}</td><td>${x.created ? new Date(x.created).toLocaleDateString("vi-VN") : "—"}</td></tr>`).join("") : emptyRow(6);
+          return;
+        }
+
         try {
           const [leaves, overtime, explanations] = await Promise.all([api("api/LeaveRequests"), api("api/OTRequests"), api("api/AttendanceExplanations")]);
+          localCache.leaves = leaves || [];
+          localCache.overtime = overtime || [];
+          localCache.explanations = explanations || [];
+          localCache.isRequestsLoaded = true;
+
           const rows = [
-            ...(leaves || []).map(x => ({ type: "Nghỉ phép", name: x.employeeName || employeeName(x.employeeId), date: `${dateText(x.startDate)} – ${dateText(x.endDate)}`, detail: `${x.leaveType} · ${x.totalDays} ngày`, status: x.status, created: x.createdAt })),
-            ...(overtime || []).map(x => ({ type: "Làm thêm", name: employeeName(x.employeeId), date: dateText(x.date), detail: `${timeText(x.startTime)}–${timeText(x.endTime)} · ${x.plannedHours} giờ`, status: x.status, created: x.createdAt })),
-            ...(explanations || []).map(x => ({ type: "Giải trình", name: employeeName(x.employeeId), date: dateText(x.date), detail: x.explanationType, status: x.status, created: x.createdAt }))
+            ...(localCache.leaves || []).map(x => ({ type: "Nghỉ phép", name: x.employeeName || employeeName(x.employeeId), date: `${dateText(x.startDate)} – ${dateText(x.endDate)}`, detail: `${x.leaveType} · ${x.totalDays} ngày`, status: x.status, created: x.createdAt })),
+            ...(localCache.overtime || []).map(x => ({ type: "Làm thêm", name: employeeName(x.employeeId), date: dateText(x.date), detail: `${timeText(x.startTime)}–${timeText(x.endTime)} · ${x.plannedHours} giờ`, status: x.status, created: x.createdAt })),
+            ...(localCache.explanations || []).map(x => ({ type: "Giải trình", name: employeeName(x.employeeId), date: dateText(x.date), detail: x.explanationType, status: x.status, created: x.createdAt }))
           ].sort((a, b) => String(b.created).localeCompare(String(a.created)));
           $("#request-history-table").innerHTML = rows.length ? rows.map(x => `<tr><td>${esc(x.type)}</td><td class="person">${esc(x.name)}</td><td>${esc(x.date)}</td><td>${esc(x.detail)}</td><td>${pill(x.status)}</td><td>${x.created ? new Date(x.created).toLocaleDateString("vi-VN") : "—"}</td></tr>`).join("") : emptyRow(6);
         } catch (error) { showError(error); }
       }
-      $("#request-history-refresh").addEventListener("click", loadRequestHistory);
+      $("#request-history-refresh").addEventListener("click", () => loadRequestHistory(true));
 
-      async function loadApprovals() {
+      async function loadApprovals(forceRefresh = false) {
         clearError();
+        if (!forceRefresh && localCache.isRequestsLoaded) {
+          state.explanations = localCache.explanations || [];
+          state.overtime = localCache.overtime || [];
+          renderApprovals();
+          return;
+        }
+
         try {
           const [explanations, overtime] = await Promise.all([api("api/AttendanceExplanations"), api("api/OTRequests")]);
-          state.explanations = explanations || []; state.overtime = overtime || [];
+          localCache.explanations = explanations || [];
+          localCache.overtime = overtime || [];
+          localCache.isRequestsLoaded = true;
+          state.explanations = localCache.explanations;
+          state.overtime = localCache.overtime;
           renderApprovals();
         } catch (error) { showError(error); }
       }
@@ -434,7 +557,7 @@
         $$("[data-approve]").forEach(button => button.addEventListener("click", () => decideApproval(button.dataset.approve, true)));
         $$("[data-reject]").forEach(button => button.addEventListener("click", () => { state.approvalSelection = button.dataset.reject; $("#reject-reason").value = ""; $("#reject-dialog").showModal(); }));
       }
-      $("#approval-refresh").addEventListener("click", loadApprovals);
+      $("#approval-refresh").addEventListener("click", () => loadApprovals(true));
       $("#approval-search").addEventListener("click", renderApprovals);
       $("#approval-status").addEventListener("change", renderApprovals);
       $("#approval-type").addEventListener("change", renderApprovals);
@@ -444,7 +567,18 @@
         const body = { status: approved ? "Approved" : "Rejected", approvedBy: "Admin", approvedAt: new Date().toISOString(), rejectionReason: approved ? null : reason, updatedAt: new Date().toISOString() };
         try {
           await put(`api/${kind === "explanation" ? "AttendanceExplanations" : "OTRequests"}/${id}`, body);
-          $("#reject-dialog").close(); toast(approved ? "Đã duyệt yêu cầu." : "Đã từ chối yêu cầu."); await loadApprovals();
+          $("#reject-dialog").close(); toast(approved ? "Đã duyệt yêu cầu." : "Đã từ chối yêu cầu.");
+
+          // Cập nhật ngay trong mảng tạm localCache
+          if (kind === "explanation") {
+            const item = localCache.explanations.find(x => x.id === id);
+            if (item) { item.status = body.status; item.approvedBy = body.approvedBy; item.approvedAt = body.approvedAt; item.rejectionReason = body.rejectionReason; }
+          } else {
+            const item = localCache.overtime.find(x => x.id === id);
+            if (item) { item.status = body.status; item.approvedBy = body.approvedBy; item.approvedAt = body.approvedAt; item.rejectionReason = body.rejectionReason; }
+          }
+
+          loadApprovals(false);
         } catch (error) { showError(error); }
       }
       $("#reject-form").addEventListener("submit", event => {
@@ -539,7 +673,7 @@
           ["ruleName", "Tên quy tắc", "text", true], ["allowedLateMinutes", "Trễ cho phép (phút)", "number", true], ["allowedEarlyLeaveMinutes", "Về sớm cho phép (phút)", "number", true], ["maxViolationsPerMonth", "Vi phạm tối đa/tháng", "number", true], ["effectiveDate", "Ngày hiệu lực", "date", true], ["description", "Mô tả", "text", false], ["isActive", "Đang áp dụng", "checkbox", false]
         ] },
         "ot-rules": { endpoint: "OvertimeRules", title: "quy tắc OT", fields: [
-          ["dayType", "Loại ngày", "select", true], ["multiplier", "Hệ số lương OT", "number", true], ["maxHoursPerDay", "Tối đa giờ/ngày", "number", true], ["maxHoursPerMonth", "Tối đa giờ/tháng", "number", true], ["maxHoursPerYear", "Tối đa giờ/năm", "number", true], ["effectiveDate", "Ngày hiệu lực", "date", true], ["description", "Mô tả", "text", false], ["isActive", "Đang áp dụng", "checkbox", false]
+          ["multiplier", "Hệ số OT chung", "number", true], ["maxHoursPerDay", "Tối đa giờ/ngày", "number", true], ["maxHoursPerMonth", "Tối đa giờ/tháng", "number", true], ["maxHoursPerYear", "Tối đa giờ/năm", "number", true], ["effectiveDate", "Ngày hiệu lực", "date", true], ["description", "Mô tả", "text", false], ["isActive", "Đang áp dụng", "checkbox", false]
         ] }
       };
       async function loadConfig() {
@@ -553,10 +687,10 @@
         } catch (error) { showError(error); }
       }
       function renderConfig() {
-        const rows = (items, key, columns) => items.length ? items.map(x => `<tr>${columns(x)}<td><span class="pill ${x.isActive === false ? "" : "ok"}">${x.isActive === false ? "Ngưng áp dụng" : "Đang áp dụng"}</span></td><td><div class="actions"><button class="btn" data-edit="${key}:${x.id}">Sửa</button><button class="btn danger" data-delete="${key}:${x.id}">Xóa</button></div></td></tr>`).join("") : emptyRow(key === "ot-rules" ? 8 : 7);
+        const rows = (items, key, columns) => items.length ? items.map(x => `<tr>${columns(x)}<td><span class="pill ${x.isActive === false ? "" : "ok"}">${x.isActive === false ? "Ngưng áp dụng" : "Đang áp dụng"}</span></td><td><div class="actions"><button class="btn" data-edit="${key}:${x.id}">Sửa</button><button class="btn danger" data-delete="${key}:${x.id}">Xóa</button></div></td></tr>`).join("") : emptyRow(7);
         $("#config-shifts-table").innerHTML = rows(state.config.shifts, "shifts", x => `<td class="person">${esc(x.name)}</td><td>${timeText(x.startTime)}</td><td>${timeText(x.endTime)}</td><td>${number(x.breakMins)} phút</td><td>${dateText(x.effectiveDate)}</td>`);
         $("#config-rules-table").innerHTML = rows(state.config.rules, "rules", x => `<td class="person">${esc(x.ruleName)}</td><td>${number(x.allowedLateMinutes)} phút</td><td>${number(x.allowedEarlyLeaveMinutes)} phút</td><td>${number(x.maxViolationsPerMonth)}</td><td>${dateText(x.effectiveDate)}</td>`);
-        $("#config-ot-rules-table").innerHTML = rows(state.config["ot-rules"], "ot-rules", x => `<td class="person">${esc(x.dayType)}</td><td>${number(x.multiplier)}×</td><td>${number(x.maxHoursPerDay)} giờ</td><td>${number(x.maxHoursPerMonth)} giờ</td><td>${number(x.maxHoursPerYear)} giờ</td><td>${dateText(x.effectiveDate)}</td>`);
+        $("#config-ot-rules-table").innerHTML = rows(state.config["ot-rules"], "ot-rules", x => `<td>${number(x.multiplier)}×</td><td>${number(x.maxHoursPerDay)} giờ</td><td>${number(x.maxHoursPerMonth)} giờ</td><td>${number(x.maxHoursPerYear)} giờ</td><td>${dateText(x.effectiveDate)}</td>`);
         $$("[data-edit]").forEach(button => button.addEventListener("click", () => openConfigForm(...button.dataset.edit.split(":"))));
         $$("[data-delete]").forEach(button => button.addEventListener("click", () => deleteConfig(...button.dataset.delete.split(":"))));
       }
@@ -566,7 +700,7 @@
         state.configSelection = { key, id, existing };
         $("#config-dialog-title").textContent = `${existing ? "Sửa" : "Thêm"} ${meta.title}`;
         $("#config-fields").innerHTML = meta.fields.map(([name, label, type, required]) => {
-          const value = existing?.[name] ?? (name === "effectiveDate" ? today() : name === "isActive" ? true : "");
+          const value = existing?.[name] ?? (name === "effectiveDate" ? today() : name === "isActive" ? true : name === "multiplier" ? 1 : name === "maxHoursPerDay" ? 4 : name === "maxHoursPerMonth" ? 40 : name === "maxHoursPerYear" ? 200 : "");
           const field = type === "checkbox"
             ? `<label style="font-size:12px;color:#68768c"><input name="${name}" type="checkbox" ${value ? "checked" : ""}> ${label}</label>`
             : type === "select"
@@ -574,7 +708,6 @@
               : `<input class="control" name="${name}" type="${type}" value="${esc(type === "time" ? (value ? timeText(value) : "") : value)}" ${required ? "required" : ""} ${type === "number" ? 'min="0"' : ""}>`;
           return `<div class="field ${name === "description" ? "full" : ""}"><label>${label}</label>${field}</div>`;
         }).join("");
-        if (key === "ot-rules") $(`#config-fields select[name="dayType"]`).value = existing?.dayType || "WEEKDAY";
         $("#config-dialog").showModal();
       }
       $("#config-form").addEventListener("submit", async event => {
@@ -587,6 +720,7 @@
           body[name] = type === "checkbox" ? input.checked : type === "number" ? Number(input.value || 0) : (input.value || null);
         }
         body[existing ? "updatedBy" : "createdBy"] = "Admin";
+        if (key === "ot-rules") body.dayType = "GENERAL";
         try {
           if (id) await put(`api/${meta.endpoint}/${id}`, body); else await post(`api/${meta.endpoint}`, body);
           $("#config-dialog").close(); toast("Đã lưu cấu hình."); await loadConfig(); await loadShifts();

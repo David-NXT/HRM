@@ -1,4 +1,4 @@
-using Attendance.Data;
+﻿using Attendance.Data;
 using Attendance.DTOs.AttendanceExplanation;
 using Attendance.Models;
 using Microsoft.EntityFrameworkCore;
@@ -57,7 +57,7 @@ public class AttendanceExplanationsService : IAttendanceExplanationsService
 
     public async Task<AttendanceExplanationDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.AttendanceExplanations
+        AttendanceExplanation? entity = await _context.AttendanceExplanations
             .AsNoTracking()
             .Include(x => x.Attachments)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
@@ -79,7 +79,7 @@ public class AttendanceExplanationsService : IAttendanceExplanationsService
 
         await EnsureActiveEmployeeAsync(dto.EmployeeId, cancellationToken);
 
-        var reason = dto.Reason?.Trim();
+        string? reason = dto.Reason?.Trim();
         if (string.IsNullOrWhiteSpace(reason))
         {
             throw new ArgumentException("Reason is required.", nameof(dto));
@@ -90,8 +90,8 @@ public class AttendanceExplanationsService : IAttendanceExplanationsService
             throw new ArgumentException("ExplanationType is required.", nameof(dto));
         }
 
-        var explanationId = Guid.NewGuid();
-        var entity = new AttendanceExplanation
+        Guid explanationId = Guid.NewGuid();
+        AttendanceExplanation entity = new AttendanceExplanation
         {
             Id = explanationId,
             AttendanceId = dto.AttendanceId,
@@ -128,7 +128,7 @@ public class AttendanceExplanationsService : IAttendanceExplanationsService
 
     public async Task<AttendanceExplanationDto?> UpdateAsync(Guid id, UpdateAttendanceExplanationDto dto, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.AttendanceExplanations
+        AttendanceExplanation? entity = await _context.AttendanceExplanations
             .Include(x => x.Attachments)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
@@ -178,9 +178,68 @@ public class AttendanceExplanationsService : IAttendanceExplanationsService
             entity.AttachmentUrl = dto.AttachmentUrl;
         }
 
+        bool wasApproved = entity.Status == "Approved";
+
         if (!string.IsNullOrWhiteSpace(dto.Status))
         {
             entity.Status = dto.Status;
+        }
+
+        bool isNowApproved = entity.Status == "Approved";
+
+        // Khi duyệt giải trình chấm công -> cập nhật giờ vào/ra, xóa cờ trễ/sớm trên bảng chấm công
+        if (!wasApproved && isNowApproved)
+        {
+            AttendanceRecord? record = null;
+            if (entity.AttendanceId.HasValue && entity.AttendanceId.Value != Guid.Empty)
+            {
+                record = await _context.AttendanceRecords
+                    .FirstOrDefaultAsync(r => r.Id == entity.AttendanceId.Value, cancellationToken);
+            }
+            else
+            {
+                record = await _context.AttendanceRecords
+                    .FirstOrDefaultAsync(r => r.EmployeeId == entity.EmployeeId && r.Date == entity.Date, cancellationToken);
+            }
+
+            if (record != null)
+            {
+                if (entity.RequestedTimeIn.HasValue)
+                {
+                    record.TimeIn = entity.RequestedTimeIn.Value;
+                    record.IsLate = false;
+                    record.LateMins = 0;
+                }
+
+                if (entity.RequestedTimeOut.HasValue)
+                {
+                    record.TimeOut = entity.RequestedTimeOut.Value;
+                    record.IsEarlyLeave = false;
+                    record.EarlyLeaveMins = 0;
+                }
+
+                if (entity.ExplanationType.Contains("trễ", StringComparison.OrdinalIgnoreCase) ||
+                    entity.ExplanationType.Contains("quên", StringComparison.OrdinalIgnoreCase))
+                {
+                    record.IsLate = false;
+                    record.LateMins = 0;
+                }
+
+                // Tính lại WorkHour nếu đã có cả TimeIn và TimeOut
+                if (record.TimeIn.HasValue && record.TimeOut.HasValue)
+                {
+                    WorkShift? shift = await _context.WorkShifts
+                        .FirstOrDefaultAsync(s => s.Id == record.ShiftId, cancellationToken);
+
+                    TimeSpan elapsed = record.TimeOut.Value.ToTimeSpan() - record.TimeIn.Value.ToTimeSpan();
+                    if (elapsed.TotalMinutes < 0) elapsed += TimeSpan.FromHours(24);
+                    int breakM = (shift != null && elapsed.TotalMinutes > 240) ? shift.BreakMins : 0;
+                    record.WorkHour = Math.Max(0, Math.Round((decimal)(elapsed.TotalMinutes - breakM) / 60m, 2));
+                }
+
+                record.Status = "Present";
+                record.UpdatedAt = DateTime.UtcNow;
+            }
         }
 
         if (dto.ApprovedBy != null)
@@ -207,7 +266,7 @@ public class AttendanceExplanationsService : IAttendanceExplanationsService
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.AttendanceExplanations
+        AttendanceExplanation? entity = await _context.AttendanceExplanations
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (entity == null)

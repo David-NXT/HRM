@@ -8,21 +8,39 @@ public class AttendanceApiService
 {
     private readonly HttpClient _httpClient;
 
+    // Biến mảng tạm (in-memory cache) trên Client để mỗi lần đọc không cần gọi thẳng xuống DB
+    private static List<AttendanceRecordDto>? _cacheRecords;
+    private static List<AttendanceExplanationDto>? _cacheExplanations;
+    private static List<OTRequestDto>? _cacheOTRequests;
+    private static List<TimesheetPeriodDto>? _cachePeriods;
+
     public AttendanceApiService(HttpClient httpClient)
     {
         _httpClient = httpClient;
     }
 
     // GET: api/Attendance
-    public async Task<List<AttendanceRecordDto>> GetAllAsync()
+    public async Task<List<AttendanceRecordDto>> GetAllAsync(bool forceRefresh = false)
     {
+        if (!forceRefresh && _cacheRecords != null && _cacheRecords.Count > 0)
+        {
+            return _cacheRecords;
+        }
+
         var response = await _httpClient.GetFromJsonAsync<List<AttendanceRecordDto>>("api/Attendance");
-        return response ?? new List<AttendanceRecordDto>();
+        _cacheRecords = response ?? new List<AttendanceRecordDto>();
+        return _cacheRecords;
     }
 
     // GET: api/Attendance/{id}
     public async Task<AttendanceRecordDto?> GetByIdAsync(Guid id)
     {
+        if (_cacheRecords != null)
+        {
+            var cached = _cacheRecords.FirstOrDefault(r => r.Id == id);
+            if (cached != null) return cached;
+        }
+
         return await _httpClient.GetFromJsonAsync<AttendanceRecordDto>($"api/Attendance/{id}");
     }
 
@@ -39,39 +57,81 @@ public class AttendanceApiService
     }
 
     // GET: api/AttendanceExplanations
-    public async Task<List<AttendanceExplanationDto>> GetExplanationsAsync()
+    public async Task<List<AttendanceExplanationDto>> GetExplanationsAsync(bool forceRefresh = false)
     {
+        if (!forceRefresh && _cacheExplanations != null && _cacheExplanations.Count > 0)
+        {
+            return _cacheExplanations;
+        }
+
         var response = await _httpClient.GetFromJsonAsync<List<AttendanceExplanationDto>>("api/AttendanceExplanations");
-        return response ?? new List<AttendanceExplanationDto>();
+        _cacheExplanations = response ?? new List<AttendanceExplanationDto>();
+        return _cacheExplanations;
     }
 
     // PUT: api/AttendanceExplanations/{id}
     public async Task<bool> UpdateExplanationAsync(Guid id, UpdateAttendanceExplanationDto dto)
     {
         var response = await _httpClient.PutAsJsonAsync($"api/AttendanceExplanations/{id}", dto);
+        if (response.IsSuccessStatusCode && _cacheExplanations != null)
+        {
+            var item = _cacheExplanations.FirstOrDefault(x => x.Id == id);
+            if (item != null)
+            {
+                if (!string.IsNullOrWhiteSpace(dto.Status)) item.Status = dto.Status;
+                if (!string.IsNullOrWhiteSpace(dto.ApprovedBy)) item.ApprovedBy = dto.ApprovedBy;
+                if (dto.ApprovedAt.HasValue) item.ApprovedAt = dto.ApprovedAt.Value;
+                if (dto.RejectionReason != null) item.RejectionReason = dto.RejectionReason;
+            }
+        }
         return response.IsSuccessStatusCode;
     }
 
     // GET: api/OTRequests
-    public async Task<List<OTRequestDto>> GetOTRequestsAsync()
+    public async Task<List<OTRequestDto>> GetOTRequestsAsync(bool forceRefresh = false)
     {
+        if (!forceRefresh && _cacheOTRequests != null && _cacheOTRequests.Count > 0)
+        {
+            return _cacheOTRequests;
+        }
+
         var response = await _httpClient.GetFromJsonAsync<List<OTRequestDto>>("api/OTRequests");
-        return response ?? new List<OTRequestDto>();
+        _cacheOTRequests = response ?? new List<OTRequestDto>();
+        return _cacheOTRequests;
     }
 
     // PUT: api/OTRequests/{id}
     public async Task<bool> UpdateOTRequestAsync(Guid id, UpdateOTRequestDto dto)
     {
         var response = await _httpClient.PutAsJsonAsync($"api/OTRequests/{id}", dto);
+        if (response.IsSuccessStatusCode && _cacheOTRequests != null)
+        {
+            var item = _cacheOTRequests.FirstOrDefault(x => x.Id == id);
+            if (item != null)
+            {
+                if (!string.IsNullOrWhiteSpace(dto.Status)) item.Status = dto.Status;
+                if (!string.IsNullOrWhiteSpace(dto.ApprovedBy)) item.ApprovedBy = dto.ApprovedBy;
+                if (dto.ApprovedAt.HasValue) item.ApprovedAt = dto.ApprovedAt.Value;
+                if (dto.RejectionReason != null) item.RejectionReason = dto.RejectionReason;
+            }
+        }
         return response.IsSuccessStatusCode;
     }
 
     // GET: api/Timesheets/periods
-    public async Task<List<TimesheetPeriodDto>> GetTimesheetPeriodsAsync(int? year = null)
+    public async Task<List<TimesheetPeriodDto>> GetTimesheetPeriodsAsync(int? year = null, bool forceRefresh = false)
     {
+        if (!forceRefresh && _cachePeriods != null && _cachePeriods.Count > 0)
+        {
+            return year.HasValue
+                ? _cachePeriods.Where(p => p.Year == year.Value).ToList()
+                : _cachePeriods;
+        }
+
         var url = year.HasValue ? $"api/Timesheets/periods?year={year.Value}" : "api/Timesheets/periods";
         var response = await _httpClient.GetFromJsonAsync<List<TimesheetPeriodDto>>(url);
-        return response ?? new List<TimesheetPeriodDto>();
+        _cachePeriods = response ?? new List<TimesheetPeriodDto>();
+        return _cachePeriods;
     }
 
     public async Task<TimesheetPeriodDto> CreateTimesheetPeriodAsync(CreateTimesheetPeriodDto dto)

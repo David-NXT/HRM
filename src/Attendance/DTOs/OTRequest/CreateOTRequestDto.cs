@@ -20,7 +20,7 @@ public class CreateOTRequestDto
 
     public string? DayType { get; set; }
 
-    public decimal Multiplier { get; set; } = 1.5m;
+    public decimal Multiplier { get; set; } = 1.0m;
 
     public bool IsUnplanned { get; set; }
 

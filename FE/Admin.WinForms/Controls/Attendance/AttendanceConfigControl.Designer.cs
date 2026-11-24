@@ -64,7 +64,6 @@ namespace Admin.WinForms.Controls.Attendance
             button_EditOT = new Button();
             button_DeleteOT = new Button();
             listView_OT = new ListView();
-            col_OT_DayType = new ColumnHeader();
             col_OT_Multiplier = new ColumnHeader();
             col_OT_MaxDay = new ColumnHeader();
             col_OT_MaxMonth = new ColumnHeader();
@@ -434,7 +433,7 @@ namespace Admin.WinForms.Controls.Attendance
             listView_OT.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             listView_OT.BackColor = Color.White;
             listView_OT.BorderStyle = BorderStyle.FixedSingle;
-            listView_OT.Columns.AddRange(new ColumnHeader[] { col_OT_DayType, col_OT_Multiplier, col_OT_MaxDay, col_OT_MaxMonth, col_OT_Effective, col_OT_Active, col_OT_Desc });
+            listView_OT.Columns.AddRange(new ColumnHeader[] { col_OT_Multiplier, col_OT_MaxDay, col_OT_MaxMonth, col_OT_Effective, col_OT_Active, col_OT_Desc });
             listView_OT.Font = new Font("Segoe UI", 9F);
             listView_OT.ForeColor = Color.FromArgb(37, 48, 74);
             listView_OT.FullRowSelect = true;
@@ -446,11 +445,6 @@ namespace Admin.WinForms.Controls.Attendance
             listView_OT.TabIndex = 0;
             listView_OT.UseCompatibleStateImageBehavior = false;
             listView_OT.View = View.Details;
-            // 
-            // col_OT_DayType
-            // 
-            col_OT_DayType.Text = "Loại ngày (DayType)";
-            col_OT_DayType.Width = 200;
             // 
             // col_OT_Multiplier
             // 
@@ -540,7 +534,6 @@ namespace Admin.WinForms.Controls.Attendance
         private Button button_EditOT;
         private Button button_DeleteOT;
         private ListView listView_OT;
-        private ColumnHeader col_OT_DayType;
         private ColumnHeader col_OT_Multiplier;
         private ColumnHeader col_OT_MaxDay;
         private ColumnHeader col_OT_MaxMonth;

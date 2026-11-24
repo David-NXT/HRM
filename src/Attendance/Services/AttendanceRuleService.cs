@@ -1,4 +1,4 @@
-using Attendance.Data;
+﻿using Attendance.Data;
 using Attendance.DTOs.AttendanceRule;
 using Attendance.Models;
 using Microsoft.EntityFrameworkCore;
@@ -16,19 +16,19 @@ public class AttendanceRuleService : IAttendanceRuleService
 
     public async Task<List<AttendanceRuleDto>> GetAllAsync(bool? isActive = null, CancellationToken cancellationToken = default)
     {
-        var query = _dbContext.AttendanceRules.AsNoTracking();
+        IQueryable<AttendanceRule> query = _dbContext.AttendanceRules.AsNoTracking();
         if (isActive.HasValue)
         {
             query = query.Where(x => x.IsActive == isActive.Value);
         }
 
-        var list = await query.OrderByDescending(x => x.EffectiveDate).ToListAsync(cancellationToken);
+        List<AttendanceRule> list = await query.OrderByDescending(x => x.EffectiveDate).ToListAsync(cancellationToken);
         return list.Select(MapToDto).ToList();
     }
 
     public async Task<AttendanceRuleDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var rule = await _dbContext.AttendanceRules
+        AttendanceRule? rule = await _dbContext.AttendanceRules
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
@@ -37,7 +37,7 @@ public class AttendanceRuleService : IAttendanceRuleService
 
     public async Task<AttendanceRuleDto?> GetActiveRuleAsync(CancellationToken cancellationToken = default)
     {
-        var rule = await _dbContext.AttendanceRules
+        AttendanceRule? rule = await _dbContext.AttendanceRules
             .AsNoTracking()
             .Where(x => x.IsActive)
             .OrderByDescending(x => x.EffectiveDate)
@@ -48,7 +48,7 @@ public class AttendanceRuleService : IAttendanceRuleService
 
     public async Task<AttendanceRuleDto> CreateAsync(CreateAttendanceRuleDto dto, CancellationToken cancellationToken = default)
     {
-        var rule = new AttendanceRule
+        AttendanceRule rule = new AttendanceRule
         {
             Id = Guid.NewGuid(),
             RuleName = dto.RuleName,
@@ -70,7 +70,7 @@ public class AttendanceRuleService : IAttendanceRuleService
 
     public async Task<AttendanceRuleDto?> UpdateAsync(Guid id, UpdateAttendanceRuleDto dto, CancellationToken cancellationToken = default)
     {
-        var rule = await _dbContext.AttendanceRules.FindAsync([id], cancellationToken);
+        AttendanceRule? rule = await _dbContext.AttendanceRules.FindAsync([id], cancellationToken);
         if (rule == null)
         {
             return null;
@@ -92,7 +92,7 @@ public class AttendanceRuleService : IAttendanceRuleService
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var rule = await _dbContext.AttendanceRules.FindAsync([id], cancellationToken);
+        AttendanceRule? rule = await _dbContext.AttendanceRules.FindAsync([id], cancellationToken);
         if (rule == null)
         {
             return false;
