@@ -5,9 +5,9 @@ public class Task
     public Guid TaskId { get; set; }
     public string TaskName { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public DateTime StartDate { get; set; }
-    public DateTime? DueDate { get; set; }
-    public string Status { get; set; } = "New";
+public DateOnly StartDate { get; set; }
+public DateOnly? DueDate { get; set; }
+    public string Status { get; set; } = "Todo";
     public string Priority { get; set; } = "Medium";
 
     public Guid ProjectId { get; set; }

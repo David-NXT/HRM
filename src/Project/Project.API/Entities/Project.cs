@@ -5,8 +5,10 @@ public class Project
     public Guid ProjectId { get; set; }
     public string ProjectName { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public DateTime StartDate { get; set; }
-    public DateTime? EndDate { get; set; }
+
+    public DateOnly StartDate { get; set; }
+    public DateOnly? EndDate { get; set; }
+
     public string Status { get; set; } = "InProgress";
     public decimal Budget { get; set; }
 
@@ -14,7 +16,11 @@ public class Project
     public ICollection<ProjectMember> Members { get; set; } = new List<ProjectMember>();
 
     // 1. Cập nhật thông tin dự án
-    public void UpdateInfo(string name, string? description, DateTime? endDate, decimal budget)
+    public void UpdateInfo(
+        string name,
+        string? description,
+        DateOnly? endDate,
+        decimal budget)
     {
         ProjectName = name;
         Description = description;
@@ -23,7 +29,10 @@ public class Project
     }
 
     // 2. Thêm thành viên
-    public ProjectMember AddMember(Guid employeeId, Guid roleId, DateTime joinDate)
+    public ProjectMember AddMember(
+        Guid employeeId,
+        Guid roleId,
+        DateOnly joinDate)
     {
         var member = new ProjectMember
         {
@@ -42,14 +51,18 @@ public class Project
     // 3. Xóa thành viên
     public void RemoveMember(Guid memberId)
     {
-        var member = Members.FirstOrDefault(x => x.ProjectMemberId == memberId);
+        var member = Members.FirstOrDefault(
+            x => x.ProjectMemberId == memberId);
 
         if (member != null)
             Members.Remove(member);
     }
 
     // 4. Thêm công việc
-    public Task AddTask(string name, DateTime startDate, DateTime? dueDate)
+    public Task AddTask(
+        string name,
+        DateOnly startDate,
+        DateOnly? dueDate)
     {
         var task = new Task
         {
@@ -93,11 +106,11 @@ public class Project
             throw new InvalidOperationException("Dự án chưa thể đóng.");
 
         Status = "Completed";
-        EndDate = DateTime.Now;
+        EndDate = DateOnly.FromDateTime(DateTime.Today);
     }
 
     // 9. Tính chi phí nhân công
-    public decimal GetLaborCost(DateTime from, DateTime to)
+    public decimal GetLaborCost(DateOnly from, DateOnly to)
     {
         decimal total = 0;
 
@@ -121,7 +134,7 @@ public class Project
     }
 
     // 10. Tính chênh lệch ngân sách
-    public decimal GetBudgetVariance(DateTime from, DateTime to)
+    public decimal GetBudgetVariance(DateOnly from, DateOnly to)
     {
         return Budget - GetLaborCost(from, to);
     }
