@@ -11,4 +11,14 @@ public class AllowanceType
 
     // Relationships
     public List<AllowanceDetail> AllowanceDetails { get; set; } = new();
+
+    public bool IsActive()
+    {
+        return string.Equals(Status, "active", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public bool IsPercentage()
+    {
+        return string.Equals(CalculationType, "percentage", StringComparison.OrdinalIgnoreCase);
+    }
 }
