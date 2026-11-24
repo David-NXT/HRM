@@ -18,6 +18,11 @@ public sealed class LifecycleRepository(HrDbContext db, ILogger<LifecycleReposit
         await db.WorkHistories.Where(history => history.EmployeeId == employeeId)
             .OrderBy(history => history.StartDate).ToArrayAsync(cancellationToken);
 
+    // Giữ tracking để thay đổi trạng thái hợp đồng nằm trong giao dịch xác nhận nghỉ việc.
+    public async Task<IReadOnlyList<EmploymentContract>> GetContractsAsync(Guid employeeId, CancellationToken cancellationToken) =>
+        await db.EmploymentContracts.Where(contract => contract.EmployeeId == employeeId)
+            .ToArrayAsync(cancellationToken);
+
     public Task<bool> HasPendingOffboardingAsync(Guid employeeId, CancellationToken cancellationToken) =>
         db.OffboardingRecords.AnyAsync(record => record.EmployeeId == employeeId
             && record.Status == LifecycleStatuses.InProgress, cancellationToken);

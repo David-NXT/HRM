@@ -11,7 +11,9 @@ public sealed record EmploymentContractDto(
     string? Notes,
     Guid? RenewalOfContractId,
     DateTime CreatedAt,
-    DateTime UpdatedAt);
+    DateTime UpdatedAt,
+    DateOnly? ActualEndDate = null,
+    string? TerminationReason = null);
 
 public sealed record CreateEmploymentContractRequest(
     string ContractNumber,

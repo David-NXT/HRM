@@ -302,6 +302,7 @@ public class EmployeeServiceTests
             return Task.FromResult(stats);
         }
 
+        public Task<Employee?> GetReadOnlyByIdAsync(Guid id, CancellationToken cancellationToken) => GetByIdAsync(id, cancellationToken);
         public Task<Employee?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
             Task.FromResult(Items.FirstOrDefault(employee => employee.EmployeeId == id));
 

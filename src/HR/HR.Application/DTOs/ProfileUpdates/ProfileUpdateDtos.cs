@@ -18,9 +18,11 @@ public sealed record ProfileUpdateRequestDto(
     DateTime? ReviewedAt,
     DateTime CreatedAt,
     DateTime UpdatedAt,
-    IReadOnlyList<ProfileUpdateAttachmentDto> Attachments);
+    IReadOnlyList<ProfileUpdateAttachmentDto> Attachments,
+    int Version = 1,
+    int? BaseEmployeeVersion = null);
 
-public sealed record ReviewProfileUpdateRequest(string Decision, string? Reason);
+public sealed record ReviewProfileUpdateRequest(string Decision, string? Reason, int? ExpectedVersion = null);
 
 public sealed record EmployeeNotificationDto(
     Guid EmployeeNotificationId,

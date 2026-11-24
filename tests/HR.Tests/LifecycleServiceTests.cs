@@ -307,6 +307,72 @@ public sealed class LifecycleServiceTests
         Assert.Empty(store.Offboardings);
     }
 
+    [Fact]
+    public async Task Complete_SynchronizesContractsInTheSameSave_AndPreservesSignedDatesAndSalary()
+    {
+        var store = ExistingEmployee();
+        ((FullTimeEmployee)store.Employees[0]).BaseSalary = 12_000_000m;
+        var record = PendingRecord(store, requiredComplete: true);
+        var expired = new EmploymentContract { EmployeeId = Id(1), ContractNumber = "OLD", StartDate = Today.AddYears(-2), EndDate = Today.AddYears(-1) };
+        var current = new EmploymentContract { EmployeeId = Id(1), ContractNumber = "CURRENT", StartDate = Today.AddMonths(-2), EndDate = Today.AddMonths(2), Status = ContractStatuses.Renewed };
+        var future = new EmploymentContract { EmployeeId = Id(1), ContractNumber = "FUTURE", StartDate = Today.AddMonths(2).AddDays(1), EndDate = Today.AddYears(1) };
+        var indefinite = new EmploymentContract { EmployeeId = Id(1), ContractNumber = "INDEFINITE", StartDate = Today.AddMonths(-1) };
+        store.Contracts.AddRange([expired, current, future, indefinite]);
+
+        await Service(store).CompleteOffboardingAsync(record.OffboardingRecordId, new(record.Version), CancellationToken.None);
+
+        Assert.Equal(EmployeeStatuses.Resigned, store.Employees[0].Status);
+        Assert.Equal(12_000_000m, ((FullTimeEmployee)store.Employees[0]).BaseSalary);
+        Assert.Equal(ContractStatuses.Active, expired.Status);
+        Assert.Null(expired.ActualEndDate);
+        Assert.Equal(ContractStatuses.Terminated, current.Status);
+        Assert.Equal(Today, current.ActualEndDate);
+        Assert.Equal(Today.AddMonths(2), current.EndDate);
+        Assert.Equal(ContractStatuses.Cancelled, future.Status);
+        Assert.Null(future.ActualEndDate);
+        Assert.Equal(Today.AddYears(1), future.EndDate);
+        Assert.Equal(ContractStatuses.Terminated, indefinite.Status);
+        Assert.Equal(Today, indefinite.ActualEndDate);
+        Assert.Null(indefinite.EndDate);
+        Assert.NotNull(current.TerminationReason);
+        Assert.NotNull(future.TerminationReason);
+        Assert.Equal(1, store.TransactionSaves);
+    }
+
+    [Fact]
+    public async Task Complete_MissingChecklistDoesNotCloseOrCancelAnyContract()
+    {
+        var store = ExistingEmployee();
+        var record = PendingRecord(store, requiredComplete: false);
+        store.Contracts.Add(new() { EmployeeId = Id(1), StartDate = Today.AddDays(-10), EndDate = Today.AddDays(30) });
+        store.Contracts.Add(new() { EmployeeId = Id(1), StartDate = Today.AddDays(31), EndDate = Today.AddYears(1) });
+
+        await Assert.ThrowsAsync<HrException>(() => Service(store).CompleteOffboardingAsync(record.OffboardingRecordId,
+            new(record.Version), CancellationToken.None));
+
+        Assert.All(store.Contracts, contract => Assert.Equal(ContractStatuses.Active, contract.Status));
+        Assert.All(store.Contracts, contract => Assert.Null(contract.ActualEndDate));
+        Assert.Equal(0, store.TransactionSaves);
+    }
+
+    [Fact]
+    public async Task Complete_ContractEndingOnLastWorkingDayIsTerminated_AndAnotherEmployeeIsUntouched()
+    {
+        var store = ExistingEmployee();
+        var record = PendingRecord(store, requiredComplete: true);
+        var current = new EmploymentContract { EmployeeId = Id(1), StartDate = Today.AddMonths(-1), EndDate = Today };
+        var other = new EmploymentContract { EmployeeId = Id(2), StartDate = Today.AddMonths(-1), EndDate = Today.AddMonths(1) };
+        store.Contracts.AddRange([current, other]);
+
+        await Service(store).CompleteOffboardingAsync(record.OffboardingRecordId, new(record.Version), CancellationToken.None);
+
+        Assert.Equal(ContractStatuses.Terminated, current.Status);
+        Assert.Equal(Today, current.EndDate);
+        Assert.Equal(Today, current.ActualEndDate);
+        Assert.Equal(ContractStatuses.Active, other.Status);
+        Assert.Null(other.ActualEndDate);
+    }
+
     private static LifecycleService Service(FakeHrStore store) =>
         new(store, store, new EmployeeService(store), store, new FixedTimeProvider());
 
@@ -348,6 +414,7 @@ public sealed class LifecycleServiceTests
     private sealed class FakeHrStore : ILifecycleRepository, IEmployeeRepository, IOrgStructureRepository
     {
         public List<Employee> Employees { get; } = [];
+        public List<EmploymentContract> Contracts { get; } = [];
         public List<WorkHistory> History { get; } = [];
         public List<OffboardingRecord> Offboardings { get; } = [];
         public Department Department { get; } = new() { DepartmentId = Id(1), Code = "HR", Name = "Nhân sự" };
@@ -360,6 +427,9 @@ public sealed class LifecycleServiceTests
 
         public Task<Employee?> GetEmployeeAsync(Guid id, CancellationToken ct) => Task.FromResult(Employees.FirstOrDefault(item => item.EmployeeId == id));
         public Task<Employee?> GetByIdAsync(Guid id, CancellationToken ct) => GetEmployeeAsync(id, ct);
+        public Task<Employee?> GetReadOnlyByIdAsync(Guid id, CancellationToken ct) => GetByIdAsync(id, ct);
+        public Task<IReadOnlyList<EmploymentContract>> GetContractsAsync(Guid id, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<EmploymentContract>>(Contracts.Where(item => item.EmployeeId == id).ToArray());
         public Task<bool> CodeExistsAsync(string code, CancellationToken ct) => Task.FromResult(Employees.Any(item => item.EmployeeCode == code));
         public Task<IReadOnlyList<WorkHistory>> GetWorkHistoryAsync(Guid id, CancellationToken ct) => Task.FromResult<IReadOnlyList<WorkHistory>>(History.Where(item => item.EmployeeId == id).ToArray());
         public Task<bool> HasPendingOffboardingAsync(Guid id, CancellationToken ct) => Task.FromResult(Offboardings.Any(item => item.EmployeeId == id && item.Status == LifecycleStatuses.InProgress));

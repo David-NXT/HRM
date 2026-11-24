@@ -17,6 +17,8 @@ public sealed class EmploymentContractConfiguration : IEntityTypeConfiguration<E
         builder.Property(contract => contract.ContractType).HasColumnName("contract_type").HasMaxLength(50).IsRequired();
         builder.Property(contract => contract.StartDate).HasColumnName("start_date").IsRequired();
         builder.Property(contract => contract.EndDate).HasColumnName("end_date");
+        builder.Property(contract => contract.ActualEndDate).HasColumnName("actual_end_date");
+        builder.Property(contract => contract.TerminationReason).HasColumnName("termination_reason").HasMaxLength(1000);
         builder.Property(contract => contract.Status).HasColumnName("status").HasMaxLength(20).IsRequired();
         builder.Property(contract => contract.Notes).HasColumnName("notes").HasMaxLength(1000);
         builder.Property(contract => contract.RenewalOfContractId).HasColumnName("renewal_of_contract_id");

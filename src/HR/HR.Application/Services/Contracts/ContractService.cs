@@ -4,6 +4,7 @@ using HR.Application.Interfaces.Services;
 using HR.Domain.Constants;
 using HR.Domain.Entities;
 using HR.Application.Exceptions;
+using HR.Domain.Rules;
 namespace HR.Application.Services.Contracts;
 
 public sealed class ContractService
@@ -31,13 +32,15 @@ public sealed class ContractService
         return history.Select(ToDto).ToArray();
     }
 
+    // Tạo hợp đồng chính không chồng khoảng hiệu lực; nhân viên đã nghỉ không được thêm hợp đồng, gia hạn phải nối sau tiền nhiệm có hạn.
     public async Task<EmploymentContractDto> CreateContractAsync(
         Guid employeeId,
         CreateEmploymentContractRequest request,
         CancellationToken cancellationToken)
     {
-        await EnsureEmployeeExistsAsync(employeeId, cancellationToken);
+        var employee = await EnsureEmployeeExistsAsync(employeeId, cancellationToken);
         var values = NormalizeContract(request.ContractNumber, request.ContractType, request.StartDate, request.EndDate, request.Notes);
+        await EnsureEmploymentDatesAllowedAsync(employee, values.StartDate, cancellationToken);
         await EnsureContractNumberAvailableAsync(values.ContractNumber, null, cancellationToken);
 
         EmploymentContract? previous = null;
@@ -57,12 +60,18 @@ public sealed class ContractService
             {
                 throw new HrException(409, "ContractAlreadyRenewed", "Hợp đồng này đã có hợp đồng gia hạn.");
             }
+            if (!previous.EndDate.HasValue)
+            {
+                throw new HrException(409, "IndefiniteContractRenewal", "Hợp đồng không xác định thời hạn không có ngày hết hạn để gia hạn. Không tự thay đổi ngày hết hạn đã ký.");
+            }
             if (values.StartDate <= previous.StartDate
                 || (previous.EndDate.HasValue && values.StartDate <= previous.EndDate.Value))
             {
                 throw new HrException(400, "InvalidRenewalDates", "Ngày bắt đầu hợp đồng gia hạn phải sau thời gian của hợp đồng trước.");
             }
         }
+
+        await EnsureNoOverlapAsync(employeeId, values.StartDate, values.EndDate, null, cancellationToken);
 
         var now = DateTime.UtcNow;
         var contract = new EmploymentContract
@@ -82,10 +91,6 @@ public sealed class ContractService
         if (previous is not null)
         {
             previous.Status = ContractStatuses.Renewed;
-            if (!previous.EndDate.HasValue)
-            {
-                previous.EndDate = values.StartDate.AddDays(-1);
-            }
             previous.UpdatedAt = now;
             await _repository.SaveChangesInTransactionAsync(cancellationToken);
         }
@@ -98,6 +103,7 @@ public sealed class ContractService
         return ToDto(contract);
     }
 
+    // Sửa hợp đồng ACTIVE và kiểm tra lại toàn bộ điều kiện ngày, tiền nhiệm và khoảng hiệu lực, trước khi thay dữ liệu đã lưu.
     public async Task<EmploymentContractDto> UpdateContractAsync(
         Guid contractId,
         UpdateEmploymentContractRequest request,
@@ -109,8 +115,21 @@ public sealed class ContractService
         {
             throw new HrException(409, "InvalidContractState", "Chỉ có thể cập nhật hợp đồng đang hoạt động.");
         }
+        var employee = await EnsureEmployeeExistsAsync(contract.EmployeeId, cancellationToken);
         var values = NormalizeContract(request.ContractNumber, request.ContractType, request.StartDate, request.EndDate, request.Notes);
+        await EnsureEmploymentDatesAllowedAsync(employee, values.StartDate, cancellationToken);
         await EnsureContractNumberAvailableAsync(values.ContractNumber, contractId, cancellationToken);
+        if (contract.RenewalOfContractId.HasValue)
+        {
+            var previous = await _repository.GetContractAsync(contract.RenewalOfContractId.Value, cancellationToken)
+                ?? throw new HrException(409, "InvalidRenewal", "Không tìm thấy hợp đồng tiền nhiệm để đối chiếu ngày.");
+            if (previous.EmployeeId != contract.EmployeeId || !previous.EndDate.HasValue
+                || values.StartDate <= previous.EndDate.Value)
+            {
+                throw new HrException(400, "InvalidRenewalDates", "Hợp đồng gia hạn phải thuộc cùng nhân viên và bắt đầu sau ngày hết hạn hợp đồng trước.");
+            }
+        }
+        await EnsureNoOverlapAsync(contract.EmployeeId, values.StartDate, values.EndDate, contractId, cancellationToken);
         contract.ContractNumber = values.ContractNumber;
         contract.ContractType = values.ContractType;
         contract.StartDate = values.StartDate;
@@ -193,9 +212,50 @@ public sealed class ContractService
         return ToDto(newHistory);
     }
 
+    // Nạp entity có tracking trước khi kiểm tra hợp đồng để Employee.Version bảo vệ cả tạo/sửa hợp đồng đồng thời với nghỉ việc.
     private async Task<Employee> EnsureEmployeeExistsAsync(Guid employeeId, CancellationToken cancellationToken) =>
         await _repository.GetEmployeeAsync(employeeId, cancellationToken)
         ?? throw new HrException(404, "EmployeeNotFound", "Không tìm thấy hồ sơ nhân viên.");
+
+    // Ngày bắt đầu hợp đồng phải sau ngày sinh và không trước công tác đầu tiên đã biết; hồ sơ đã nghỉ không được tạo/sửa hợp đồng.
+    private async Task EnsureEmploymentDatesAllowedAsync(Employee employee, DateOnly start, CancellationToken cancellationToken)
+    {
+        if (employee.Status == EmployeeStatuses.Resigned)
+        {
+            throw new HrException(409, "EmployeeResigned", "Không thể tạo hoặc sửa hợp đồng cho nhân viên đã nghỉ việc.");
+        }
+        if (start <= employee.DateOfBirth)
+        {
+            throw new HrException(400, "InvalidContractStart", "Ngày bắt đầu hợp đồng phải sau ngày sinh của nhân viên.");
+        }
+        var history = await _repository.GetWorkHistoryAsync(employee.EmployeeId, cancellationToken);
+        if (history.Count > 0 && start < history.Min(item => item.StartDate))
+        {
+            throw new HrException(400, "InvalidContractStart", "Ngày hợp đồng không được trước ngày bắt đầu công tác đầu tiên đã ghi nhận.");
+        }
+    }
+
+    // So sánh các khoảng ngày có tính cả ngày đầu/cuối; RENEWED vẫn bao phủ thời gian đã ký, TERMINATED giữ thời gian thực tế trước chấm dứt.
+    private async Task EnsureNoOverlapAsync(Guid employeeId, DateOnly start, DateOnly? end, Guid? excludingId, CancellationToken cancellationToken)
+    {
+        var contracts = await _repository.GetContractsAsync(employeeId, cancellationToken);
+        if (excludingId.HasValue)
+        {
+            // Entity hợp đồng được đọc trước Employee.Version có thể đã cũ. Danh sách không tracking này được đọc sau version nhân viên;
+            // các thay đổi từ trước lần đọc version được thấy ở đây, còn thay đổi về sau sẽ bị concurrency token chặn khi lưu.
+            var current = contracts.FirstOrDefault(item => item.ContractId == excludingId.Value)
+                ?? throw new HrException(404, "ContractNotFound", "Hợp đồng đã bị xóa. Tải lại danh sách trước khi chỉnh sửa.");
+            if (current.Status != ContractStatuses.Active)
+            {
+                throw new HrException(409, "InvalidContractState", "Hợp đồng đã được gia hạn, chấm dứt hoặc hủy. Tải lại dữ liệu trước khi chỉnh sửa.");
+            }
+        }
+        var overlapping = contracts.FirstOrDefault(item => item.ContractId != excludingId && ContractRules.ConflictsWith(item, start, end));
+        if (overlapping is not null)
+        {
+            throw new HrException(409, "ContractOverlap", $"Khoảng hiệu lực chồng với hợp đồng {overlapping.ContractNumber}. Hợp đồng tiếp theo phải bắt đầu sau ngày kết thúc hợp đồng trước.");
+        }
+    }
 
     private async Task EnsureContractNumberAvailableAsync(string contractNumber, Guid? excludingId, CancellationToken cancellationToken)
     {
@@ -245,10 +305,11 @@ public sealed class ContractService
         return notes;
     }
 
+    // Tách ngày hết hạn đã ký với ngày chấm dứt thực tế để FE không nhầm hợp đồng đã chấm dứt là còn hiệu lực.
     private static EmploymentContractDto ToDto(EmploymentContract contract) =>
         new(contract.ContractId, contract.EmployeeId, contract.ContractNumber, contract.ContractType,
             contract.StartDate, contract.EndDate, contract.Status, contract.Notes,
-            contract.RenewalOfContractId, contract.CreatedAt, contract.UpdatedAt);
+            contract.RenewalOfContractId, contract.CreatedAt, contract.UpdatedAt, contract.ActualEndDate, contract.TerminationReason);
 
     private static WorkHistoryDto ToDto(WorkHistory history) =>
         new(history.WorkHistoryId, history.EmployeeId, history.DepartmentId,
