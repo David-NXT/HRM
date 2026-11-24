@@ -79,6 +79,10 @@ public class ShiftAssignmentService : IShiftAssignmentService
             UpdatedAt = DateTime.UtcNow
         };
 
+        if (string.IsNullOrWhiteSpace(dto.Status)) entity.Assign(dto.ShiftId, dto.Date);
+        if (dto.Status?.Equals("Approved", StringComparison.OrdinalIgnoreCase) == true && dto.ApprovedBy != null)
+            entity.Approve(dto.ApprovedBy);
+
         _context.ShiftAssignments.Add(entity);
         await _context.SaveChangesAsync(cancellationToken);
 

@@ -40,4 +40,7 @@ public class OvertimeRule
     public DateTime? UpdatedAt { get; set; }
 
     public string? UpdatedBy { get; set; }
+
+    public decimal CalculateOTPay(decimal hours, decimal baseHourlyRate) => hours * baseHourlyRate * Multiplier;
+    public bool ValidateOTLimit(decimal hours) => hours >= 0 && (MaxHoursPerDay <= 0 || hours <= MaxHoursPerDay);
 }

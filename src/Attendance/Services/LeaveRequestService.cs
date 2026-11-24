@@ -104,6 +104,8 @@ public class LeaveRequestService : ILeaveRequestService
             UpdatedAt = DateTime.UtcNow
         };
 
+        if (string.IsNullOrWhiteSpace(dto.Status)) entity.Submit();
+
         _context.LeaveRequests.Add(entity);
         await _context.SaveChangesAsync(cancellationToken);
 
@@ -155,7 +157,11 @@ public class LeaveRequestService : ILeaveRequestService
 
         if (!string.IsNullOrWhiteSpace(dto.Status))
         {
-            entity.Status = dto.Status;
+            if (dto.Status.Equals("Approved", StringComparison.OrdinalIgnoreCase) && dto.ApprovedBy != null)
+                entity.Approve(dto.ApprovedBy);
+            else if (dto.Status.Equals("Rejected", StringComparison.OrdinalIgnoreCase) && dto.ApprovedBy != null)
+                entity.Reject(dto.RejectionReason ?? string.Empty, dto.ApprovedBy);
+            else entity.Status = dto.Status;
         }
 
         bool isNowApproved = entity.Status == "Approved";
@@ -169,8 +175,7 @@ public class LeaveRequestService : ILeaveRequestService
 
             if (balance != null)
             {
-                balance.UsedDays += entity.TotalDays;
-                balance.RemainingDays = Math.Max(0, balance.RemainingDays - entity.TotalDays);
+                balance.DeductDays(entity.TotalDays);
                 balance.UpdatedAt = DateTime.UtcNow;
             }
         }
@@ -183,7 +188,7 @@ public class LeaveRequestService : ILeaveRequestService
             if (balance != null)
             {
                 balance.UsedDays = Math.Max(0, balance.UsedDays - entity.TotalDays);
-                balance.RemainingDays += entity.TotalDays;
+                balance.RecalculateRemaining();
                 balance.UpdatedAt = DateTime.UtcNow;
             }
         }

@@ -53,4 +53,8 @@ public class AttendanceExplanation
     /// Danh sách các file minh chứng đính kèm (cho phép nhiều file)
     /// </summary>
     public ICollection<AttendanceExplanationAttachment>? Attachments { get; set; }
+
+    public void Submit() => Status = "Pending";
+    public void Approve(string approvedBy) { Status = "Approved"; ApprovedBy = approvedBy; ApprovedAt = DateTime.UtcNow; RejectionReason = null; }
+    public void Reject(string reason, string rejectedBy) { Status = "Rejected"; ApprovedBy = rejectedBy; ApprovedAt = DateTime.UtcNow; RejectionReason = reason; }
 }
