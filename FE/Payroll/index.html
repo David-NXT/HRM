@@ -189,6 +189,7 @@
         <button data-page="adjustments"><span class="nav-icon">＋</span>Phụ cấp &amp; khấu trừ</button>
         <button data-page="approval"><span class="nav-icon">✓</span>Phê duyệt &amp; chi trả</button>
         <button data-page="payslip"><span class="nav-icon">▧</span>Phiếu lương</button>
+        <button data-page="statistics"><span class="nav-icon">∑</span>Thống kê lương</button>
       </nav>
       <div class="sidebar-bottom">
         Quản lý lương theo kỳ<br>
@@ -323,6 +324,65 @@
           </div>
           <div id="payslip-content" class="empty">Chọn kỳ lương và nhân viên để xem phiếu lương.</div>
         </section>
+
+        <section id="page-statistics" hidden>
+          <div class="toolbar">
+            <span class="toolbar-label">Năm</span>
+            <input class="field" id="statistics-year" type="number" min="1" max="2100" style="width:110px">
+            <span class="toolbar-label">Quý</span>
+            <select class="select" id="statistics-quarter">
+              <option value="">Cả năm</option>
+              <option value="1">Quý 1</option>
+              <option value="2">Quý 2</option>
+              <option value="3">Quý 3</option>
+              <option value="4">Quý 4</option>
+            </select>
+            <span class="toolbar-label">Nhân viên</span>
+            <select class="select" id="statistics-employee" style="min-width:220px">
+              <option value="">Chọn nhân viên</option>
+            </select>
+            <span class="toolbar-spacer"></span>
+            <button class="button primary" id="reload-statistics">Tra cứu thống kê</button>
+          </div>
+          <div class="metrics">
+            <article class="metric"><div class="metric-label">Tổng thực lĩnh theo quý</div><div class="metric-value green" id="statistics-net">0 ₫</div></article>
+            <article class="metric"><div class="metric-label">Tổng Gross theo quý</div><div class="metric-value blue" id="statistics-gross">0 ₫</div></article>
+            <article class="metric"><div class="metric-label">Tổng phụ cấp theo quý</div><div class="metric-value amber" id="statistics-allowance">0 ₫</div></article>
+            <article class="metric"><div class="metric-label">Tổng khấu trừ theo quý</div><div class="metric-value red" id="statistics-paycut">0 ₫</div></article>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><div><h2>Thống kê tổng lương theo kỳ</h2><div class="panel-subtitle" id="period-statistics-caption">Tổng hợp tất cả nhân viên trong từng kỳ.</div></div></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th>Kỳ lương</th><th class="amount">Nhân sự</th><th class="amount">Lương cơ bản</th><th class="amount">Phụ cấp</th><th class="amount">PC dự án</th>
+                  <th class="amount">Khấu trừ</th><th class="amount">Gross</th><th class="amount">Thực lĩnh</th>
+                </tr></thead>
+                <tbody id="period-statistics-rows"><tr><td class="empty" colspan="8">Chưa tải dữ liệu thống kê.</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="split">
+            <div class="panel">
+              <div class="panel-header"><div><h2>Thống kê tất cả nhân viên theo quý</h2><div class="panel-subtitle">Tổng hợp Gross và thực lĩnh trong quý.</div></div></div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Quý</th><th class="amount">Nhân sự</th><th class="amount">Số bảng lương</th><th class="amount">Gross</th><th class="amount">Thực lĩnh</th></tr></thead>
+                  <tbody id="quarter-statistics-rows"><tr><td class="empty" colspan="5">Chưa tải dữ liệu.</td></tr></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-header"><div><h2>Tổng lương nhân viên theo quý</h2><div class="panel-subtitle">Chọn nhân viên để xem tổng hợp từng quý.</div></div></div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Quý</th><th class="amount">Số bảng lương</th><th class="amount">Lương cơ bản</th><th class="amount">Phụ cấp</th><th class="amount">PC dự án</th><th class="amount">Khấu trừ</th><th class="amount">Gross</th><th class="amount">Thực lĩnh</th></tr></thead>
+                  <tbody id="employee-quarter-statistics-rows"><tr><td class="empty" colspan="8">Chọn nhân viên để xem dữ liệu.</td></tr></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
     </div>
   </div>
@@ -398,7 +458,8 @@
       table: ["Bảng lương & tính toán", "Mở kỳ, đồng bộ công và lương, khởi tạo và tính bảng lương."],
       adjustments: ["Phụ cấp & khấu trừ", "Quản lý các khoản điều chỉnh trong bảng lương nháp."],
       approval: ["Phê duyệt & chi trả", "Phê duyệt bảng lương đã tính và xác nhận chi trả."],
-      payslip: ["Phiếu lương", "Tra cứu, in hoặc xuất phiếu lương theo nhân viên và kỳ."]
+      payslip: ["Phiếu lương", "Tra cứu, in hoặc xuất phiếu lương theo nhân viên và kỳ."],
+      statistics: ["Thống kê lương", "Thống kê tổng lương theo kỳ, theo quý và theo nhân viên."]
     };
     const state = {
       page: "table",
@@ -413,7 +474,10 @@
       editingCatalogItem: null,
       adjustmentKind: "allowance",
       currentPayslip: null,
-      selectedPayslipPayroll: null
+      selectedPayslipPayroll: null,
+      statisticsYear: new Date().getFullYear(),
+      statisticsQuarter: "",
+      statisticsEmployeeID: ""
     };
     const money = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 });
     const titlesByStatus = { draft: "Bản nháp", calculated: "Chờ duyệt", approved: "Đã duyệt", paid: "Đã chi trả", in_progress: "Đang xử lý", completed: "Đã hoàn tất" };
@@ -558,6 +622,7 @@
       updateEmployeeOptions();
       if (state.page === "adjustments") await loadAdjustmentDetails();
       if (state.page === "payslip") await loadPayslip();
+      if (state.page === "statistics") await loadStatistics();
     }
 
     function renderPayrollTable() {
@@ -629,12 +694,109 @@
         if (!select.value && state.payrolls.length) select.selectedIndex = 0;
       });
       state.selectedPayrollId = $("#adjustment-employee").value;
+
+      const statisticsEmployeeOptions = [...new Map(state.payrolls
+        .filter(payroll => payroll.employeeID)
+        .map(payroll => [payroll.employeeID, payroll]))
+        .values()].map(payroll =>
+          `<option value="${escapeHtml(payroll.employeeID)}">${escapeHtml(employeeCode(payroll))} — ${escapeHtml(employeeName(payroll))}</option>`
+        ).join("");
+      const statisticsEmployee = $("#statistics-employee");
+      if (statisticsEmployee) {
+        statisticsEmployee.innerHTML =
+          (statisticsEmployeeOptions || '<option value="">Không có nhân viên trong kỳ</option>');
+        if (state.statisticsEmployeeID && [...statisticsEmployee.options].some(option =>
+          option.value === state.statisticsEmployeeID)) {
+          statisticsEmployee.value = state.statisticsEmployeeID;
+        } else if (statisticsEmployeeOptions) {
+          statisticsEmployee.selectedIndex = 0;
+          state.statisticsEmployeeID = statisticsEmployee.value;
+        } else {
+          state.statisticsEmployeeID = "";
+        }
+      }
     }
 
     function updatePageHeader(page) {
       $("#page-title").textContent = pageInfo[page][0];
       $("#page-subtitle").textContent = pageInfo[page][1];
       $("#breadcrumb-current").textContent = pageInfo[page][0];
+    }
+
+    function renderPeriodStatistics(rows) {
+      $("#period-statistics-rows").innerHTML = rows.length ? rows.map(item => `
+        <tr>
+          <td><strong>Tháng ${String(item.month).padStart(2, "0")}/${item.year}</strong></td>
+          <td class="amount">${item.employeeCount}</td>
+          <td class="amount">${formatMoney(item.totalBaseSalary)}</td>
+          <td class="amount">${formatMoney(item.totalAllowance)}</td>
+          <td class="amount">${formatMoney(item.totalProjectAllowance)}</td>
+          <td class="amount">${formatMoney(item.totalPayCut)}</td>
+          <td class="amount">${formatMoney(item.totalGrossSalary)}</td>
+          <td class="amount"><strong>${formatMoney(item.totalNetSalary)}</strong></td>
+        </tr>`).join("") : '<tr><td class="empty" colspan="8">Không có dữ liệu theo kỳ.</td></tr>';
+      $("#period-statistics-caption").textContent = `Tổng hợp các kỳ trong năm ${state.statisticsYear}.`;
+    }
+
+    function renderQuarterStatistics(rows) {
+      $("#quarter-statistics-rows").innerHTML = rows.length ? rows.map(item => `
+        <tr>
+          <td><strong>Quý ${item.quarter}/${item.year}</strong></td>
+          <td class="amount">${item.employeeCount}</td>
+          <td class="amount">${item.payrollCount}</td>
+          <td class="amount">${formatMoney(item.totalGrossSalary)}</td>
+          <td class="amount"><strong>${formatMoney(item.totalNetSalary)}</strong></td>
+        </tr>`).join("") : '<tr><td class="empty" colspan="5">Không có dữ liệu theo quý.</td></tr>';
+
+      const totals = rows.reduce((sum, item) => ({
+        net: sum.net + Number(item.totalNetSalary || 0),
+        gross: sum.gross + Number(item.totalGrossSalary || 0),
+        allowance: sum.allowance + Number(item.totalAllowance || 0) + Number(item.totalProjectAllowance || 0),
+        payCut: sum.payCut + Number(item.totalPayCut || 0)
+      }), { net: 0, gross: 0, allowance: 0, payCut: 0 });
+      $("#statistics-net").textContent = formatMoney(totals.net);
+      $("#statistics-gross").textContent = formatMoney(totals.gross);
+      $("#statistics-allowance").textContent = formatMoney(totals.allowance);
+      $("#statistics-paycut").textContent = formatMoney(totals.payCut);
+    }
+
+    function renderEmployeeQuarterStatistics(rows) {
+      $("#employee-quarter-statistics-rows").innerHTML = rows.length ? rows.map(item => `
+        <tr>
+          <td><strong>Quý ${item.quarter}/${item.year}</strong></td>
+          <td class="amount">${item.payrollCount}</td>
+          <td class="amount">${formatMoney(item.totalBaseSalary)}</td>
+          <td class="amount">${formatMoney(item.totalAllowance)}</td>
+          <td class="amount">${formatMoney(item.totalProjectAllowance)}</td>
+          <td class="amount">${formatMoney(item.totalPayCut)}</td>
+          <td class="amount">${formatMoney(item.totalGrossSalary)}</td>
+          <td class="amount"><strong>${formatMoney(item.totalNetSalary)}</strong></td>
+        </tr>`).join("") : '<tr><td class="empty" colspan="8">Nhân viên không có dữ liệu trong khoảng đã chọn.</td></tr>';
+    }
+
+    async function loadStatistics() {
+      $("#statistics-year").value = state.statisticsYear;
+      $("#statistics-quarter").value = state.statisticsQuarter;
+      const quarterQuery = state.statisticsQuarter
+        ? `&quarter=${encodeURIComponent(state.statisticsQuarter)}`
+        : "";
+
+      const [periodRows, quarterRows] = await Promise.all([
+        payrollApi(`api/payroll-statistics/periods?year=${encodeURIComponent(state.statisticsYear)}`),
+        payrollApi(`api/payroll-statistics/quarters/${encodeURIComponent(state.statisticsYear)}?${quarterQuery.replace(/^&/, "")}`)
+      ]);
+
+      renderPeriodStatistics(periodRows || []);
+      renderQuarterStatistics(quarterRows || []);
+
+      if (state.statisticsEmployeeID) {
+        const employeeQuarterRows = await payrollApi(
+          `api/payroll-statistics/employees/${encodeURIComponent(state.statisticsEmployeeID)}/quarters/${encodeURIComponent(state.statisticsYear)}${quarterQuery ? `?${quarterQuery.slice(1)}` : ""}`
+        );
+        renderEmployeeQuarterStatistics(employeeQuarterRows || []);
+      } else {
+        renderEmployeeQuarterStatistics([]);
+      }
     }
 
     async function showPage(page) {
@@ -649,6 +811,9 @@
         await loadPayrolls();
       } else if (page === "payslip") {
         await loadPayrolls();
+      } else if (page === "statistics") {
+        await loadPayrolls();
+        await loadStatistics();
       } else {
         await loadPayrolls();
       }
@@ -1093,6 +1258,7 @@
       $("#refresh-page").addEventListener("click", event => runAction(event.currentTarget, async () => {
         await loadPeriods();
         await loadPayrolls();
+        if (state.page === "statistics") await loadStatistics();
         toast("Đã tải lại dữ liệu.", "success");
       }));
       $("#payroll-search").addEventListener("input", renderPayrollTable);
@@ -1123,6 +1289,20 @@
       $("#create-payrolls").addEventListener("click", event => createPayrolls(event.currentTarget));
       $("#calculate-all").addEventListener("click", event => calculateAll(event.currentTarget));
       $("#export-payrolls").addEventListener("click", exportPayrolls);
+      $("#reload-statistics").addEventListener("click", event => runAction(event.currentTarget, async () => {
+        const year = Number($("#statistics-year").value);
+        if (!Number.isInteger(year) || year < 1) throw new Error("Vui lòng nhập năm hợp lệ.");
+        state.statisticsYear = year;
+        state.statisticsQuarter = $("#statistics-quarter").value;
+        state.statisticsEmployeeID = $("#statistics-employee").value;
+        await loadStatistics();
+      }));
+      $("#statistics-quarter").addEventListener("change", () => {
+        state.statisticsQuarter = $("#statistics-quarter").value;
+      });
+      $("#statistics-employee").addEventListener("change", () => {
+        state.statisticsEmployeeID = $("#statistics-employee").value;
+      });
 
       $("#adjustment-search").addEventListener("input", filterAdjustmentEmployees);
       $("#adjustment-employee").addEventListener("change", () => loadAdjustmentDetails());
