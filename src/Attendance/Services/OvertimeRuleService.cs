@@ -49,7 +49,7 @@ public class OvertimeRuleService : IOvertimeRuleService
         OvertimeRule rule = new OvertimeRule
         {
             Id = Guid.NewGuid(),
-            DayType = dto.DayType,
+            DayType = "GENERAL",
             Multiplier = dto.Multiplier,
             MaxHoursPerDay = dto.MaxHoursPerDay,
             MaxHoursPerMonth = dto.MaxHoursPerMonth,
@@ -75,7 +75,7 @@ public class OvertimeRuleService : IOvertimeRuleService
             return null;
         }
 
-        rule.DayType = dto.DayType;
+        rule.DayType = "GENERAL";
         rule.Multiplier = dto.Multiplier;
         rule.MaxHoursPerDay = dto.MaxHoursPerDay;
         rule.MaxHoursPerMonth = dto.MaxHoursPerMonth;
@@ -113,16 +113,10 @@ public class OvertimeRuleService : IOvertimeRuleService
                 x.IsActive &&
                 x.EffectiveDate <= currentDate)
             .OrderByDescending(x => x.EffectiveDate)
-            .ThenBy(x => x.DayType)
+            .ThenByDescending(x => x.CreatedAt)
             .FirstOrDefaultAsync(cancellationToken);
     
-        if (rule == null)
-        {
-            throw new InvalidOperationException(
-                "Không tìm thấy hệ số OT đang có hiệu lực.");
-        }
-    
-        return rule.Multiplier;
+        return rule?.Multiplier ?? 1.0m;
     }
 
     private static OvertimeRuleDto MapToDto(OvertimeRule model) => new()

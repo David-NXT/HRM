@@ -30,7 +30,7 @@ public class OTRequest
     /// <summary>
     /// Hệ số làm thêm giờ theo loại ngày (1.5, 2.0, 3.0)
     /// </summary>
-    public decimal Multiplier { get; set; } = 1.5m;
+    public decimal Multiplier { get; set; } = 1.0m;
 
     /// <summary>
     /// Đăng ký bổ sung OT ngoài kế hoạch (khi đã làm ngoài giờ nhưng chưa đăng ký trước)

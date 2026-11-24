@@ -21,9 +21,6 @@ public class AttendanceDbContext : DbContext
     public DbSet<AttendanceRecord> AttendanceRecords
         => Set<AttendanceRecord>();
 
-    public DbSet<Holiday> Holidays
-        => Set<Holiday>();
-
     public DbSet<WorkShift> WorkShifts
         => Set<WorkShift>();
 
