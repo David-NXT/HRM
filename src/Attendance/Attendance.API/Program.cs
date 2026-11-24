@@ -61,7 +61,6 @@ builder.Services.AddDbContext<AttendanceDbContext>(options =>
 // 4. Register Services
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 builder.Services.AddScoped<IAttendanceExplanationsService, AttendanceExplanationsService>();
-builder.Services.AddScoped<IHolidayService, HolidayService>();
 builder.Services.AddScoped<IWorkShiftService, WorkShiftService>();
 builder.Services.AddScoped<IShiftAssignmentService, ShiftAssignmentService>();
 builder.Services.AddScoped<IOTRequestService, OTRequestService>();
@@ -135,7 +134,7 @@ app.Use(async (context, next) =>
 NpgsqlConnectionStringBuilder connectionBuilder =
     new NpgsqlConnectionStringBuilder(connectionString);
 
-string databaseName = connectionBuilder.Database;
+string? databaseName = connectionBuilder.Database;
 
 if (string.IsNullOrWhiteSpace(databaseName))
 {

@@ -138,8 +138,7 @@ namespace Admin.WinForms.Controls.Attendance
 
                 foreach (var r in otRules)
                 {
-                    var item = new ListViewItem(r.DayType);
-                    item.SubItems.Add($"{r.Multiplier}x ({r.Multiplier * 100}%)");
+                    var item = new ListViewItem($"{r.Multiplier}x ({r.Multiplier * 100}%)");
                     item.SubItems.Add($"{r.MaxHoursPerDay}h");
                     item.SubItems.Add($"{r.MaxHoursPerMonth}h");
                     item.SubItems.Add(r.EffectiveDate.ToString("dd/MM/yyyy"));
@@ -340,13 +339,13 @@ namespace Admin.WinForms.Controls.Attendance
             var current = new OvertimeRuleDto
             {
                 Id              = _selectedOTRuleId,
-                DayType         = selectedItem.Text,
-                Multiplier      = decimal.TryParse(selectedItem.SubItems[1].Text.Split('x')[0], out var mul) ? mul : 1.5m,
-                MaxHoursPerDay  = decimal.TryParse(selectedItem.SubItems[2].Text.Replace("h", ""), out var mhd) ? mhd : 4m,
-                MaxHoursPerMonth= decimal.TryParse(selectedItem.SubItems[3].Text.Replace("h", ""), out var mhm) ? mhm : 40m,
-                EffectiveDate   = DateOnly.TryParse(selectedItem.SubItems[4].Text, out var ed) ? ed : DateOnly.FromDateTime(DateTime.Today),
-                IsActive        = selectedItem.SubItems[5].Text == "Đang áp dụng",
-                Description     = selectedItem.SubItems[6].Text == "--" ? null : selectedItem.SubItems[6].Text
+                DayType         = "GENERAL",
+                Multiplier      = decimal.TryParse(selectedItem.SubItems[0].Text.Split('x')[0], out var mul) ? mul : 1.0m,
+                MaxHoursPerDay  = decimal.TryParse(selectedItem.SubItems[1].Text.Replace("h", ""), out var mhd) ? mhd : 4m,
+                MaxHoursPerMonth= decimal.TryParse(selectedItem.SubItems[2].Text.Replace("h", ""), out var mhm) ? mhm : 40m,
+                EffectiveDate   = DateOnly.TryParse(selectedItem.SubItems[3].Text, out var ed) ? ed : DateOnly.FromDateTime(DateTime.Today),
+                IsActive        = selectedItem.SubItems[4].Text == "Đang áp dụng",
+                Description     = selectedItem.SubItems[5].Text == "--" ? null : selectedItem.SubItems[5].Text
             };
 
             using var dlg = new OvertimeRuleFormDialog(current);
@@ -612,8 +611,7 @@ namespace Admin.WinForms.Controls.Attendance
         public CreateOvertimeRuleDto? CreateDto { get; private set; }
         public UpdateOvertimeRuleDto? UpdateDto { get; private set; }
 
-        private readonly ComboBox cmb_DayType = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 200 };
-        private readonly NumericUpDown num_Multiplier = new() { Minimum = 1, Maximum = 5, DecimalPlaces = 1, Increment = 0.5m, Value = 1.5m, Width = 100 };
+        private readonly NumericUpDown num_Multiplier = new() { Minimum = 0.1m, Maximum = 5, DecimalPlaces = 1, Increment = 0.1m, Value = 1.0m, Width = 100 };
         private readonly NumericUpDown num_MaxDay     = new() { Minimum = 1, Maximum = 24, DecimalPlaces = 1, Increment = 0.5m, Value = 4, Width = 100 };
         private readonly NumericUpDown num_MaxMonth   = new() { Minimum = 1, Maximum = 200, Value = 40, Width = 100 };
         private readonly NumericUpDown num_MaxYear    = new() { Minimum = 1, Maximum = 500, Value = 200, Width = 100 };
@@ -632,11 +630,8 @@ namespace Admin.WinForms.Controls.Attendance
             Size = new Size(560, 460);
             MaximizeBox = MinimizeBox = false;
 
-            cmb_DayType.Items.AddRange(new[] { "WEEKDAY", "WEEKEND", "HOLIDAY" });
-
             if (existing != null)
             {
-                cmb_DayType.SelectedItem = existing.DayType;
                 num_Multiplier.Value = existing.Multiplier;
                 num_MaxDay.Value    = existing.MaxHoursPerDay;
                 num_MaxMonth.Value  = existing.MaxHoursPerMonth;
@@ -645,16 +640,12 @@ namespace Admin.WinForms.Controls.Attendance
                 chk_Active.Checked  = existing.IsActive;
                 dtp_Effective.Value = existing.EffectiveDate.ToDateTime(TimeOnly.MinValue);
             }
-            else
-            {
-                cmb_DayType.SelectedIndex = 0;
-            }
 
             var layout = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 Padding = new Padding(16),
-                RowCount = 9,
+                RowCount = 8,
                 ColumnCount = 2
             };
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 220));
@@ -665,27 +656,24 @@ namespace Admin.WinForms.Controls.Attendance
                 layout.Controls.Add(new Label { Text = label, TextAlign = System.Drawing.ContentAlignment.MiddleRight, Dock = DockStyle.Fill }, 0, row);
                 layout.Controls.Add(ctrl, 1, row);
             }
-            AddRow("Loại ngày (DayType):", cmb_DayType, 0);
-            AddRow("Hệ số lương OT:", num_Multiplier, 1);
-            AddRow("Tối đa giờ/ngày:", num_MaxDay, 2);
-            AddRow("Tối đa giờ/tháng:", num_MaxMonth, 3);
-            AddRow("Tối đa giờ/năm:", num_MaxYear, 4);
-            AddRow("Mô tả:", txt_Desc, 5);
-            AddRow("Ngày hiệu lực:", dtp_Effective, 6);
-            layout.Controls.Add(chk_Active, 1, 7);
+            AddRow("Hệ số OT chung:", num_Multiplier, 0);
+            AddRow("Tối đa giờ/ngày:", num_MaxDay, 1);
+            AddRow("Tối đa giờ/tháng:", num_MaxMonth, 2);
+            AddRow("Tối đa giờ/năm:", num_MaxYear, 3);
+            AddRow("Mô tả:", txt_Desc, 4);
+            AddRow("Ngày hiệu lực:", dtp_Effective, 5);
+            layout.Controls.Add(chk_Active, 1, 6);
 
             var btnOk = new Button { Text = "Lưu", DialogResult = DialogResult.OK, Width = 100, BackColor = Color.FromArgb(37, 99, 235), ForeColor = Color.White };
             var btnCancel = new Button { Text = "Hủy", DialogResult = DialogResult.Cancel, Width = 100 };
             btnOk.Click += (s, e) =>
             {
-                if (cmb_DayType.SelectedItem == null) { MessageBox.Show("Vui lòng chọn loại ngày."); return; }
-                var dayType = cmb_DayType.SelectedItem.ToString()!;
                 var effective = DateOnly.FromDateTime(dtp_Effective.Value);
                 if (_isEdit)
                 {
                     UpdateDto = new UpdateOvertimeRuleDto
                     {
-                        DayType         = dayType,
+                        DayType         = "GENERAL",
                         Multiplier      = num_Multiplier.Value,
                         MaxHoursPerDay  = num_MaxDay.Value,
                         MaxHoursPerMonth= num_MaxMonth.Value,
@@ -700,7 +688,7 @@ namespace Admin.WinForms.Controls.Attendance
                 {
                     CreateDto = new CreateOvertimeRuleDto
                     {
-                        DayType         = dayType,
+                        DayType         = "GENERAL",
                         Multiplier      = num_Multiplier.Value,
                         MaxHoursPerDay  = num_MaxDay.Value,
                         MaxHoursPerMonth= num_MaxMonth.Value,

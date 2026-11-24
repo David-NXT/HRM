@@ -5,12 +5,12 @@ public class AttendanceConfigAuditLog
     public Guid Id { get; set; }
 
     /// <summary>
-    /// Nhóm cấu hình: WorkShift, Holiday, OvertimeRule, AttendanceRule
+    /// Nhóm cấu hình: WorkShift, OvertimeRule, AttendanceRule
     /// </summary>
     public string ConfigType { get; set; } = string.Empty;
 
     /// <summary>
-    /// Id của đối tượng cấu hình được thay đổi (WorkShiftId, HolidayId, OvertimeRuleId, AttendanceRuleId)
+    /// Id của đối tượng cấu hình được thay đổi (WorkShiftId, OvertimeRuleId, AttendanceRuleId)
     /// </summary>
     public string? EntityId { get; set; }
 

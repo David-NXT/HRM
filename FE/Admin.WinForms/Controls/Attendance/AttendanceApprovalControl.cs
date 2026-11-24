@@ -99,7 +99,7 @@ namespace Admin.WinForms.Controls.Attendance
                             EmployeeId = item.EmployeeId,
                             Date = item.Date,
                             Type = $"[Tăng ca OT] {(item.IsUnplanned ? "Đột xuất" : "Kế hoạch")}",
-                            Reason = item.Reason ?? $"OT {item.PlannedHours}h ({item.DayType})",
+                            Reason = item.Reason ?? $"OT {item.PlannedHours}h",
                             StartTime = item.StartTime.ToString("HH:mm"),
                             EndTime = item.EndTime.ToString("HH:mm"),
                             Status = item.Status,

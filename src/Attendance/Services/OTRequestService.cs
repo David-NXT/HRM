@@ -73,6 +73,20 @@ public class OTRequestService : IOTRequestService
             plannedHours = (decimal)span.TotalHours;
         }
 
+        // OT uses one shared rule; the request date still selects the effective rule.
+        OvertimeRule? otRule = await _context.OvertimeRules
+            .Where(r => r.IsActive && r.EffectiveDate <= dto.Date)
+            .OrderByDescending(r => r.EffectiveDate)
+            .ThenByDescending(r => r.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        decimal multiplier = otRule?.Multiplier ?? 1.0m;
+
+        if (otRule != null && otRule.MaxHoursPerDay > 0 && plannedHours > otRule.MaxHoursPerDay)
+        {
+            throw new InvalidOperationException($"Số giờ đăng ký làm thêm ({plannedHours}h) vượt quá định mức tối đa trong ngày ({otRule.MaxHoursPerDay}h).");
+        }
+
         OTRequest entity = new OTRequest
         {
             Id = Guid.NewGuid(),
@@ -81,8 +95,8 @@ public class OTRequestService : IOTRequestService
             StartTime = dto.StartTime,
             EndTime = dto.EndTime,
             PlannedHours = plannedHours,
-            DayType = dto.DayType,
-            Multiplier = dto.Multiplier > 0 ? dto.Multiplier : 1.5m,
+            DayType = "GENERAL",
+            Multiplier = multiplier,
             IsUnplanned = dto.IsUnplanned,
             Reason = dto.Reason,
             Status = string.IsNullOrWhiteSpace(dto.Status) ? "Pending" : dto.Status,
@@ -136,16 +150,6 @@ public class OTRequestService : IOTRequestService
         if (dto.ActualHours.HasValue)
         {
             entity.ActualHours = dto.ActualHours.Value;
-        }
-
-        if (dto.DayType != null)
-        {
-            entity.DayType = dto.DayType;
-        }
-
-        if (dto.Multiplier.HasValue)
-        {
-            entity.Multiplier = dto.Multiplier.Value;
         }
 
         if (dto.IsUnplanned.HasValue)

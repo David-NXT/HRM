@@ -27,8 +27,6 @@ namespace Admin.WinForms.Controls.Attendance
         private readonly DateTimePicker dtp_OTStart = new() { Format = DateTimePickerFormat.Time, ShowUpDown = true, Width = 150 };
         private readonly DateTimePicker dtp_OTEnd = new() { Format = DateTimePickerFormat.Time, ShowUpDown = true, Width = 150 };
         private readonly NumericUpDown num_OTHours = new() { Minimum = 0.5m, Maximum = 12, DecimalPlaces = 1, Increment = 0.5m, Value = 2.0m, Width = 120 };
-        private readonly ComboBox cmb_OTDayType = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 200 };
-        private readonly NumericUpDown num_OTMultiplier = new() { Minimum = 1.0m, Maximum = 5.0m, DecimalPlaces = 1, Value = 1.5m, Width = 100 };
         private readonly CheckBox chk_OTUnplanned = new() { Text = "Làm thêm giờ khẩn cấp / đột xuất", AutoSize = true };
         private readonly TextBox txt_OTReason = new() { Width = 500, Height = 80, Multiline = true };
         private readonly Button btn_SubmitOT = new() { Text = "⏰ GỬI ĐƠN TĂNG CA (OT)", Width = 240, Height = 48, BackColor = Color.FromArgb(245, 158, 11), ForeColor = Color.White, Font = new Font("Segoe UI", 10.5F, FontStyle.Bold) };
@@ -233,19 +231,6 @@ namespace Admin.WinForms.Controls.Attendance
             dtp_OTStart.Value = DateTime.Today.AddHours(17).AddMinutes(30);
             dtp_OTEnd.Value = DateTime.Today.AddHours(20).AddMinutes(30);
 
-            cmb_OTDayType.Items.AddRange(new[] { "WEEKDAY", "WEEKEND", "HOLIDAY" });
-            cmb_OTDayType.SelectedIndex = 0;
-
-            cmb_OTDayType.SelectedIndexChanged += (s, e) =>
-            {
-                num_OTMultiplier.Value = cmb_OTDayType.SelectedItem?.ToString() switch
-                {
-                    "WEEKEND" => 2.0m,
-                    "HOLIDAY" => 3.0m,
-                    _ => 1.5m
-                };
-            };
-
             void AddRow(string label, Control ctrl, int row)
             {
                 panel.Controls.Add(new Label { Text = label, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight, Font = new Font("Segoe UI", 10F, FontStyle.Bold) }, 0, row);
@@ -257,9 +242,7 @@ namespace Admin.WinForms.Controls.Attendance
             AddRow("Giờ bắt đầu OT:", dtp_OTStart, 2);
             AddRow("Giờ kết thúc OT:", dtp_OTEnd, 3);
             AddRow("Số giờ dự kiến (h):", num_OTHours, 4);
-            AddRow("Loại ngày:", cmb_OTDayType, 5);
-            AddRow("Hệ số lương OT:", num_OTMultiplier, 6);
-            AddRow("Lý do tăng ca:", txt_OTReason, 7);
+            AddRow("Lý do tăng ca:", txt_OTReason, 5);
 
             panel.Controls.Add(btn_SubmitOT, 1, 8);
 
@@ -287,8 +270,6 @@ namespace Admin.WinForms.Controls.Attendance
                 StartTime = TimeOnly.FromDateTime(dtp_OTStart.Value),
                 EndTime = TimeOnly.FromDateTime(dtp_OTEnd.Value),
                 PlannedHours = num_OTHours.Value,
-                DayType = cmb_OTDayType.SelectedItem?.ToString() ?? "WEEKDAY",
-                Multiplier = num_OTMultiplier.Value,
                 IsUnplanned = chk_OTUnplanned.Checked,
                 Reason = txt_OTReason.Text.Trim(),
                 Status = "Pending"
