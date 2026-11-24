@@ -37,7 +37,7 @@ public class PayrollAdjustmentService
         }
 
         // 2. Find payroll
-        var payroll = await _context.Payrolls
+        PayrollEntity? payroll = await _context.Payrolls
             .FirstOrDefaultAsync(
                 p => p.PayrollID == payrollID,
                 cancellationToken
@@ -59,7 +59,7 @@ public class PayrollAdjustmentService
         }
 
         // 4. Check allowance type
-        var allowanceType = await _context.AllowanceTypes
+        AllowanceType? allowanceType = await _context.AllowanceTypes
             .FirstOrDefaultAsync(
                 at => at.AllowanceTypeID == request.AllowanceTypeID,
                 cancellationToken
@@ -73,7 +73,7 @@ public class PayrollAdjustmentService
         }
 
         // 5. Find active allowance group
-        var allowance = await _context.Allowances
+        Allowance? allowance = await _context.Allowances
             .FirstOrDefaultAsync(
                 a => a.PayrollID == payrollID &&
                      a.Status == "active",
@@ -93,7 +93,7 @@ public class PayrollAdjustmentService
         }
 
         // 7. Create allowance detail
-        var detail = new AllowanceDetail
+        AllowanceDetail detail = new AllowanceDetail
         {
             AllowanceTypeID = request.AllowanceTypeID,
             Description = request.Description.Trim(),
@@ -140,7 +140,7 @@ public class PayrollAdjustmentService
         }
 
         // 2. Find payroll
-        var payroll = await _context.Payrolls
+        PayrollEntity? payroll = await _context.Payrolls
             .FirstOrDefaultAsync(
                 p => p.PayrollID == payrollID,
                 cancellationToken
@@ -162,7 +162,7 @@ public class PayrollAdjustmentService
         }
 
         // 4. Check pay cut reason
-        var reason = await _context.PayCutReasons
+        PayCutReason? reason = await _context.PayCutReasons
             .FirstOrDefaultAsync(
                 r => r.PayCutReasonID == request.PayCutReasonID,
                 cancellationToken
@@ -176,7 +176,7 @@ public class PayrollAdjustmentService
         }
 
         // 5. Find active pay cut group
-        var payCut = await _context.PayCuts
+        PayCut? payCut = await _context.PayCuts
             .FirstOrDefaultAsync(
                 pc => pc.PayrollID == payrollID &&
                       pc.Status == "active",
@@ -196,7 +196,7 @@ public class PayrollAdjustmentService
         }
 
         // 7. Create pay cut detail
-        var detail = new PayCutDetail
+        PayCutDetail detail = new PayCutDetail
         {
             PayCutReasonID = request.PayCutReasonID,
             Description = request.Description.Trim(),

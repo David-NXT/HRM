@@ -11,4 +11,6 @@ public sealed class HREmployeeResponse
     public decimal? PartTimeSalary { get; set; }
 
     public string Status { get; set; } = string.Empty;
+
+    public DateOnly? EmploymentStartDate { get; set; }
 }

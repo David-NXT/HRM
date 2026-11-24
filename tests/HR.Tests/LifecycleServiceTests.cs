@@ -430,6 +430,8 @@ public sealed class LifecycleServiceTests
         public Task<Employee?> GetReadOnlyByIdAsync(Guid id, CancellationToken ct) => GetByIdAsync(id, ct);
         public Task<IReadOnlyList<EmploymentContract>> GetContractsAsync(Guid id, CancellationToken ct) =>
             Task.FromResult<IReadOnlyList<EmploymentContract>>(Contracts.Where(item => item.EmployeeId == id).ToArray());
+        public Task<DateOnly?> GetEmploymentStartDateAsync(Guid employeeId, CancellationToken ct) =>
+            Task.FromResult<DateOnly?>(History.Where(item => item.EmployeeId == employeeId).Select(item => (DateOnly?)item.StartDate).Min());
         public Task<bool> CodeExistsAsync(string code, CancellationToken ct) => Task.FromResult(Employees.Any(item => item.EmployeeCode == code));
         public Task<IReadOnlyList<WorkHistory>> GetWorkHistoryAsync(Guid id, CancellationToken ct) => Task.FromResult<IReadOnlyList<WorkHistory>>(History.Where(item => item.EmployeeId == id).ToArray());
         public Task<bool> HasPendingOffboardingAsync(Guid id, CancellationToken ct) => Task.FromResult(Offboardings.Any(item => item.EmployeeId == id && item.Status == LifecycleStatuses.InProgress));
