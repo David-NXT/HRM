@@ -1,4 +1,4 @@
-using Attendance.Data;
+﻿using Attendance.Data;
 using Attendance.DTOs.OTRequest;
 using Attendance.Models;
 using Microsoft.EntityFrameworkCore;
@@ -46,7 +46,7 @@ public class OTRequestService : IOTRequestService
 
     public async Task<OTRequestDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.OTRequests
+        OTRequest? entity = await _context.OTRequests
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
@@ -66,14 +66,28 @@ public class OTRequestService : IOTRequestService
         }
 
         await EnsureActiveEmployeeAsync(dto.EmployeeId, cancellationToken);
-        var plannedHours = dto.PlannedHours;
+        decimal plannedHours = dto.PlannedHours;
         if (plannedHours <= 0 && dto.EndTime > dto.StartTime)
         {
-            var span = dto.EndTime - dto.StartTime;
+            TimeSpan span = dto.EndTime - dto.StartTime;
             plannedHours = (decimal)span.TotalHours;
         }
 
-        var entity = new OTRequest
+        // OT uses one shared rule; the request date still selects the effective rule.
+        OvertimeRule? otRule = await _context.OvertimeRules
+            .Where(r => r.IsActive && r.EffectiveDate <= dto.Date)
+            .OrderByDescending(r => r.EffectiveDate)
+            .ThenByDescending(r => r.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        decimal multiplier = otRule?.Multiplier ?? 1.0m;
+
+        if (otRule != null && otRule.MaxHoursPerDay > 0 && plannedHours > otRule.MaxHoursPerDay)
+        {
+            throw new InvalidOperationException($"Số giờ đăng ký làm thêm ({plannedHours}h) vượt quá định mức tối đa trong ngày ({otRule.MaxHoursPerDay}h).");
+        }
+
+        OTRequest entity = new OTRequest
         {
             Id = Guid.NewGuid(),
             EmployeeId = dto.EmployeeId,
@@ -81,8 +95,8 @@ public class OTRequestService : IOTRequestService
             StartTime = dto.StartTime,
             EndTime = dto.EndTime,
             PlannedHours = plannedHours,
-            DayType = dto.DayType,
-            Multiplier = dto.Multiplier > 0 ? dto.Multiplier : 1.5m,
+            DayType = "GENERAL",
+            Multiplier = multiplier,
             IsUnplanned = dto.IsUnplanned,
             Reason = dto.Reason,
             Status = string.IsNullOrWhiteSpace(dto.Status) ? "Pending" : dto.Status,
@@ -99,7 +113,7 @@ public class OTRequestService : IOTRequestService
 
     public async Task<OTRequestDto?> UpdateAsync(Guid id, UpdateOTRequestDto dto, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.OTRequests
+        OTRequest? entity = await _context.OTRequests
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (entity == null)
@@ -136,16 +150,6 @@ public class OTRequestService : IOTRequestService
         if (dto.ActualHours.HasValue)
         {
             entity.ActualHours = dto.ActualHours.Value;
-        }
-
-        if (dto.DayType != null)
-        {
-            entity.DayType = dto.DayType;
-        }
-
-        if (dto.Multiplier.HasValue)
-        {
-            entity.Multiplier = dto.Multiplier.Value;
         }
 
         if (dto.IsUnplanned.HasValue)
@@ -187,7 +191,7 @@ public class OTRequestService : IOTRequestService
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.OTRequests
+        OTRequest? entity = await _context.OTRequests
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (entity == null)

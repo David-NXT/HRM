@@ -1,4 +1,4 @@
-using Attendance.Data;
+﻿using Attendance.Data;
 using Attendance.DTOs.LeaveRequest;
 using Attendance.Models;
 using Microsoft.EntityFrameworkCore;
@@ -42,7 +42,7 @@ public class LeaveRequestService : ILeaveRequestService
 
     public async Task<LeaveRequestDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.LeaveRequests
+        LeaveRequest? entity = await _context.LeaveRequests
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
@@ -73,14 +73,30 @@ public class LeaveRequestService : ILeaveRequestService
             throw new ArgumentException("Reason is required.", nameof(dto));
         }
 
-        var entity = new LeaveRequest
+        decimal totalDays = dto.TotalDays > 0 ? dto.TotalDays : 1.0m;
+
+        // Kiểm tra số dư phép nếu là nghỉ phép năm
+        if (dto.LeaveType.Contains("phép năm", StringComparison.OrdinalIgnoreCase) ||
+            dto.LeaveType.Contains("annual", StringComparison.OrdinalIgnoreCase))
+        {
+            int year = dto.StartDate.Year;
+            LeaveBalance? balance = await _context.LeaveBalances
+                .FirstOrDefaultAsync(b => b.EmployeeId == dto.EmployeeId && b.Year == year, cancellationToken);
+
+            if (balance != null && balance.RemainingDays < totalDays)
+            {
+                throw new InvalidOperationException($"Số ngày phép năm còn lại không đủ (còn {balance.RemainingDays} ngày, yêu cầu {totalDays} ngày).");
+            }
+        }
+
+        LeaveRequest entity = new LeaveRequest
         {
             Id = Guid.NewGuid(),
             EmployeeId = dto.EmployeeId,
             LeaveType = dto.LeaveType.Trim(),
             StartDate = dto.StartDate,
             EndDate = dto.EndDate,
-            TotalDays = dto.TotalDays > 0 ? dto.TotalDays : 1.0m,
+            TotalDays = totalDays,
             Reason = dto.Reason.Trim(),
             Status = string.IsNullOrWhiteSpace(dto.Status) ? "Pending" : dto.Status,
             ApprovedBy = dto.ApprovedBy,
@@ -96,7 +112,7 @@ public class LeaveRequestService : ILeaveRequestService
 
     public async Task<LeaveRequestDto?> UpdateAsync(Guid id, UpdateLeaveRequestDto dto, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.LeaveRequests
+        LeaveRequest? entity = await _context.LeaveRequests
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (entity == null)
@@ -135,9 +151,41 @@ public class LeaveRequestService : ILeaveRequestService
             entity.Reason = dto.Reason.Trim();
         }
 
+        bool wasApproved = entity.Status == "Approved";
+
         if (!string.IsNullOrWhiteSpace(dto.Status))
         {
             entity.Status = dto.Status;
+        }
+
+        bool isNowApproved = entity.Status == "Approved";
+
+        // Khấu trừ / hoàn trả số ngày phép trong LeaveBalance khi trạng thái phê duyệt thay đổi
+        if (!wasApproved && isNowApproved)
+        {
+            int year = entity.StartDate.Year;
+            LeaveBalance? balance = await _context.LeaveBalances
+                .FirstOrDefaultAsync(b => b.EmployeeId == entity.EmployeeId && b.Year == year, cancellationToken);
+
+            if (balance != null)
+            {
+                balance.UsedDays += entity.TotalDays;
+                balance.RemainingDays = Math.Max(0, balance.RemainingDays - entity.TotalDays);
+                balance.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+        else if (wasApproved && (entity.Status == "Rejected" || entity.Status == "Pending"))
+        {
+            int year = entity.StartDate.Year;
+            LeaveBalance? balance = await _context.LeaveBalances
+                .FirstOrDefaultAsync(b => b.EmployeeId == entity.EmployeeId && b.Year == year, cancellationToken);
+
+            if (balance != null)
+            {
+                balance.UsedDays = Math.Max(0, balance.UsedDays - entity.TotalDays);
+                balance.RemainingDays += entity.TotalDays;
+                balance.UpdatedAt = DateTime.UtcNow;
+            }
         }
 
         if (dto.ApprovedBy != null)
@@ -164,7 +212,7 @@ public class LeaveRequestService : ILeaveRequestService
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.LeaveRequests
+        LeaveRequest? entity = await _context.LeaveRequests
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (entity == null)

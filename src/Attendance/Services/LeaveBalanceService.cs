@@ -1,4 +1,4 @@
-using Attendance.Data;
+﻿using Attendance.Data;
 using Attendance.DTOs.LeaveBalance;
 using Attendance.Models;
 using Microsoft.EntityFrameworkCore;
@@ -16,19 +16,19 @@ public class LeaveBalanceService : ILeaveBalanceService
 
     public async Task<List<LeaveBalanceDto>> GetAllAsync(int? year = null, CancellationToken cancellationToken = default)
     {
-        var query = _dbContext.LeaveBalances.AsNoTracking();
+        IQueryable<LeaveBalance> query = _dbContext.LeaveBalances.AsNoTracking();
         if (year.HasValue)
         {
             query = query.Where(x => x.Year == year.Value);
         }
 
-        var list = await query.OrderBy(x => x.Year).ToListAsync(cancellationToken);
+        List<LeaveBalance> list = await query.OrderBy(x => x.Year).ToListAsync(cancellationToken);
         return list.Select(MapToDto).ToList();
     }
 
     public async Task<LeaveBalanceDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var balance = await _dbContext.LeaveBalances
+        LeaveBalance? balance = await _dbContext.LeaveBalances
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
@@ -37,7 +37,7 @@ public class LeaveBalanceService : ILeaveBalanceService
 
     public async Task<LeaveBalanceDto?> GetByEmployeeAsync(Guid employeeId, int year, CancellationToken cancellationToken = default)
     {
-        var balance = await _dbContext.LeaveBalances
+        LeaveBalance? balance = await _dbContext.LeaveBalances
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.EmployeeId == employeeId && x.Year == year, cancellationToken);
 
@@ -46,7 +46,7 @@ public class LeaveBalanceService : ILeaveBalanceService
 
     public async Task<LeaveBalanceDto> CreateAsync(CreateLeaveBalanceDto dto, CancellationToken cancellationToken = default)
     {
-        var existing = await _dbContext.LeaveBalances
+        bool existing = await _dbContext.LeaveBalances
             .AnyAsync(x => x.EmployeeId == dto.EmployeeId && x.Year == dto.Year, cancellationToken);
 
         if (existing)
@@ -54,7 +54,7 @@ public class LeaveBalanceService : ILeaveBalanceService
             throw new ArgumentException($"Dữ liệu ngày phép năm {dto.Year} của nhân viên đã tồn tại.");
         }
 
-        var balance = new LeaveBalance
+        LeaveBalance balance = new LeaveBalance
         {
             Id = Guid.NewGuid(),
             EmployeeId = dto.EmployeeId,
@@ -74,7 +74,7 @@ public class LeaveBalanceService : ILeaveBalanceService
 
     public async Task<LeaveBalanceDto?> UpdateAsync(Guid id, UpdateLeaveBalanceDto dto, CancellationToken cancellationToken = default)
     {
-        var balance = await _dbContext.LeaveBalances.FindAsync([id], cancellationToken);
+        LeaveBalance? balance = await _dbContext.LeaveBalances.FindAsync([id], cancellationToken);
         if (balance == null)
         {
             return null;
@@ -92,7 +92,7 @@ public class LeaveBalanceService : ILeaveBalanceService
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var balance = await _dbContext.LeaveBalances.FindAsync([id], cancellationToken);
+        LeaveBalance? balance = await _dbContext.LeaveBalances.FindAsync([id], cancellationToken);
         if (balance == null)
         {
             return false;
