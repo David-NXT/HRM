@@ -121,6 +121,13 @@ public sealed class EmployeeRepository : IEmployeeRepository
         return employee;
     }
 
+    public Task<DateOnly?> GetEmploymentStartDateAsync(Guid employeeId, CancellationToken cancellationToken) =>
+        _db.WorkHistories.AsNoTracking()
+            .Where(history => history.EmployeeId == employeeId)
+            .OrderBy(history => history.StartDate)
+            .Select(history => (DateOnly?)history.StartDate)
+            .FirstOrDefaultAsync(cancellationToken);
+
     public async Task<bool> HasRelatedRecordsAsync(Guid employeeId, CancellationToken cancellationToken) =>
         await _db.WorkHistories.AnyAsync(item => item.EmployeeId == employeeId, cancellationToken)
         || await _db.EmploymentContracts.AnyAsync(item => item.EmployeeId == employeeId, cancellationToken)

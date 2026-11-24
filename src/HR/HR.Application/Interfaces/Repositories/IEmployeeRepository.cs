@@ -21,6 +21,8 @@ public interface IEmployeeRepository
 
     Task<Employee?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
 
+    Task<DateOnly?> GetEmploymentStartDateAsync(Guid employeeId, CancellationToken cancellationToken);
+
     Task<bool> HasRelatedRecordsAsync(Guid employeeId, CancellationToken cancellationToken);
 
     Task<bool> CodeExistsAsync(string employeeCode, CancellationToken cancellationToken);
