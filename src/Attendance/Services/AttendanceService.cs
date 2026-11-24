@@ -141,32 +141,15 @@ public class AttendanceService : IAttendanceService
             .OrderByDescending(r => r.EffectiveDate)
             .FirstOrDefaultAsync(cancellationToken);
 
-        int allowedLate = rule?.AllowedLateMinutes ?? 15;
         int lateMins = dto.LateMins;
         bool isLate = dto.IsLate;
 
         if (shift != null && dto.TimeIn.HasValue)
         {
-            TimeOnly timeIn = dto.TimeIn.Value;
-            if (timeIn > shift.StartTime)
-            {
-                int diff = (int)(timeIn.ToTimeSpan() - shift.StartTime.ToTimeSpan()).TotalMinutes;
-                if (diff > allowedLate)
-                {
-                    lateMins = diff;
-                    isLate = true;
-                }
-                else
-                {
-                    lateMins = 0;
-                    isLate = false;
-                }
-            }
-            else
-            {
-                lateMins = 0;
-                isLate = false;
-            }
+            AttendanceRecord check = new() { TimeIn = dto.TimeIn, TimeOut = dto.TimeOut };
+            check.EvaluateLateAndEarlyLeave(shift, rule ?? new AttendanceRule { AllowedLateMinutes = 15, AllowedEarlyLeaveMinutes = 15 });
+            lateMins = check.LateMins;
+            isLate = check.IsLate;
         }
 
         string status = !string.IsNullOrWhiteSpace(dto.Status) && dto.Status != "Pending"
@@ -230,6 +213,9 @@ public class AttendanceService : IAttendanceService
             _context.AttendanceRecords.Add(entity);
         }
 
+        if (dto.TimeIn.HasValue) entity.CheckIn(dto.TimeIn.Value, dto.CheckInLocation, dto.CheckInSource);
+        if (dto.TimeOut.HasValue) entity.CheckOut(dto.TimeOut.Value, dto.CheckOutLocation, dto.CheckOutSource);
+
         await _context.SaveChangesAsync(cancellationToken);
 
         return MapToDto(entity);
@@ -263,12 +249,12 @@ public class AttendanceService : IAttendanceService
 
         if (dto.TimeIn.HasValue)
         {
-            entity.TimeIn = dto.TimeIn.Value;
+            entity.CheckIn(dto.TimeIn.Value, dto.CheckInLocation ?? entity.CheckInLocation, dto.CheckInSource ?? entity.CheckInSource);
         }
 
         if (dto.TimeOut.HasValue)
         {
-            entity.TimeOut = dto.TimeOut.Value;
+            entity.CheckOut(dto.TimeOut.Value, dto.CheckOutLocation ?? entity.CheckOutLocation, dto.CheckOutSource ?? entity.CheckOutSource);
 
             WorkShift? shift = await _context.WorkShifts
                 .FirstOrDefaultAsync(s => s.Id == entity.ShiftId, cancellationToken);
@@ -278,39 +264,10 @@ public class AttendanceService : IAttendanceService
                 .OrderByDescending(r => r.EffectiveDate)
                 .FirstOrDefaultAsync(cancellationToken);
 
-            int allowedEarly = rule?.AllowedEarlyLeaveMinutes ?? 15;
-
             if (shift != null)
             {
-                TimeOnly timeOut = dto.TimeOut.Value;
-                if (timeOut < shift.EndTime)
-                {
-                    int earlyDiff = (int)(shift.EndTime.ToTimeSpan() - timeOut.ToTimeSpan()).TotalMinutes;
-                    if (earlyDiff > allowedEarly)
-                    {
-                        entity.EarlyLeaveMins = earlyDiff;
-                        entity.IsEarlyLeave = true;
-                    }
-                    else
-                    {
-                        entity.EarlyLeaveMins = 0;
-                        entity.IsEarlyLeave = false;
-                    }
-                }
-                else
-                {
-                    entity.EarlyLeaveMins = 0;
-                    entity.IsEarlyLeave = false;
-                }
-
-                if (entity.TimeIn.HasValue)
-                {
-                    TimeSpan elapsed = timeOut.ToTimeSpan() - entity.TimeIn.Value.ToTimeSpan();
-                    if (elapsed.TotalMinutes < 0) elapsed += TimeSpan.FromHours(24);
-                    int breakM = elapsed.TotalMinutes > 240 ? shift.BreakMins : 0;
-                    decimal hours = Math.Max(0, (decimal)(elapsed.TotalMinutes - breakM) / 60m);
-                    entity.WorkHour = Math.Round(hours, 2);
-                }
+                entity.EvaluateLateAndEarlyLeave(shift, rule ?? new AttendanceRule { AllowedLateMinutes = 15, AllowedEarlyLeaveMinutes = 15 });
+                entity.CalculateWorkHours(shift);
             }
 
             // Đối soát với đơn làm thêm giờ (OTRequest) đã duyệt
@@ -323,7 +280,7 @@ public class AttendanceService : IAttendanceService
                 if (otMinutes > 0)
                 {
                     entity.ActualOTMins = otMinutes;
-                    otRequest.ActualHours = Math.Round((decimal)otMinutes / 60m, 2);
+                    otRequest.ReconcileWithRecord(entity);
                     otRequest.UpdatedAt = DateTime.UtcNow;
                 }
             }

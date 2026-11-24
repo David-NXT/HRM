@@ -63,4 +63,13 @@ public class TimesheetSummary
     public DateTime? UpdatedAt { get; set; }
 
     public TimesheetPeriod? Period { get; set; }
+
+    public decimal CalculateWorkingDays(IEnumerable<AttendanceRecord> records) =>
+        ActualWorkingDays = records.Count(record => record.WorkHour > 0);
+
+    public decimal CalculateWorkingHours(IEnumerable<AttendanceRecord> records) =>
+        TotalWorkingHours = records.Sum(record => record.WorkHour);
+
+    public decimal CalculateOTHours(IEnumerable<OTRequest> requests) =>
+        OTHours = requests.Sum(request => request.ActualHours ?? request.PlannedHours);
 }

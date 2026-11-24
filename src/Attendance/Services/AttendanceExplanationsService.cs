@@ -182,7 +182,11 @@ public class AttendanceExplanationsService : IAttendanceExplanationsService
 
         if (!string.IsNullOrWhiteSpace(dto.Status))
         {
-            entity.Status = dto.Status;
+            if (dto.Status.Equals("Approved", StringComparison.OrdinalIgnoreCase) && dto.ApprovedBy != null)
+                entity.Approve(dto.ApprovedBy);
+            else if (dto.Status.Equals("Rejected", StringComparison.OrdinalIgnoreCase) && dto.ApprovedBy != null)
+                entity.Reject(dto.RejectionReason ?? string.Empty, dto.ApprovedBy);
+            else entity.Status = dto.Status;
         }
 
         bool isNowApproved = entity.Status == "Approved";
@@ -231,10 +235,13 @@ public class AttendanceExplanationsService : IAttendanceExplanationsService
                     WorkShift? shift = await _context.WorkShifts
                         .FirstOrDefaultAsync(s => s.Id == record.ShiftId, cancellationToken);
 
-                    TimeSpan elapsed = record.TimeOut.Value.ToTimeSpan() - record.TimeIn.Value.ToTimeSpan();
-                    if (elapsed.TotalMinutes < 0) elapsed += TimeSpan.FromHours(24);
-                    int breakM = (shift != null && elapsed.TotalMinutes > 240) ? shift.BreakMins : 0;
-                    record.WorkHour = Math.Max(0, Math.Round((decimal)(elapsed.TotalMinutes - breakM) / 60m, 2));
+                    if (shift != null) record.CalculateWorkHours(shift);
+                    else
+                    {
+                        TimeSpan elapsed = record.TimeOut.Value.ToTimeSpan() - record.TimeIn.Value.ToTimeSpan();
+                        if (elapsed.TotalMinutes < 0) elapsed += TimeSpan.FromHours(24);
+                        record.WorkHour = Math.Max(0, Math.Round((decimal)elapsed.TotalMinutes / 60m, 2));
+                    }
                 }
 
                 record.Status = "Present";

@@ -32,4 +32,7 @@ public class AttendanceRule
     public DateTime? UpdatedAt { get; set; }
 
     public string? UpdatedBy { get; set; }
+
+    public bool ExceedsLateThreshold(int lateMinutes) => lateMinutes > AllowedLateMinutes;
+    public bool ExceedsEarlyLeaveThreshold(int earlyMinutes) => earlyMinutes > AllowedEarlyLeaveMinutes;
 }
