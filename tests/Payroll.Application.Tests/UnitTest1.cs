@@ -170,6 +170,52 @@ public class PayrollCalculatorTests
     }
 
     [Theory]
+    [InlineData("2025-11-30", "2026-11-29", 0)]
+    [InlineData("2025-11-30", "2026-11-30", 1)]
+    [InlineData("2025-11-30", "2027-11-30", 2)]
+    public void CalculateCompletedServiceYears_UsesCompletedAnniversaries(
+        string employmentStartDate,
+        string periodEndDate,
+        int expectedYears)
+    {
+        int actual = _calculator.CalculateCompletedServiceYears(
+            DateOnly.Parse(employmentStartDate),
+            DateOnly.Parse(periodEndDate));
+
+        Assert.Equal(expectedYears, actual);
+    }
+
+    [Fact]
+    public void CalculateSeniorityAllowance_AppliesFixedAmountAfterOneCompletedYear()
+    {
+        decimal amount = _calculator.CalculateSeniorityAllowance(
+            new DateOnly(2025, 11, 30),
+            new DateOnly(2026, 11, 30),
+            250_000m);
+
+        Assert.Equal(250_000m, amount);
+    }
+
+    [Fact]
+    public void CalculateSeniorityAllowance_DoesNotApplyBeforeFirstAnniversary()
+    {
+        decimal amount = _calculator.CalculateSeniorityAllowance(
+            new DateOnly(2025, 11, 30),
+            new DateOnly(2026, 11, 29),
+            250_000m);
+
+        Assert.Equal(0m, amount);
+    }
+
+    [Fact]
+    public void CalculateLateDeduction_MultipliesConfiguredRateByOccurrences()
+    {
+        decimal amount = _calculator.CalculateLateDeduction(3, 100_000m);
+
+        Assert.Equal(300_000m, amount);
+    }
+
+    [Theory]
     [InlineData("FULL_TIME", -1, 22, 22, 176, 0, 1.5, 0, 0)]
     [InlineData("FULL_TIME", 10_000_000, -1, 22, 176, 0, 1.5, 0, 0)]
     [InlineData("FULL_TIME", 10_000_000, 22, 0, 176, 0, 1.5, 0, 0)]

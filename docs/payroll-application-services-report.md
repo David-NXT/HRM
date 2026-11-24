@@ -94,13 +94,14 @@ Các service được đăng ký scoped trong [DependencyInjection.cs](../src/Pa
 ### 4.5 `PayrollCalculationService` và `PayrollCalculator`
 
 - `PayrollCalculationService.CalculateAsync(Guid payrollID, CancellationToken) -> Task<CalculatePayrollResponse>`
-  Tìm payroll và nạp các nhóm phụ cấp/khấu trừ cùng detail → chỉ cho tính khi `draft` → cộng amount của các detail thuộc nhóm `active` → yêu cầu dữ liệu OT đã đồng bộ → gọi `PayrollCalculator.Calculate` → cập nhật tổng phụ cấp, khấu trừ, OT pay, gross, net, trạng thái `calculated` và thời điểm tính → lưu → trả snapshot kết quả tính.
+  Tìm payroll, kỳ lương và nạp các nhóm phụ cấp/khấu trừ cùng detail → chỉ cho tính khi `draft`, OT đã đồng bộ và bảng công Attendance đã khóa, đúng kỳ → tự thêm một detail phụ cấp cố định nếu có danh mục active `Phụ cấp thâm niên`, nhân viên có ngày bắt đầu làm việc từ HR và đã đủ một năm tính đến cuối kỳ → tự thêm detail khấu trừ bằng `DefaultRate` của danh mục active `Phạt đi muộn / về sớm` nhân số lần đi trễ → cộng amount các detail active → gọi `PayrollCalculator.Calculate` → cập nhật tổng phụ cấp, khấu trừ, OT pay, gross, net, trạng thái `calculated` và thời điểm tính → lưu → trả snapshot kết quả tính. HR cung cấp `EmploymentStartDate` từ WorkHistory; nếu chưa cấu hình danh mục thâm niên thì bỏ qua phụ cấp này.
 - `PayrollCalculator.Calculate(...) -> PayrollCalculationResult`
   Đầu vào gồm loại nhân viên, lương tháng hoặc đơn giá giờ, ngày công chuẩn/thực tế, giờ làm, giờ OT, hệ số OT, phụ cấp, khấu trừ và phụ cấp dự án. Hàm kiểm tra số âm/đầu vào không hợp lệ, sau đó:
   - Full-time: lương theo công = lương cơ bản × ngày làm / công chuẩn; giá giờ OT = lương cơ bản / (công chuẩn × 8).
   - Part-time: lương thường = đơn giá giờ × tổng giờ; giá giờ OT bằng đơn giá giờ.
   - OT pay = giá giờ OT × giờ OT × hệ số OT.
   - Tổng phụ cấp cộng thêm phụ cấp dự án; gross = lương theo công + tổng phụ cấp + OT; net = gross − khấu trừ.
+  - Các hàm hỗ trợ tính thâm niên theo năm làm việc trọn vẹn và khấu trừ theo số lần đi trễ cùng mức cố định cấu hình.
   Các số tiền được làm tròn 2 chữ số theo `MidpointRounding.AwayFromZero`. Hàm này không dùng EF.
 - `PayrollCalculationResult`
   Chứa `ProratedSalary`, `OTPay`, `TotalAllowance`, `TotalPayCut`, `GrossSalary`, `NetSalary`; đây là kiểu kết quả, không có phương thức nghiệp vụ.

@@ -1,8 +1,59 @@
-﻿namespace Payroll.Application.Services.PayrollCalculation;
+﻿using System;
+
+namespace Payroll.Application.Services.PayrollCalculation;
 
 public class PayrollCalculator
 {
     private const decimal StandardWorkingHoursPerDay = 8m;
+
+    public int CalculateCompletedServiceYears(DateOnly? employmentStartDate, DateOnly periodEndDate)
+    {
+        if (!employmentStartDate.HasValue || employmentStartDate.Value > periodEndDate)
+        {
+            return 0;
+        }
+
+        int completedYears = periodEndDate.Year - employmentStartDate.Value.Year;
+        if (employmentStartDate.Value.AddYears(completedYears) > periodEndDate)
+        {
+            completedYears--;
+        }
+
+        return completedYears;
+    }
+
+    public decimal CalculateSeniorityAllowance(
+        DateOnly? employmentStartDate,
+        DateOnly periodEndDate,
+        decimal fixedMonthlyRate)
+    {
+        if (fixedMonthlyRate < 0)
+        {
+            throw new ArgumentException("Seniority allowance cannot be negative.");
+        }
+
+        return CalculateCompletedServiceYears(employmentStartDate, periodEndDate) >= 1
+            ? Math.Round(fixedMonthlyRate, 2, MidpointRounding.AwayFromZero)
+            : 0m;
+    }
+
+    public decimal CalculateLateDeduction(int lateOccurrences, decimal ratePerOccurrence)
+    {
+        if (lateOccurrences < 0)
+        {
+            throw new ArgumentException("Late occurrences cannot be negative.");
+        }
+
+        if (ratePerOccurrence < 0)
+        {
+            throw new ArgumentException("Late deduction rate cannot be negative.");
+        }
+
+        return Math.Round(
+            lateOccurrences * ratePerOccurrence,
+            2,
+            MidpointRounding.AwayFromZero);
+    }
 
     public PayrollCalculationResult Calculate(
         string employmentType,
