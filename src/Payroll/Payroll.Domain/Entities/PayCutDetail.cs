@@ -13,4 +13,12 @@ public class PayCutDetail
     // Relationships
     public PayCut? PayCut { get; set; }
     public PayCutReason? PayCutReason { get; set; }
+
+    public decimal ComputeAmount(decimal baseSalary)
+    {
+        if (PayCutReason != null && PayCutReason.IsPercentage())
+            return Math.Round(baseSalary * RateApplied, 2, MidpointRounding.AwayFromZero);
+
+        return Amount != 0m ? Amount : RateApplied;
+    }
 }

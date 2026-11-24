@@ -11,4 +11,14 @@ public class PayCutReason
 
     // Relationships
     public List<PayCutDetail> PayCutDetails { get; set; } = new();
+
+    public bool IsActive()
+    {
+        return string.Equals(Status, "active", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public bool IsPercentage()
+    {
+        return string.Equals(CalculationType, "percentage", StringComparison.OrdinalIgnoreCase);
+    }
 }
