@@ -10,6 +10,46 @@ namespace HR.Tests;
 public sealed class LifecycleConcurrencyTests
 {
     [Fact]
+    public async Task AddingContract_AdvancesTheTrackedEmployeeVersionWithoutPersonalFieldChanges()
+    {
+        await using var db = Context();
+        var employee = new FullTimeEmployee { EmployeeId = Id(61), Version = 8 };
+        db.Attach(employee);
+        db.EmploymentContracts.Add(new() { EmployeeId = employee.EmployeeId, Employee = employee, ContractNumber = "HD-NEW" });
+
+        await db.SaveChangesAsync();
+
+        Assert.Equal(9, employee.Version);
+    }
+
+    [Fact]
+    public async Task UpdatingContract_AlsoAdvancesEmployeeVersionToConflictWithConcurrentOffboarding()
+    {
+        await using var db = Context();
+        var employee = new FullTimeEmployee { EmployeeId = Id(62), Version = 4 };
+        var contract = new EmploymentContract { EmployeeId = employee.EmployeeId, Employee = employee, StartDate = new(2026, 1, 1), EndDate = new(2026, 11, 1) };
+        db.Attach(contract);
+        contract.EndDate = new(2026, 12, 1);
+
+        await db.SaveChangesAsync();
+
+        Assert.Equal(5, employee.Version);
+    }
+
+    [Fact]
+    public async Task AddedEmployeeAndInitialContract_KeepTheInitialEmployeeVersion()
+    {
+        await using var db = Context();
+        var employee = new FullTimeEmployee { EmployeeId = Id(63), Version = 1 };
+        db.Employees.Add(employee);
+        db.EmploymentContracts.Add(new() { EmployeeId = employee.EmployeeId, Employee = employee, ContractNumber = "HD-INITIAL" });
+
+        await db.SaveChangesAsync();
+
+        Assert.Equal(1, employee.Version);
+    }
+
+    [Fact]
     public async Task SaveChanges_PartTimeUsesTheInheritedConcurrencyVersion()
     {
         await using var db = Context();

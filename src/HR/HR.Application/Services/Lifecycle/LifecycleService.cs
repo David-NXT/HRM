@@ -5,6 +5,7 @@ using HR.Application.Interfaces.Services;
 using HR.Domain.Constants;
 using HR.Domain.Entities;
 using HR.Application.Exceptions;
+using HR.Domain.Rules;
 namespace HR.Application.Services.Lifecycle;
 
 public sealed class LifecycleService(
@@ -185,6 +186,7 @@ public sealed class LifecycleService(
         return ToDto(record);
     }
 
+    // Xác nhận nghỉ việc khi đủ bàn giao; lưu trạng thái nhân viên, công tác, hợp đồng và hồ sơ nghỉ việc trong cùng giao dịch.
     public async Task<OffboardingDto> CompleteOffboardingAsync(Guid id, CompleteOffboardingRequest request, CancellationToken cancellationToken)
     {
         var record = await GetRecordAsync(id, cancellationToken);
@@ -205,11 +207,13 @@ public sealed class LifecycleService(
         var employee = record.Employee ?? await GetEmployeeAsync(record.EmployeeId, cancellationToken);
         EnsureNotResigned(employee);
         var history = await ValidateLastWorkingDateAsync(employee, record.LastWorkingDate, cancellationToken);
+        var contracts = await lifecycle.GetContractsAsync(employee.EmployeeId, cancellationToken);
         foreach (var assignment in history.Where(item => item.EndDate == null || item.EndDate > record.LastWorkingDate))
         {
             assignment.EndDate = record.LastWorkingDate;
         }
         var now = clock.GetUtcNow().UtcDateTime;
+        ContractRules.CloseForDeparture(contracts, record.LastWorkingDate, now);
         employee.Status = EmployeeStatuses.Resigned;
         employee.UpdatedAt = now;
         record.Status = LifecycleStatuses.Completed;

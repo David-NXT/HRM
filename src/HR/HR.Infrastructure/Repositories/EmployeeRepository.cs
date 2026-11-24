@@ -110,9 +110,15 @@ public sealed class EmployeeRepository : IEmployeeRepository
             CountByEmploymentType(EmploymentTypes.PartTime));
     }
 
-    public async Task<Employee?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+    // Lấy entity có tracking để ghi; không tự thay đổi phân công chỉ vì truy vấn hồ sơ.
+    public Task<Employee?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
+        _db.Employees.Include(item => item.Department).Include(item => item.Position)
+            .FirstOrDefaultAsync(item => item.EmployeeId == id, cancellationToken);
+
+    // Tính phân công hiện tại trên bản đọc riêng, tránh tăng version ngoài ý muốn khi gửi đề xuất.
+    public async Task<Employee?> GetReadOnlyByIdAsync(Guid id, CancellationToken cancellationToken)
     {
-        var employee = await _db.Employees.Include(item => item.Department).Include(item => item.Position)
+        var employee = await _db.Employees.AsNoTracking().Include(item => item.Department).Include(item => item.Position)
             .FirstOrDefaultAsync(item => item.EmployeeId == id, cancellationToken);
         if (employee is not null)
         {
@@ -183,6 +189,7 @@ public sealed class EmployeeRepository : IEmployeeRepository
     private static string EscapeLike(string value) =>
         value.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
 
+    // Gắn công tác hôm nay lên các bản đọc không tracking, không đưa thay đổi suy ra theo ngày vào giao dịch ghi.
     private async Task ApplyCurrentWorkHistoryAsync(IReadOnlyList<Employee> employees, CancellationToken cancellationToken)
     {
         if (employees.Count == 0)
@@ -207,20 +214,8 @@ public sealed class EmployeeRepository : IEmployeeRepository
             {
                 continue;
             }
-            if (_db.Entry(employee).State != EntityState.Detached)
-            {
-                var department = _db.Departments.Local.FirstOrDefault(item => item.DepartmentId == current.DepartmentId)
-                    ?? _db.Attach(current.Department!).Entity;
-                var position = _db.Positions.Local.FirstOrDefault(item => item.PositionId == current.PositionId)
-                    ?? _db.Attach(current.Position!).Entity;
-                employee.Department = department;
-                employee.Position = position;
-            }
-            else
-            {
-                employee.Department = current.Department;
-                employee.Position = current.Position;
-            }
+            employee.Department = current.Department;
+            employee.Position = current.Position;
             employee.DepartmentId = current.DepartmentId;
             employee.PositionId = current.PositionId;
         }

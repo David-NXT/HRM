@@ -15,6 +15,7 @@ public sealed class ProfileUpdateRequestConfiguration : IEntityTypeConfiguration
         builder.Property(request => request.ChangesJson).HasColumnName("changes_json").HasColumnType("jsonb").IsRequired();
         builder.Property(request => request.Status).HasColumnName("status").HasMaxLength(20).IsRequired();
         builder.Property(request => request.Version).HasColumnName("version").HasDefaultValue(1).IsConcurrencyToken();
+        builder.Property(request => request.BaseEmployeeVersion).HasColumnName("base_employee_version");
         builder.Property(request => request.ReviewReason).HasColumnName("review_reason").HasMaxLength(1000);
         builder.Property(request => request.SubmittedAt).HasColumnName("submitted_at");
         builder.Property(request => request.ReviewedAt).HasColumnName("reviewed_at");

@@ -39,18 +39,72 @@
 </main>
 @await Html.PartialAsync("/Pages/Shared/_HrVietnameseLabels.cshtml")
 <script>
-const statusBox=document.querySelector('#status'),guidInput=document.querySelector('#employeeGuid'),profileForm=document.querySelector('#profileForm'),requestBody=document.querySelector('#requests');let editingRequestId=null;
+const statusBox=document.querySelector('#status'),guidInput=document.querySelector('#employeeGuid'),profileForm=document.querySelector('#profileForm'),requestBody=document.querySelector('#requests');
+let editingRequestId=null,editingRequestVersion=null,loadedEmployeeVersion=null,loadedEmployeeId=null,busy=false;
 guidInput.value=localStorage.getItem('hrEmployeeGuid')||'';
 async function request(url,options={}){const headers={...(options.body instanceof FormData?{}:{'Content-Type':'application/json'}),...(guidInput.value?{'X-Employee-Guid':guidInput.value.trim()}:{}),...(options.headers||{})};const response=await fetch(url,{...options,headers});if(!response.ok){const body=await response.json().catch(()=>null);throw Error(body?.message||`Yêu cầu không thành công (HTTP ${response.status}).`)}return options.download?response.blob():await response.json().catch(()=>null)}
 function formChanges(){const data=Object.fromEntries(new FormData(profileForm));delete data.attachments;data.address=data.address.trim()||null;return data}
 function fillProfile(profile){for(const key of ['fullName','dateOfBirth','gender','email','phone','citizenId','address'])profileForm.elements[key].value=profile[key]??''}
-async function loadProfile(){try{localStorage.setItem('hrEmployeeGuid',guidInput.value.trim());const profile=await request('/me/profile');fillProfile(profile);document.querySelector('#employeeSummary').textContent=`${profile.employeeCode} — ${profile.fullName}`;await Promise.all([loadRequests(),loadNotifications()]);statusBox.textContent='Đã tải hồ sơ.'}catch(error){statusBox.textContent=hrErrorMessage(error)}}
-async function send(submit){const employeeGuid=guidInput.value.trim();if(!employeeGuid){statusBox.textContent='Vui lòng nhập mã định danh nhân viên (GUID) trước.';return}const data=new FormData();data.append('ChangesJson',JSON.stringify(formChanges()));data.append('Submit',String(submit));for(const file of profileForm.elements.attachments.files)data.append('Attachments',file);try{const url=editingRequestId?`/me/update-requests/${editingRequestId}`:'/me/update-requests';await request(url,{method:editingRequestId?'PUT':'POST',body:data});editingRequestId=null;profileForm.reset();await loadProfile();statusBox.textContent=submit?'Đã gửi yêu cầu.':'Đã lưu bản nháp.'}catch(error){statusBox.textContent=hrErrorMessage(error)}}
+// Khóa thao tác ghi/đổi định danh trong lúc tải hoặc gửi, tránh gắn nội dung của người này sang người khác.
+function setBusy(value){busy=value;guidInput.disabled=value;document.querySelector('#loadProfile').disabled=value;for(const field of profileForm.elements)field.disabled=value}
+function clearEditing(){editingRequestId=null;editingRequestVersion=null;loadedEmployeeVersion=null;loadedEmployeeId=null}
+// Lưu version cùng đúng hồ sơ đang hiển thị, không tự thay version khi gửi một nội dung cũ.
+function displayProfile(profile,employeeGuid){fillProfile(profile);loadedEmployeeVersion=profile.version;loadedEmployeeId=employeeGuid.toLowerCase();document.querySelector('#employeeSummary').textContent=`${profile.employeeCode} — ${profile.fullName}`}
+// Tải lại hồ sơ làm điểm bắt đầu cho một đề xuất mới; lỗi tải thì không cho dùng dữ liệu cũ để gửi.
+async function loadProfile(){
+    if(busy)return;
+    clearEditing();setBusy(true);
+    try{
+        const employeeGuid=guidInput.value.trim();
+        localStorage.setItem('hrEmployeeGuid',employeeGuid);
+        const profile=await request('/me/profile');
+        displayProfile(profile,employeeGuid);profileForm.elements.attachments.value='';
+        await Promise.all([loadRequests(),loadNotifications()]);
+        statusBox.textContent='Đã tải hồ sơ mới nhất. Bạn có thể nhập nội dung muốn thay đổi.';
+    }catch(error){statusBox.textContent=hrErrorMessage(error)}finally{setBusy(false)}
+}
+// Gửi phiên bản hồ sơ đã đọc và phiên bản bản nháp; API từ chối nếu một trong hai đã thay đổi.
+async function send(submit){
+    if(busy)return;
+    const employeeGuid=guidInput.value.trim();
+    if(!loadedEmployeeVersion||employeeGuid.toLowerCase()!==loadedEmployeeId){statusBox.textContent='Hãy bấm Tải hồ sơ trước khi soạn yêu cầu.';return}
+    if(!profileForm.reportValidity())return;
+    const data=new FormData();
+    data.append('ChangesJson',JSON.stringify(formChanges()));data.append('Submit',String(submit));
+    data.append('ExpectedEmployeeVersion',String(loadedEmployeeVersion));
+    if(editingRequestVersion)data.append('ExpectedRequestVersion',String(editingRequestVersion));
+    for(const file of profileForm.elements.attachments.files)data.append('Attachments',file);
+    const url=editingRequestId?`/me/update-requests/${editingRequestId}`:'/me/update-requests',method=editingRequestId?'PUT':'POST';
+    setBusy(true);
+    try{
+        await request(url,{method,body:data});
+        clearEditing();profileForm.reset();
+        const profile=await request('/me/profile');displayProfile(profile,employeeGuid);
+        await Promise.all([loadRequests(),loadNotifications()]);
+        statusBox.textContent=submit?'Đã gửi yêu cầu.':'Đã lưu bản nháp.';
+    }catch(error){statusBox.textContent=hrErrorMessage(error)}finally{setBusy(false)}
+}
+// Đọc lại cả bản nháp và hồ sơ; nếu baseline cũ thì mở thông tin mới và yêu cầu nhập lại thay đổi có chủ đích.
+async function editRequest(item){
+    if(busy)return;
+    clearEditing();setBusy(true);
+    try{
+        const [profile,items]=await Promise.all([request('/me/profile'),request('/me/update-requests')]);
+        const current=items.find(value=>value.profileUpdateRequestId===item.profileUpdateRequestId);
+        if(!current||!['DRAFT','NEED_INFO'].includes(current.status))throw Error('Yêu cầu không còn cho phép sửa. Hãy tải lại danh sách.');
+        const stale=current.baseEmployeeVersion!==profile.version;
+        displayProfile(profile,guidInput.value.trim());
+        editingRequestId=current.profileUpdateRequestId;editingRequestVersion=current.version;
+        fillProfile(stale?profile:current.changes);profileForm.elements.attachments.value='';
+        statusBox.textContent=stale?'Hồ sơ đã thay đổi. Đã mở thông tin mới nhất; hãy đối chiếu và nhập lại các thay đổi bạn muốn đề xuất trước khi gửi.':'Đang sửa bản nháp/yêu cầu cần bổ sung.';
+        window.scrollTo({top:profileForm.offsetTop,behavior:'smooth'});
+    }catch(error){statusBox.textContent=hrErrorMessage(error)}finally{setBusy(false)}
+}
 function addCell(row,text){const cell=document.createElement('td');cell.textContent=text??'';row.append(cell);return cell}
 async function downloadEvidence(requestId,attachmentId,fileName){try{const blob=await request(`/me/update-requests/${requestId}/attachments/${attachmentId}`,{download:true});const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=fileName;link.click();URL.revokeObjectURL(link.href)}catch(error){statusBox.textContent=hrErrorMessage(error)}}
-async function loadRequests(){const items=await request('/me/update-requests');requestBody.replaceChildren();for(const item of items){const row=document.createElement('tr');addCell(row,item.profileUpdateRequestId);addCell(row,hrLabel(item.status));addCell(row,item.submittedAt||'—');addCell(row,item.reviewReason||'');const actions=addCell(row,'');actions.className='actions';for(const attachment of item.attachments){const button=document.createElement('button');button.type='button';button.className='secondary';button.textContent='Tải minh chứng';button.title=attachment.originalFileName;button.onclick=()=>downloadEvidence(item.profileUpdateRequestId,attachment.profileUpdateAttachmentId,attachment.originalFileName);actions.append(button)}if(item.status==='DRAFT'||item.status==='NEED_INFO'){const edit=document.createElement('button');edit.type='button';edit.className='secondary';edit.textContent='Sửa';edit.onclick=()=>{editingRequestId=item.profileUpdateRequestId;fillProfile(item.changes);window.scrollTo({top:profileForm.offsetTop,behavior:'smooth'})};actions.append(edit)}if(item.status==='DRAFT'||item.status==='PENDING'){const cancel=document.createElement('button');cancel.type='button';cancel.className='danger';cancel.textContent='Hủy';cancel.onclick=async()=>{try{await request(`/me/update-requests/${item.profileUpdateRequestId}/cancel`,{method:'POST'});await loadRequests()}catch(error){statusBox.textContent=hrErrorMessage(error)}};actions.append(cancel)}requestBody.append(row)}}
+async function loadRequests(){const items=await request('/me/update-requests');requestBody.replaceChildren();for(const item of items){const row=document.createElement('tr');addCell(row,item.profileUpdateRequestId);addCell(row,hrLabel(item.status));addCell(row,item.submittedAt||'—');addCell(row,item.reviewReason||'');const actions=addCell(row,'');actions.className='actions';for(const attachment of item.attachments){const button=document.createElement('button');button.type='button';button.className='secondary';button.textContent='Tải minh chứng';button.title=attachment.originalFileName;button.onclick=()=>downloadEvidence(item.profileUpdateRequestId,attachment.profileUpdateAttachmentId,attachment.originalFileName);actions.append(button)}if(item.status==='DRAFT'||item.status==='NEED_INFO'){const edit=document.createElement('button');edit.type='button';edit.className='secondary';edit.textContent='Sửa';edit.onclick=()=>editRequest(item);actions.append(edit)}if(item.status==='DRAFT'||item.status==='PENDING'){const cancel=document.createElement('button');cancel.type='button';cancel.className='danger';cancel.textContent='Hủy';cancel.onclick=async()=>{if(busy)return;setBusy(true);try{await request(`/me/update-requests/${item.profileUpdateRequestId}/cancel`,{method:'POST'});if(editingRequestId===item.profileUpdateRequestId)clearEditing();await loadRequests()}catch(error){statusBox.textContent=hrErrorMessage(error)}finally{setBusy(false)}};actions.append(cancel)}requestBody.append(row)}}
 async function loadNotifications(){const items=await request('/me/notifications');const root=document.querySelector('#notifications');root.replaceChildren();if(!items.length){root.textContent='Chưa có thông báo.';return}for(const item of items){const div=document.createElement('div');div.className='notice';div.textContent=`${item.title}: ${item.message} (${new Date(item.createdAt).toLocaleString('vi-VN')})`;root.append(div)}}
-document.querySelector('#loadProfile').onclick=loadProfile;document.querySelector('#saveDraft').onclick=()=>send(false);profileForm.onsubmit=event=>{event.preventDefault();send(true)};if(guidInput.value)loadProfile();
+document.querySelector('#loadProfile').onclick=loadProfile;document.querySelector('#saveDraft').onclick=()=>send(false);profileForm.onsubmit=event=>{event.preventDefault();send(true)};guidInput.oninput=()=>{clearEditing();requestBody.replaceChildren();document.querySelector('#notifications').replaceChildren();document.querySelector('#employeeSummary').textContent='';statusBox.textContent='Hãy tải hồ sơ của nhân viên vừa chọn trước khi soạn yêu cầu.'};if(guidInput.value)loadProfile();
 </script>
 </body>
 </html>

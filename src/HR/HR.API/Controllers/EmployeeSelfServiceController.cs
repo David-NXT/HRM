@@ -33,6 +33,7 @@ public sealed class EmployeeSelfServiceController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<ProfileUpdateRequestDto>>> ListRequests(CancellationToken cancellationToken) =>
         Ok(await _updates.ListOwnedAsync(CurrentEmployeeId(), cancellationToken));
 
+    // Nhận đề xuất kèm phiên bản hồ sơ mà nhân viên đã đọc trước khi nhập thay đổi.
     [HttpPost("update-requests")]
     [RequestSizeLimit(55_000_000)]
     public async Task<ActionResult<ProfileUpdateRequestDto>> CreateRequest(
@@ -43,7 +44,8 @@ public sealed class EmployeeSelfServiceController : ControllerBase
         var (uploads, streams) = OpenUploads(form.Attachments);
         try
         {
-            var created = await _updates.CreateAsync(CurrentEmployeeId(), changes, form.Submit, uploads, cancellationToken);
+            var created = await _updates.CreateAsync(CurrentEmployeeId(), changes, form.Submit, uploads, cancellationToken,
+                form.ExpectedEmployeeVersion);
             return StatusCode(StatusCodes.Status201Created, created);
         }
         finally
@@ -52,6 +54,7 @@ public sealed class EmployeeSelfServiceController : ControllerBase
         }
     }
 
+    // Gửi lại bản nháp/bổ sung kèm hai phiên bản để chặn ghi nội dung từ một form đã cũ.
     [HttpPut("update-requests/{requestId:guid}")]
     [RequestSizeLimit(55_000_000)]
     public async Task<ActionResult<ProfileUpdateRequestDto>> UpdateRequest(
@@ -63,7 +66,8 @@ public sealed class EmployeeSelfServiceController : ControllerBase
         var (uploads, streams) = OpenUploads(form.Attachments);
         try
         {
-            return Ok(await _updates.UpdateAsync(CurrentEmployeeId(), requestId, changes, form.Submit, uploads, cancellationToken));
+            return Ok(await _updates.UpdateAsync(CurrentEmployeeId(), requestId, changes, form.Submit, uploads, cancellationToken,
+                form.ExpectedEmployeeVersion, form.ExpectedRequestVersion));
         }
         finally
         {
@@ -150,6 +154,10 @@ public sealed class EmployeeSelfServiceController : ControllerBase
 
 public sealed class ProfileUpdateForm
 {
+    public int? ExpectedEmployeeVersion { get; set; }
+
+    public int? ExpectedRequestVersion { get; set; }
+
     [Required]
     public string ChangesJson { get; set; } = string.Empty;
 
