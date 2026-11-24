@@ -21,7 +21,7 @@ public class PayrollCatalogService
         bool activeOnly,
         CancellationToken cancellationToken = default)
     {
-        var query = _context.AllowanceTypes.AsNoTracking();
+        IQueryable<AllowanceType> query = _context.AllowanceTypes.AsNoTracking();
         if (activeOnly)
         {
             query = query.Where(item => item.Status == "active");
@@ -45,7 +45,7 @@ public class PayrollCatalogService
         bool activeOnly,
         CancellationToken cancellationToken = default)
     {
-        var query = _context.PayCutReasons.AsNoTracking();
+        IQueryable<PayCutReason> query = _context.PayCutReasons.AsNoTracking();
         if (activeOnly)
         {
             query = query.Where(item => item.Status == "active");
@@ -72,7 +72,7 @@ public class PayrollCatalogService
         Validate(request);
         await EnsureUniqueNameAsync(request.Name, null, true, cancellationToken);
 
-        var item = new AllowanceType();
+        AllowanceType item = new AllowanceType();
         Apply(item, request);
         _context.AllowanceTypes.Add(item);
         await _context.SaveChangesAsync(cancellationToken);
@@ -85,7 +85,7 @@ public class PayrollCatalogService
         CancellationToken cancellationToken = default)
     {
         Validate(request);
-        var item = await _context.AllowanceTypes.FirstOrDefaultAsync(
+        AllowanceType item = await _context.AllowanceTypes.FirstOrDefaultAsync(
             value => value.AllowanceTypeID == id,
             cancellationToken) ?? throw new KeyNotFoundException("Không tìm thấy loại phụ cấp.");
         await EnsureUniqueNameAsync(request.Name, id, true, cancellationToken);
@@ -99,7 +99,7 @@ public class PayrollCatalogService
         Guid id,
         CancellationToken cancellationToken = default)
     {
-        var item = await _context.AllowanceTypes.FirstOrDefaultAsync(
+        AllowanceType item = await _context.AllowanceTypes.FirstOrDefaultAsync(
             value => value.AllowanceTypeID == id,
             cancellationToken) ?? throw new KeyNotFoundException("Không tìm thấy loại phụ cấp.");
         item.Status = "inactive";
@@ -113,7 +113,7 @@ public class PayrollCatalogService
         Validate(request);
         await EnsureUniqueNameAsync(request.Name, null, false, cancellationToken);
 
-        var item = new PayCutReason();
+        PayCutReason item = new PayCutReason();
         Apply(item, request);
         _context.PayCutReasons.Add(item);
         await _context.SaveChangesAsync(cancellationToken);
@@ -126,7 +126,7 @@ public class PayrollCatalogService
         CancellationToken cancellationToken = default)
     {
         Validate(request);
-        var item = await _context.PayCutReasons.FirstOrDefaultAsync(
+        PayCutReason item = await _context.PayCutReasons.FirstOrDefaultAsync(
             value => value.PayCutReasonID == id,
             cancellationToken) ?? throw new KeyNotFoundException("Không tìm thấy khoản khấu trừ.");
         await EnsureUniqueNameAsync(request.Name, id, false, cancellationToken);
@@ -140,7 +140,7 @@ public class PayrollCatalogService
         Guid id,
         CancellationToken cancellationToken = default)
     {
-        var item = await _context.PayCutReasons.FirstOrDefaultAsync(
+        PayCutReason item = await _context.PayCutReasons.FirstOrDefaultAsync(
             value => value.PayCutReasonID == id,
             cancellationToken) ?? throw new KeyNotFoundException("Không tìm thấy khoản khấu trừ.");
         item.Status = "inactive";
@@ -153,11 +153,11 @@ public class PayrollCatalogService
         bool isAllowance,
         CancellationToken cancellationToken)
     {
-        var normalizedName = name.Trim().ToLower();
+        string normalizedName = name.Trim().ToLower();
         bool exists;
         if (isAllowance)
         {
-            var query = _context.AllowanceTypes.Where(item => item.Name.ToLower() == normalizedName);
+            IQueryable<AllowanceType> query = _context.AllowanceTypes.Where(item => item.Name.ToLower() == normalizedName);
             if (exceptID.HasValue)
             {
                 query = query.Where(item => item.AllowanceTypeID != exceptID.Value);
@@ -166,7 +166,7 @@ public class PayrollCatalogService
         }
         else
         {
-            var query = _context.PayCutReasons.Where(item => item.Name.ToLower() == normalizedName);
+            IQueryable<PayCutReason> query = _context.PayCutReasons.Where(item => item.Name.ToLower() == normalizedName);
             if (exceptID.HasValue)
             {
                 query = query.Where(item => item.PayCutReasonID != exceptID.Value);

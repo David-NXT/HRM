@@ -67,7 +67,8 @@ public sealed class EmployeeService : IEmployeeService
             throw new HrException(404, "EmployeeNotFound", "Không tìm thấy hồ sơ.");
         }
 
-        return ToDto(employee);
+        DateOnly? employmentStartDate = await _employees.GetEmploymentStartDateAsync(id, cancellationToken);
+        return ToDto(employee) with { EmploymentStartDate = employmentStartDate };
     }
 
     public async Task<EmployeeDto> CreateAsync(CreateEmployeeRequest request, CancellationToken cancellationToken)

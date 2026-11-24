@@ -158,6 +158,8 @@ public sealed class ProfileUpdateVersionTests
         public string? LastFilter { get; private set; }
         public Task<Employee?> GetByIdAsync(Guid id, CancellationToken ct) => Task.FromResult<Employee?>(id == Employee.EmployeeId ? Employee : null);
         public Task<Employee?> GetReadOnlyByIdAsync(Guid id, CancellationToken ct) => GetByIdAsync(id, ct);
+        public Task<DateOnly?> GetEmploymentStartDateAsync(Guid employeeId, CancellationToken ct) =>
+            Task.FromResult<DateOnly?>(null);
         public Task<ProfileUpdateRequest?> GetRequestAsync(Guid id, CancellationToken ct) => Task.FromResult(Request?.ProfileUpdateRequestId == id ? Request : null);
         public Task<ProfileUpdateRequest?> GetOwnedRequestAsync(Guid id, Guid employeeId, CancellationToken ct) => GetRequestAsync(id, ct);
         public Task AddRequestAsync(ProfileUpdateRequest request, CancellationToken ct) { Request = request; return Task.CompletedTask; }

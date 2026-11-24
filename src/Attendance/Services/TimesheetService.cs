@@ -219,7 +219,10 @@ public class TimesheetService : ITimesheetService
 
         int actualWorkingDays = records.Count(r => r.WorkHour > 0);
         decimal totalWorkingHours = records.Sum(r => r.WorkHour);
-        int lateOccurrences = records.Count(r => r.IsLate);
+        int lateOccurrences = records.Count(r =>
+            r.IsLate ||
+            r.LateMins > 0 ||
+            string.Equals(r.Status, "Late", StringComparison.OrdinalIgnoreCase));
         int totalLateMinutes = records.Sum(r => r.LateMins);
         int earlyLeaveOccurrences = records.Count(r => r.IsEarlyLeave);
         int totalEarlyLeaveMinutes = records.Sum(r => r.EarlyLeaveMins);

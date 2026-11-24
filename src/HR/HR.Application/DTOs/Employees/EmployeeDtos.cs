@@ -50,7 +50,10 @@ public sealed record EmployeeDto(
     string EmploymentType,
     decimal? BaseSalary,
     [property: JsonPropertyName("partTimeSalary")] decimal? PartTimeHourlyRate,
-    int Version = 1);
+    int Version = 1)
+{
+    public DateOnly? EmploymentStartDate { get; init; }
+}
 
 public sealed record EmployeeDirectoryEntry(
     Guid EmployeeId,

@@ -1,5 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Payroll.Application.Interfaces;
+using Payroll.Application.DTOs.HR;
+using Payroll.Application.DTOs.ProjectPayroll;
+using PayrollEntity = global::Payroll.Domain.Entities.Payroll;
+using PayrollPeriodEntity = global::Payroll.Domain.Entities.PayrollPeriod;
 
 namespace Payroll.Application.Services.PayrollSalarySync;
 
@@ -24,7 +28,7 @@ public class PayrollSalarySyncService
         CancellationToken cancellationToken = default)
     {
         // 1. Find payroll period.
-        var period = await _context.PayrollPeriods
+        PayrollPeriodEntity? period = await _context.PayrollPeriods
             .FirstOrDefaultAsync(
                 p => p.PayrollPeriodID == payrollPeriodID,
                 cancellationToken);
@@ -45,7 +49,7 @@ public class PayrollSalarySyncService
         }
 
         // 2. Load payroll records.
-        var payrolls = await _context.Payrolls
+        List<PayrollEntity> payrolls = await _context.Payrolls
             .Where(p => p.PayrollPeriodID == payrollPeriodID)
             .ToListAsync(cancellationToken);
 
@@ -56,7 +60,7 @@ public class PayrollSalarySyncService
         }
 
         // 3. Validate payroll statuses before calling HR API.
-        foreach (var payroll in payrolls)
+        foreach (PayrollEntity payroll in payrolls)
         {
             if (!string.Equals(
                     payroll.Status,
@@ -69,16 +73,20 @@ public class PayrollSalarySyncService
         }
 
         // 4. Retrieve and validate employee salary information.
-        var salaryByEmployee = new Dictionary<Guid, (
+        List<(Guid EmployeeID,
             string EmploymentType,
             decimal BaseSalary,
-            decimal? HourlyRate)>();
+            decimal? HourlyRate)> salaryByEmployee =
+            new List<(Guid EmployeeID,
+                string EmploymentType,
+                decimal BaseSalary,
+                decimal? HourlyRate)>();
 
-        foreach (var payroll in payrolls)
+        foreach (PayrollEntity payroll in payrolls)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var employee = await _hrClient.GetEmployeeAsync(
+            HREmployeeResponse? employee = await _hrClient.GetEmployeeAsync(
                 payroll.EmployeeID,
                 cancellationToken);
 
@@ -103,7 +111,7 @@ public class PayrollSalarySyncService
                     $"Employee {payroll.EmployeeID} is not active.");
             }
 
-            var employmentType = employee.EmploymentType
+            string employmentType = employee.EmploymentType
                 .Trim()
                 .ToUpperInvariant();
 
@@ -154,21 +162,21 @@ public class PayrollSalarySyncService
             }
 
             salaryByEmployee.Add(
-                payroll.EmployeeID,
-                (employmentType, baseSalary, hourlyRate));
+                (payroll.EmployeeID, employmentType, baseSalary, hourlyRate));
         }
 
         // 5. Retrieve approved project income for the payroll period.
-        var periodStart = new DateOnly(period.Year, period.Month, 1);
-        var periodEnd = periodStart.AddMonths(1).AddDays(-1);
-        var projectSummaries =
+        DateOnly periodStart = new DateOnly(period.Year, period.Month, 1);
+        DateOnly periodEnd = periodStart.AddMonths(1).AddDays(-1);
+        IReadOnlyList<ProjectAllowanceSummaryResponse> projectSummaries =
             await _projectClient.GetProjectAllowanceSummaryAsync(
                 periodStart,
                 periodEnd,
                 cancellationToken);
 
-        var projectAllowanceByEmployee = new Dictionary<Guid, decimal>();
-        foreach (var summary in projectSummaries)
+        List<(Guid EmployeeID, decimal TotalProjectIncome)> projectAllowanceByEmployee =
+            new List<(Guid EmployeeID, decimal TotalProjectIncome)>();
+        foreach (ProjectAllowanceSummaryResponse summary in projectSummaries)
         {
             if (summary.EmployeeId == Guid.Empty ||
                 summary.TotalProjectIncome < 0)
@@ -177,22 +185,37 @@ public class PayrollSalarySyncService
                     "Project Service returned an invalid project allowance summary.");
             }
 
-            projectAllowanceByEmployee[summary.EmployeeId] =
-                projectAllowanceByEmployee.GetValueOrDefault(summary.EmployeeId)
-                + summary.TotalProjectIncome;
+            int existingIndex = projectAllowanceByEmployee.FindIndex(
+                item => item.EmployeeID == summary.EmployeeId);
+            if (existingIndex < 0)
+            {
+                projectAllowanceByEmployee.Add(
+                    (summary.EmployeeId, summary.TotalProjectIncome));
+            }
+            else
+            {
+                projectAllowanceByEmployee[existingIndex] = (
+                    summary.EmployeeId,
+                    projectAllowanceByEmployee[existingIndex].TotalProjectIncome
+                    + summary.TotalProjectIncome);
+            }
         }
 
         // 6. Update payroll records only after all external data is valid.
-        foreach (var payroll in payrolls)
+        foreach (PayrollEntity payroll in payrolls)
         {
-            var salary = salaryByEmployee[payroll.EmployeeID];
+            (Guid EmployeeID, string EmploymentType, decimal BaseSalary, decimal? HourlyRate) salary =
+                salaryByEmployee.First(item => item.EmployeeID == payroll.EmployeeID);
 
             payroll.EmploymentType = salary.EmploymentType;
             payroll.BaseSalary = salary.BaseSalary;
             payroll.HourlyRate = salary.HourlyRate;
+            decimal projectAllowance = projectAllowanceByEmployee
+                .Where(item => item.EmployeeID == payroll.EmployeeID)
+                .Select(item => item.TotalProjectIncome)
+                .FirstOrDefault();
             payroll.TotalProjectAllowance = Math.Round(
-                projectAllowanceByEmployee.GetValueOrDefault(
-                    payroll.EmployeeID),
+                projectAllowance,
                 2,
                 MidpointRounding.AwayFromZero);
         }
