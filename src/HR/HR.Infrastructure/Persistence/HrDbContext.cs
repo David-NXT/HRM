@@ -33,9 +33,18 @@ public class HrDbContext : DbContext
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
 
+    // Dùng version nhân viên chung để bảo vệ cả ghi hồ sơ, hợp đồng và xác nhận nghỉ việc đồng thời.
     private void PrepareConcurrencyVersions()
     {
         ChangeTracker.DetectChanges();
+        var contractEmployeeIds = ChangeTracker.Entries<EmploymentContract>()
+            .Where(entry => entry.State is EntityState.Added or EntityState.Modified)
+            .Select(entry => entry.Entity.EmployeeId).ToHashSet();
+        foreach (var entry in ChangeTracker.Entries<Employee>()
+            .Where(entry => entry.State != EntityState.Added && contractEmployeeIds.Contains(entry.Entity.EmployeeId)))
+        {
+            entry.Property(employee => employee.UpdatedAt).IsModified = true;
+        }
         var changedChecklistRecords = ChangeTracker.Entries<OffboardingChecklistItem>()
             .Where(entry => entry.State == EntityState.Modified)
             .Select(entry => entry.Entity.OffboardingRecordId).ToHashSet();

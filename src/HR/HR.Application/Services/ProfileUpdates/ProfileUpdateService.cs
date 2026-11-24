@@ -40,14 +40,17 @@ public sealed class ProfileUpdateService
         _logger = logger;
     }
 
+    // Lưu yêu cầu dựa trên đúng phiên bản hồ sơ nhân viên đã đọc, chưa áp dụng đề xuất vào hồ sơ.
     public async Task<ProfileUpdateRequestDto> CreateAsync(
         Guid employeeId,
         UpdateEmployeeRequest changes,
         bool submit,
         IReadOnlyList<EvidenceUpload> uploads,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int? expectedEmployeeVersion = null)
     {
-        await EnsureActiveEmployeeAsync(employeeId, cancellationToken);
+        var employee = await EnsureActiveEmployeeAsync(employeeId, cancellationToken);
+        EnsureEmployeeVersion(employee, expectedEmployeeVersion);
         _employeeService.ValidatePersonalInfoUpdate(changes);
         ValidateChangesSize(changes);
         ValidateAttachmentCount(uploads.Count);
@@ -58,6 +61,7 @@ public sealed class ProfileUpdateService
             var request = new ProfileUpdateRequest
             {
                 EmployeeId = employeeId,
+                BaseEmployeeVersion = employee.Version,
                 ChangesJson = JsonSerializer.Serialize(changes, JsonOptions),
                 Status = submit ? ProfileUpdateStatuses.Pending : ProfileUpdateStatuses.Draft,
                 SubmittedAt = submit ? now : null,
@@ -76,13 +80,16 @@ public sealed class ProfileUpdateService
         }
     }
 
+    // Sửa/gửi lại nháp hoặc yêu cầu bổ sung; đối chiếu cả phiên bản yêu cầu và hồ sơ trước khi thay nội dung.
     public async Task<ProfileUpdateRequestDto> UpdateAsync(
         Guid employeeId,
         Guid requestId,
         UpdateEmployeeRequest changes,
         bool submit,
         IReadOnlyList<EvidenceUpload> uploads,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int? expectedEmployeeVersion = null,
+        int? expectedRequestVersion = null)
     {
         var request = await _requests.GetOwnedRequestAsync(requestId, employeeId, cancellationToken)
             ?? throw new HrException(404, "ProfileUpdateRequestNotFound", "Không tìm thấy yêu cầu cập nhật.");
@@ -90,6 +97,9 @@ public sealed class ProfileUpdateService
         {
             throw new HrException(409, "InvalidRequestState", "Chỉ có thể sửa bản nháp hoặc yêu cầu cần bổ sung thông tin.");
         }
+        EnsureRequestVersion(request, expectedRequestVersion);
+        var employee = await EnsureActiveEmployeeAsync(employeeId, cancellationToken);
+        EnsureEmployeeVersion(employee, expectedEmployeeVersion);
         _employeeService.ValidatePersonalInfoUpdate(changes);
         ValidateChangesSize(changes);
         ValidateAttachmentCount(request.Attachments.Count + uploads.Count);
@@ -98,6 +108,7 @@ public sealed class ProfileUpdateService
         {
             var now = DateTime.UtcNow;
             request.ChangesJson = JsonSerializer.Serialize(changes, JsonOptions);
+            request.BaseEmployeeVersion = employee.Version;
             request.Status = submit
                 ? ProfileUpdateStatuses.Pending
                 : request.Status == ProfileUpdateStatuses.NeedInfo ? ProfileUpdateStatuses.NeedInfo : ProfileUpdateStatuses.Draft;
@@ -138,10 +149,12 @@ public sealed class ProfileUpdateService
         return requests.Select(ToDto).ToArray();
     }
 
+    // Trống mặc định hàng đợi PENDING; lựa chọn ALL chủ động bỏ lọc trạng thái để HR xem toàn bộ yêu cầu.
     public async Task<IReadOnlyList<ProfileUpdateRequestDto>> ListForReviewAsync(string? status, CancellationToken cancellationToken)
     {
-        var normalizedStatus = string.IsNullOrWhiteSpace(status) ? ProfileUpdateStatuses.Pending : status.Trim().ToUpperInvariant();
-        if (normalizedStatus is not (ProfileUpdateStatuses.Draft or ProfileUpdateStatuses.Pending
+        var normalizedStatus = string.IsNullOrWhiteSpace(status) ? ProfileUpdateStatuses.Pending
+            : status.Trim().Equals("ALL", StringComparison.OrdinalIgnoreCase) ? null : status.Trim().ToUpperInvariant();
+        if (normalizedStatus is not (null or ProfileUpdateStatuses.Draft or ProfileUpdateStatuses.Pending
             or ProfileUpdateStatuses.NeedInfo or ProfileUpdateStatuses.Approved
             or ProfileUpdateStatuses.Rejected or ProfileUpdateStatuses.Cancelled))
         {
@@ -158,6 +171,7 @@ public sealed class ProfileUpdateService
         return ToDto(request);
     }
 
+    // Duyệt đúng yêu cầu đã xem; chỉ cập nhật hồ sơ nếu hồ sơ chưa thay đổi từ lúc nhân viên soạn đề xuất.
     public async Task<ProfileUpdateRequestDto> ReviewAsync(
         Guid requestId,
         ReviewProfileUpdateRequest decision,
@@ -169,6 +183,7 @@ public sealed class ProfileUpdateService
         {
             throw new HrException(409, "InvalidRequestState", "Yêu cầu này không còn ở trạng thái chờ xử lý.");
         }
+        EnsureRequestVersion(request, decision.ExpectedVersion);
         var action = (decision.Decision ?? string.Empty).Trim().ToUpperInvariant();
         if (action is not ("APPROVE" or "REJECT" or "REQUEST_MORE_INFO"))
         {
@@ -188,6 +203,11 @@ public sealed class ProfileUpdateService
             ?? throw new HrException(404, "EmployeeNotFound", "Không tìm thấy hồ sơ nhân viên.");
         if (action == "APPROVE")
         {
+            if (employee.Status != EmployeeStatuses.Active)
+            {
+                throw new HrException(409, "EmployeeInactive", "Chỉ chấp thuận cập nhật cho nhân viên đang hoạt động.");
+            }
+            EnsureEmployeeVersion(employee, request.BaseEmployeeVersion);
             var changes = DeserializeChanges(request.ChangesJson);
             _employeeService.ApplyPersonalInfoUpdate(employee, changes);
             request.Status = ProfileUpdateStatuses.Approved;
@@ -347,11 +367,30 @@ public sealed class ProfileUpdateService
         UploadedAt = DateTime.UtcNow
     };
 
+    // Từ chối hồ sơ cũ hoặc thiếu phiên bản gốc; HR có thể yêu cầu nhân viên đối chiếu và gửi lại.
+    private static void EnsureEmployeeVersion(Employee employee, int? expectedVersion)
+    {
+        if (!expectedVersion.HasValue || employee.Version != expectedVersion.Value)
+        {
+            throw new HrException(409, "EmployeeProfileChanged", "Hồ sơ đã thay đổi hoặc yêu cầu thiếu phiên bản gốc. Hãy tải lại hồ sơ, đối chiếu và gửi lại yêu cầu; HR có thể yêu cầu bổ sung.");
+        }
+    }
+
+    // Ngăn lưu/duyệt một phiên bản yêu cầu đã bị sửa hoặc xử lý sau khi FE tải xuống.
+    private static void EnsureRequestVersion(ProfileUpdateRequest request, int? expectedVersion)
+    {
+        if (!expectedVersion.HasValue || request.Version != expectedVersion.Value)
+        {
+            throw new HrException(409, "ProfileUpdateChanged", "Yêu cầu đã thay đổi hoặc thiếu phiên bản. Hãy mở lại yêu cầu trước khi xử lý.");
+        }
+    }
+
+    // Công khai version yêu cầu và version hồ sơ gốc để FE gửi lại khi lưu hoặc duyệt.
     private static ProfileUpdateRequestDto ToDto(ProfileUpdateRequest request) =>
         new(request.ProfileUpdateRequestId, request.EmployeeId, DeserializeChanges(request.ChangesJson),
             request.Status, request.ReviewReason, request.SubmittedAt, request.ReviewedAt,
             request.CreatedAt, request.UpdatedAt,
             request.Attachments.Select(attachment => new ProfileUpdateAttachmentDto(
                 attachment.ProfileUpdateAttachmentId, attachment.OriginalFileName,
-                attachment.ContentType, attachment.Length, attachment.UploadedAt)).ToArray());
+                attachment.ContentType, attachment.Length, attachment.UploadedAt)).ToArray(), request.Version, request.BaseEmployeeVersion);
 }

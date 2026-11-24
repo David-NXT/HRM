@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Payroll.Application.DTOs.PayrollManagement;
 using Payroll.Application.Interfaces;
 using PayrollEntity = global::Payroll.Domain.Entities.Payroll;
+using PayrollPeriodEntity = global::Payroll.Domain.Entities.PayrollPeriod;
 
 namespace Payroll.Application.Services.PayrollManagement;
 
@@ -20,7 +21,7 @@ public class PayrollManagementService
         CancellationToken cancellationToken = default)
     {
         // 1. Validate employee IDs
-        var employeeIDs = request.EmployeeIDs
+        List<Guid> employeeIDs = request.EmployeeIDs
             .Where(id => id != Guid.Empty)
             .Distinct()
             .ToList();
@@ -40,7 +41,7 @@ public class PayrollManagementService
         }
 
         // 2. Find payroll period
-        var payrollPeriod = await _context.PayrollPeriods
+        PayrollPeriodEntity? payrollPeriod = await _context.PayrollPeriods
             .FirstOrDefaultAsync(
                 p => p.PayrollPeriodID == payrollPeriodID,
                 cancellationToken
@@ -62,7 +63,7 @@ public class PayrollManagementService
         }
 
         // 4. Find employees who already have payroll records
-        var existingEmployeeIDs = await _context.Payrolls
+        List<Guid> existingEmployeeIDs = await _context.Payrolls
             .Where(p =>
                 p.PayrollPeriodID == payrollPeriodID &&
                 employeeIDs.Contains(p.EmployeeID)
@@ -71,12 +72,12 @@ public class PayrollManagementService
             .ToListAsync(cancellationToken);
     
         // 5. Get employees who do not have payroll records
-        var newEmployeeIDs = employeeIDs
+        List<Guid> newEmployeeIDs = employeeIDs
             .Except(existingEmployeeIDs)
             .ToList();
 
         // 6. Create empty payroll records
-        var newPayrolls = newEmployeeIDs.Select(employeeID =>
+        List<PayrollEntity> newPayrolls = newEmployeeIDs.Select(employeeID =>
             new PayrollEntity
             {
                 PayrollPeriodID = payrollPeriodID,

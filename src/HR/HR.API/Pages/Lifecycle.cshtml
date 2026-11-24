@@ -170,6 +170,7 @@ function addChecklistInput() {
     const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'secondary'; remove.textContent = 'Xóa'; remove.onclick = () => row.remove();
     row.append(title, label, remove); root.append(row);
 }
+// Tiếp nhận hồ sơ và công tác đầu tiên; việc tạo hợp đồng được thực hiện tại trang hợp đồng riêng.
 onboardingForm.onsubmit = event => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(onboardingForm));

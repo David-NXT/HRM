@@ -284,40 +284,6 @@ namespace Attendance.Migrations
                     b.ToTable("AttendanceRules");
                 });
 
-            modelBuilder.Entity("Attendance.Models.Holiday", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateOnly>("Date")
-                        .HasColumnType("date");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text");
-
-                    b.Property<DateOnly?>("EndDate")
-                        .HasColumnType("date");
-
-                    b.Property<string>("HolidayType")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsPaid")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Holidays");
-                });
-
             modelBuilder.Entity("Attendance.Models.LeaveBalance", b =>
                 {
                     b.Property<Guid>("Id")

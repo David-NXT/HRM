@@ -5,7 +5,9 @@ public enum ContractPeriodState
     NotStarted,
     InEffect,
     ExpiringSoon,
-    Expired
+    Expired,
+    Terminated,
+    Cancelled
 }
 
 public enum ContractPeriodFilter
@@ -14,10 +16,12 @@ public enum ContractPeriodFilter
     InEffect,
     ExpiringSoon,
     Expired,
-    NotStarted
+    NotStarted,
+    Terminated,
+    Cancelled
 }
 
-// A view of the API record on one reference date. Never changes its stored ACTIVE/RENEWED status.
+// Hiển thị riêng hạn đã ký và tình trạng chấm dứt/hủy; không sửa dữ liệu hợp đồng gốc.
 public sealed record ContractDisplayRow(ContractRow Contract, DateOnly ReferenceDate)
 {
     public const int WarningDays = 30;
@@ -27,12 +31,25 @@ public sealed record ContractDisplayRow(ContractRow Contract, DateOnly Reference
     public DateOnly StartDate => Contract.StartDate;
     public DateOnly? EndDate => Contract.EndDate;
     public string Status => Contract.Status;
-    public string? Notes => Contract.Notes;
+    public string StatusLabel => Status switch
+    {
+        "ACTIVE" => "Đang quản lý (ACTIVE)",
+        "RENEWED" => "Đã gia hạn (RENEWED)",
+        "TERMINATED" => "Đã chấm dứt (TERMINATED)",
+        "CANCELLED" => "Đã hủy (CANCELLED)",
+        _ => Status
+    };
+    public DateOnly? ActualEndDate => Contract.ActualEndDate;
+    public string? TerminationReason => Contract.TerminationReason;
+    public string? Notes => string.IsNullOrWhiteSpace(TerminationReason) ? Contract.Notes
+        : string.Join(Environment.NewLine, new[] { Contract.Notes, TerminationReason }.Where(value => !string.IsNullOrWhiteSpace(value)));
 
     public ContractPeriodState PeriodState
     {
         get
         {
+            if (Status == "TERMINATED") return ContractPeriodState.Terminated;
+            if (Status == "CANCELLED") return ContractPeriodState.Cancelled;
             if (ReferenceDate < StartDate) return ContractPeriodState.NotStarted;
             if (EndDate is not DateOnly end) return ContractPeriodState.InEffect;
             var remaining = end.DayNumber - ReferenceDate.DayNumber;
@@ -49,6 +66,8 @@ public sealed record ContractDisplayRow(ContractRow Contract, DateOnly Reference
         ContractPeriodState.InEffect => "Đang hiệu lực",
         ContractPeriodState.ExpiringSoon => "Sắp hết hạn",
         ContractPeriodState.Expired => "Đã hết hạn",
+        ContractPeriodState.Terminated => "Đã chấm dứt",
+        ContractPeriodState.Cancelled => "Đã hủy",
         _ => throw new InvalidOperationException("Tình trạng thời hạn không hợp lệ.")
     };
 
@@ -56,6 +75,9 @@ public sealed record ContractDisplayRow(ContractRow Contract, DateOnly Reference
     {
         get
         {
+            if (PeriodState == ContractPeriodState.Cancelled) return "Hủy trước ngày bắt đầu";
+            if (PeriodState == ContractPeriodState.Terminated)
+                return ActualEndDate.HasValue ? $"Chấm dứt ngày {ActualEndDate:dd/MM/yyyy}" : "Đã chấm dứt";
             if (PeriodState == ContractPeriodState.NotStarted)
                 return $"Bắt đầu sau {StartDate.DayNumber - ReferenceDate.DayNumber} ngày";
             if (EndDate is not DateOnly end) return "Không thời hạn";
@@ -75,6 +97,8 @@ public sealed record ContractDisplayRow(ContractRow Contract, DateOnly Reference
         ContractPeriodFilter.ExpiringSoon => PeriodState == ContractPeriodState.ExpiringSoon,
         ContractPeriodFilter.Expired => PeriodState == ContractPeriodState.Expired,
         ContractPeriodFilter.NotStarted => PeriodState == ContractPeriodState.NotStarted,
+        ContractPeriodFilter.Terminated => PeriodState == ContractPeriodState.Terminated,
+        ContractPeriodFilter.Cancelled => PeriodState == ContractPeriodState.Cancelled,
         _ => true
     };
 }
@@ -83,7 +107,7 @@ public sealed record ContractCoverageSummary(string Text, bool HasEffectiveContr
 
 public static class ContractPresentation
 {
-    // RENEWED is not an end date: a predecessor can still cover today before its successor starts.
+    // Tính bao phủ theo ngày và loại hợp đồng đã hủy/chấm dứt; RENEWED vẫn có thể bao phủ hôm nay trước hợp đồng kế tiếp.
     public static ContractCoverageSummary Summarize(IReadOnlyList<ContractDisplayRow> contracts)
     {
         if (contracts.Count == 0) return new("Chưa có hợp đồng.", false);
@@ -92,8 +116,14 @@ public static class ContractPresentation
             return new($"Có {effective.Length} hợp đồng đang hiệu lực theo ngày: "
                 + string.Join(", ", effective.Select(contract => contract.ContractNumber)) + ".", true);
 
-        var lastEnd = contracts.Where(contract => contract.PeriodState == ContractPeriodState.Expired)
-            .Select(contract => contract.EndDate!.Value).OrderByDescending(date => date).FirstOrDefault();
+        var lastEnd = contracts.Select(contract => contract.PeriodState switch
+            {
+                ContractPeriodState.Expired => contract.EndDate,
+                ContractPeriodState.Terminated => contract.ActualEndDate,
+                _ => null
+            })
+            .Where(date => date.HasValue).Select(date => date!.Value)
+            .OrderByDescending(date => date).FirstOrDefault();
         var next = contracts.Where(contract => contract.PeriodState == ContractPeriodState.NotStarted)
             .OrderBy(contract => contract.StartDate).FirstOrDefault();
         var text = "Chưa có hợp đồng có hiệu lực hôm nay.";

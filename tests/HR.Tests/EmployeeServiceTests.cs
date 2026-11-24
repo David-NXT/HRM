@@ -82,6 +82,20 @@ public class EmployeeServiceTests
     }
 
     [Fact]
+    public async Task Get_ReturnsEmploymentStartDate()
+    {
+        var repository = new FakeEmployeeRepository();
+        var employee = new FullTimeEmployee { EmployeeId = Id(2) };
+        repository.Items.Add(employee);
+        repository.EmploymentStartDates[employee.EmployeeId] = new DateOnly(2020, 3, 1);
+
+        var result = await new EmployeeService(repository)
+            .GetAsync(employee.EmployeeId, CancellationToken.None);
+
+        Assert.Equal(new DateOnly(2020, 3, 1), result.EmploymentStartDate);
+    }
+
+    [Fact]
     public async Task Lock_MissingEmployee_ReturnsNotFound()
     {
         var service = new EmployeeService(new FakeEmployeeRepository());
@@ -257,6 +271,8 @@ public class EmployeeServiceTests
     {
         public List<Employee> Items { get; } = [];
 
+        public Dictionary<Guid, DateOnly> EmploymentStartDates { get; } = [];
+
         public int SaveCount { get; private set; }
 
         public bool FailOnSave { get; set; }
@@ -302,8 +318,14 @@ public class EmployeeServiceTests
             return Task.FromResult(stats);
         }
 
+        public Task<Employee?> GetReadOnlyByIdAsync(Guid id, CancellationToken cancellationToken) => GetByIdAsync(id, cancellationToken);
         public Task<Employee?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
             Task.FromResult(Items.FirstOrDefault(employee => employee.EmployeeId == id));
+
+        public Task<DateOnly?> GetEmploymentStartDateAsync(Guid employeeId, CancellationToken cancellationToken) =>
+            Task.FromResult(EmploymentStartDates.TryGetValue(employeeId, out DateOnly startDate)
+                ? (DateOnly?)startDate
+                : null);
 
         public Task<bool> HasRelatedRecordsAsync(Guid employeeId, CancellationToken cancellationToken) =>
             Task.FromResult(false);

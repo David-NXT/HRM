@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Payroll.Application.DTOs.PayrollApproval;
 using Payroll.Application.Interfaces;
+using PayrollEntity = global::Payroll.Domain.Entities.Payroll;
 
 namespace Payroll.Application.Services.PayrollApproval;
 
@@ -17,7 +18,7 @@ public class PayrollApprovalService
         Guid payrollID,
         CancellationToken cancellationToken = default)
     {
-        var payroll = await _context.Payrolls
+        PayrollEntity? payroll = await _context.Payrolls
             .FirstOrDefaultAsync(
                 p => p.PayrollID == payrollID,
                 cancellationToken

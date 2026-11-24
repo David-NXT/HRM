@@ -64,6 +64,7 @@ public class TimesheetService : ITimesheetService
             Status = "OPEN",
             CreatedAt = DateTime.UtcNow
         };
+        period.Open();
 
         _dbContext.TimesheetPeriods.Add(period);
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -79,10 +80,7 @@ public class TimesheetService : ITimesheetService
             return null;
         }
 
-        period.Status = "LOCKED";
-        period.LockedAt = DateTime.UtcNow;
-        period.LockedBy = string.IsNullOrWhiteSpace(lockedBy) ? "System" : lockedBy;
-        period.UpdatedAt = DateTime.UtcNow;
+        period.Lock(string.IsNullOrWhiteSpace(lockedBy) ? "System" : lockedBy);
 
         await _dbContext.SaveChangesAsync(cancellationToken);
         return MapToPeriodDto(period);
@@ -206,7 +204,7 @@ public class TimesheetService : ITimesheetService
             throw new KeyNotFoundException($"Không tìm thấy kỳ công với Id: {periodId}");
         }
 
-        if (string.Equals(period.Status, "LOCKED", StringComparison.OrdinalIgnoreCase))
+        if (!period.IsOpen())
         {
             throw new InvalidOperationException($"Kỳ công {period.Name} đã bị khóa, không thể tổng hợp lại.");
         }
@@ -217,9 +215,10 @@ public class TimesheetService : ITimesheetService
             .Where(r => r.EmployeeId == employeeId && r.Date >= period.StartDate && r.Date <= period.EndDate)
             .ToListAsync(cancellationToken);
 
-        int actualWorkingDays = records.Count(r => r.WorkHour > 0);
-        decimal totalWorkingHours = records.Sum(r => r.WorkHour);
-        int lateOccurrences = records.Count(r => r.IsLate);
+        int lateOccurrences = records.Count(r =>
+            r.IsLate ||
+            r.LateMins > 0 ||
+            string.Equals(r.Status, "Late", StringComparison.OrdinalIgnoreCase));
         int totalLateMinutes = records.Sum(r => r.LateMins);
         int earlyLeaveOccurrences = records.Count(r => r.IsEarlyLeave);
         int totalEarlyLeaveMinutes = records.Sum(r => r.EarlyLeaveMins);
@@ -258,7 +257,6 @@ public class TimesheetService : ITimesheetService
                         && o.Date <= period.EndDate)
             .ToListAsync(cancellationToken);
 
-        decimal totalOTHours = ots.Sum(o => o.ActualHours ?? o.PlannedHours);
 
         // 4. Tính số ngày công chuẩn trong tháng (loại trừ Thứ 7, Chủ Nhật)
         decimal standardWorkingDays = 0;
@@ -292,15 +290,15 @@ public class TimesheetService : ITimesheetService
         }
 
         summary.StandardWorkingDays = standardWorkingDays;
-        summary.ActualWorkingDays = actualWorkingDays;
-        summary.TotalWorkingHours = totalWorkingHours;
+        summary.CalculateWorkingDays(records);
+        summary.CalculateWorkingHours(records);
         summary.PaidLeaveDays = paidLeaveDays;
         summary.UnpaidLeaveDays = unpaidLeaveDays;
         summary.LateOccurrences = lateOccurrences;
         summary.TotalLateMinutes = totalLateMinutes;
         summary.EarlyLeaveOccurrences = earlyLeaveOccurrences;
         summary.TotalEarlyLeaveMinutes = totalEarlyLeaveMinutes;
-        summary.OTHours = totalOTHours;
+        summary.CalculateOTHours(ots);
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 

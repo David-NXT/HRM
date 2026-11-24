@@ -8,6 +8,43 @@ public sealed class ContractPresentationTests
     private static readonly DateOnly Today = new(2026, 11, 16);
 
     [Theory]
+    [InlineData("TERMINATED", ContractPeriodState.Terminated, ContractPeriodFilter.Terminated)]
+    [InlineData("CANCELLED", ContractPeriodState.Cancelled, ContractPeriodFilter.Cancelled)]
+    public void ClosedContracts_AreNeverCountedAsCurrentlyEffective_EvenWithFutureSignedEnd(
+        string status, ContractPeriodState expectedState, ContractPeriodFilter filter)
+    {
+        var row = View("HD-CLOSED", -20, 100, status);
+        Assert.Equal(expectedState, row.PeriodState);
+        Assert.True(row.Matches(filter));
+        Assert.False(row.Matches(ContractPeriodFilter.InEffect));
+        Assert.False(row.Matches(ContractPeriodFilter.ExpiringSoon));
+        Assert.False(row.IsEffective);
+        Assert.False(ContractPresentation.Summarize([row]).HasEffectiveContract);
+    }
+
+    [Fact]
+    public void TerminatedContract_DisplaysActualEndAndReason_AndPreservesSignedEnd()
+    {
+        var original = View("HD-QUIT", -100, 50);
+        var row = original with { Contract = original.Contract with
+        {
+            Status = "TERMINATED", ActualEndDate = Today.AddDays(-1), TerminationReason = "Nghỉ việc đã bàn giao"
+        } };
+        Assert.Equal(Today.AddDays(50), row.EndDate);
+        Assert.Equal("Chấm dứt ngày 15/11/2026", row.TimeRemaining);
+        Assert.Contains("Nghỉ việc đã bàn giao", row.Notes);
+        Assert.Contains("15/11/2026", ContractPresentation.Summarize([row]).Text);
+    }
+
+    [Fact]
+    public void CancelledFutureContract_IsNotPresentedAsTheNextScheduledContract()
+    {
+        var row = View("HD-CANCEL", 30, 100, "CANCELLED");
+        Assert.Equal("Hủy trước ngày bắt đầu", row.TimeRemaining);
+        Assert.DoesNotContain("Hợp đồng tiếp theo bắt đầu", ContractPresentation.Summarize([row]).Text);
+    }
+
+    [Theory]
     [InlineData(1, 60, ContractPeriodState.NotStarted, "Bắt đầu sau 1 ngày")]
     [InlineData(-10, 60, ContractPeriodState.InEffect, "Còn 60 ngày")]
     [InlineData(-10, 31, ContractPeriodState.InEffect, "Còn 31 ngày")]

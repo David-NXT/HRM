@@ -34,9 +34,13 @@ Payroll UI: "Đồng Bộ Mức Lương"
 
 Nút "Tính Lương"
   → PayrollCalculationService
-  → TotalAllowance = phụ cấp thủ công + TotalProjectAllowance
+  → tự thêm phụ cấp thâm niên từ danh mục nếu đủ 1 năm làm việc
+  → tự thêm khấu trừ theo số lần đi trễ trong kỳ công đã khóa
+  → TotalAllowance = phụ cấp active + TotalProjectAllowance
   → tính GrossSalary / NetSalary
 ```
+
+Để tự tính phụ cấp thâm niên, cần có danh mục active tên **Phụ cấp thâm niên** với kiểu `fixed`; mức `DefaultRate` là khoản phụ cấp tháng. Nhân viên đủ ít nhất một năm tính đến ngày cuối kỳ mới được áp dụng. Khấu trừ đi trễ lấy `DefaultRate` của danh mục active **Phạt đi muộn / về sớm** cho mỗi lần đi trễ. Nếu có đi trễ mà thiếu danh mục hoặc bảng công chưa khóa, tính lương báo lỗi thay vì bỏ qua khoản khấu trừ.
 
 Project API local mặc định là `http://localhost:5032/`; Payroll API là `http://localhost:5267/` (HTTPS `https://localhost:7043/`). Xem các phần 7, 8, 9 và 10 để theo dõi chi tiết runtime, nghiệp vụ, routes và cách chạy.
 
@@ -378,7 +382,8 @@ PART_TIME:
   OT hourly rate = HourlyRate
 
 OTPay          = OT hourly rate × OTHours × OTMultiplier
-TotalAllowance = tổng AllowanceDetail active + TotalProjectAllowance
+TotalAllowance = tổng AllowanceDetail active (gồm phụ cấp thâm niên tự động) + TotalProjectAllowance
+TotalPayCut    = tổng PayCutDetail active (gồm khấu trừ đi trễ tự động)
 GrossSalary    = ProratedSalary + OTPay + TotalAllowance
 NetSalary      = GrossSalary - TotalPayCut
 ```
@@ -795,6 +800,8 @@ POST /api/payroll-salary/periods/{payrollPeriodID}/sync
 BƯỚC 6: Tính Lương
 POST /api/payroll-calculation/{payrollID}/calculate   (theo từng nhân viên)
 → Lấy Payroll record cùng Allowances, PayCuts và TotalProjectAllowance
+→ Yêu cầu bảng công tương ứng đã khóa; tự tạo detail phụ cấp thâm niên đủ điều kiện
+   và detail khấu trừ theo từng lần đi trễ (mức lấy từ danh mục active)
 → TotalAllowance = tổng AllowanceDetail active + TotalProjectAllowance
 → Tổng hợp TotalPayCut từ các PayCutDetail active
 → Tính ProratedSalary, OTPay, GrossSalary và NetSalary theo loại nhân viên

@@ -25,4 +25,19 @@ public class ShiftAssignment
     public DateTime? UpdatedAt {get; set;}
 
     public WorkShift? WorkShift { get; set; }
+
+    public void Assign(Guid shiftId, DateOnly date)
+    {
+        ShiftId = shiftId;
+        Date = date;
+        Status = "Pending";
+        AssignAt = DateTime.UtcNow;
+    }
+
+    public void Approve(string approvedBy)
+    {
+        Status = "Approved";
+        ApprovedBy = approvedBy;
+        UpdatedAt = DateTime.UtcNow;
+    }
 }

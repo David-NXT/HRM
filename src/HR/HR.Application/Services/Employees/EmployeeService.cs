@@ -49,7 +49,7 @@ public sealed class EmployeeService : IEmployeeService
         Guid employeeId,
         CancellationToken cancellationToken)
     {
-        var employee = await _employees.GetByIdAsync(employeeId, cancellationToken);
+        var employee = await _employees.GetReadOnlyByIdAsync(employeeId, cancellationToken);
         if (employee is null || !string.Equals(employee.Status, EmployeeStatuses.Active, StringComparison.OrdinalIgnoreCase))
         {
             throw new HrException(404, "EmployeeNotFound", "Không tìm thấy nhân viên đang hoạt động.");
@@ -58,15 +58,17 @@ public sealed class EmployeeService : IEmployeeService
         return ToDirectoryEntry(employee);
     }
 
+    // Trả bản đọc không tracking; chỉ xem hồ sơ/công tác không làm tăng version của hồ sơ.
     public async Task<EmployeeDto> GetAsync(Guid id, CancellationToken cancellationToken)
     {
-        var employee = await _employees.GetByIdAsync(id, cancellationToken);
+        var employee = await _employees.GetReadOnlyByIdAsync(id, cancellationToken);
         if (employee is null)
         {
             throw new HrException(404, "EmployeeNotFound", "Không tìm thấy hồ sơ.");
         }
 
-        return ToDto(employee);
+        DateOnly? employmentStartDate = await _employees.GetEmploymentStartDateAsync(id, cancellationToken);
+        return ToDto(employee) with { EmploymentStartDate = employmentStartDate };
     }
 
     public async Task<EmployeeDto> CreateAsync(CreateEmployeeRequest request, CancellationToken cancellationToken)
@@ -333,6 +335,7 @@ public sealed class EmployeeService : IEmployeeService
         return text.All(char.IsDigit) ? text : string.Empty;
     }
 
+    // Trả version cùng dữ liệu hiển thị để nhân viên gửi lại đúng phiên bản khi đề xuất thay đổi.
     private static EmployeeDto ToDto(Employee employee) =>
         new(
             employee.EmployeeId,
@@ -353,7 +356,7 @@ public sealed class EmployeeService : IEmployeeService
             employee.Position?.Name,
             employee.EmploymentType,
             employee is FullTimeEmployee fullTime ? fullTime.BaseSalary : null,
-            employee is PartTimeEmployee partTime ? partTime.PartTimeSalary : null);
+            employee is PartTimeEmployee partTime ? partTime.PartTimeSalary : null, employee.Version);
 
     private static EmployeeDirectoryEntry ToDirectoryEntry(Employee employee) =>
         new(employee.EmployeeId, employee.EmployeeCode, employee.FullName, employee.Status,

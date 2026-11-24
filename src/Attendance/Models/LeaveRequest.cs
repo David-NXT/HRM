@@ -33,4 +33,9 @@ public class LeaveRequest
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime? UpdatedAt { get; set; }
+
+    public void Submit() => Status = "Pending";
+    public void Approve(string approvedBy) { Status = "Approved"; ApprovedBy = approvedBy; ApprovedAt = DateTime.UtcNow; RejectionReason = null; }
+    public void Reject(string reason, string rejectedBy) { Status = "Rejected"; ApprovedBy = rejectedBy; ApprovedAt = DateTime.UtcNow; RejectionReason = reason; }
+    public decimal CalculateLeaveDays() => Math.Max(1, EndDate.DayNumber - StartDate.DayNumber + 1);
 }

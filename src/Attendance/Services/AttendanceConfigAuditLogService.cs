@@ -40,14 +40,11 @@ public class AttendanceConfigAuditLogService : IAttendanceConfigAuditLogService
         AttendanceConfigAuditLog log = new AttendanceConfigAuditLog
         {
             Id = Guid.NewGuid(),
-            ConfigType = dto.ConfigType,
             EntityId = dto.EntityId,
-            Action = dto.Action,
             OldValues = dto.OldValues,
             NewValues = dto.NewValues,
-            PerformedBy = dto.PerformedBy,
-            PerformedAt = DateTime.UtcNow
         };
+        log.RecordAction(dto.ConfigType, dto.Action, dto.PerformedBy);
 
         _dbContext.AttendanceConfigAuditLogs.Add(log);
         await _dbContext.SaveChangesAsync(cancellationToken);

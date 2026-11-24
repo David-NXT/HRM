@@ -14,6 +14,7 @@ public sealed partial class ContractWorkControl : HrPageControl
     public ContractWorkControl()
     {
         InitializeComponent();
+        _contractFilter.Items.AddRange(new object[] { "Đã chấm dứt", "Đã hủy" });
         _contractFilter.SelectedIndex = 0;
         WireEvents();
     }
@@ -95,6 +96,8 @@ public sealed partial class ContractWorkControl : HrPageControl
             2 => ContractPeriodFilter.ExpiringSoon,
             3 => ContractPeriodFilter.Expired,
             4 => ContractPeriodFilter.NotStarted,
+            5 => ContractPeriodFilter.Terminated,
+            6 => ContractPeriodFilter.Cancelled,
             _ => ContractPeriodFilter.All
         };
         var visible = allRows.Where(contract => contract.Matches(filter)).ToList();
@@ -112,13 +115,18 @@ public sealed partial class ContractWorkControl : HrPageControl
                 : "Bộ lọc chỉ áp dụng cho bảng hợp đồng. Bấm Làm mới để cập nhật dữ liệu và ngày đối chiếu.");
     }
 
+    // Chặn thao tác hợp đồng cho người đã nghỉ và chỉ cho gia hạn hợp đồng có ngày hết hạn xác định.
     private async Task EditContractAsync(bool editing, bool renewing)
     {
         var id = EmployeeId;
+        var employee = await Api.GetAsync<EmployeeRow>($"employees/{id}", Token);
+        Token.ThrowIfCancellationRequested();
+        Ensure(employee.Status != "RESIGNED", "Không thể tạo hoặc sửa hợp đồng cho nhân viên đã nghỉ việc.");
         var selected = editing || renewing ? Selected<ContractDisplayRow>(_contracts).Contract : null;
         if (selected is not null) Ensure(selected.Status == "ACTIVE",
             "Chỉ sửa hoặc gia hạn hợp đồng có trạng thái quản lý ACTIVE (chưa được gia hạn).");
-        var start = renewing ? selected!.EndDate?.AddDays(1) ?? DateOnly.FromDateTime(DateTime.Today) : selected?.StartDate;
+        if (renewing) Ensure(selected!.EndDate.HasValue, "Hợp đồng không thời hạn không có ngày hết hạn để gia hạn.");
+        var start = renewing ? selected!.EndDate!.Value.AddDays(1) : selected?.StartDate;
         using var form = new HrEditorForm(renewing ? "Gia hạn hợp đồng" : editing ? "Sửa hợp đồng" : "Thêm hợp đồng");
         form.TextField("number", "Số hợp đồng *", renewing ? null : selected?.ContractNumber, true, 50)
             .TextField("type", "Loại hợp đồng *", selected?.ContractType, true, 50)
@@ -160,14 +168,22 @@ public sealed partial class ContractWorkControl : HrPageControl
         if (form.ShowDialog(this) == DialogResult.OK) await LoadDetailsAsync();
     }
 
+    // Hiển thị nhãn trạng thái quản lý và tô màu tình trạng thời hạn, gồm cả hợp đồng đã chấm dứt/hủy.
     private void FormatContractPeriod(object? sender, DataGridViewCellFormattingEventArgs e)
     {
         if (e.RowIndex < 0 || e.ColumnIndex < 0
-            || _contracts.Columns[e.ColumnIndex] != _contractDateStatusColumn
             || _contracts.Rows[e.RowIndex].DataBoundItem is not ContractDisplayRow contract) return;
+        if (_contracts.Columns[e.ColumnIndex] == _contractStatusColumn)
+        {
+            e.Value = contract.StatusLabel;
+            e.FormattingApplied = true;
+            return;
+        }
+        if (_contracts.Columns[e.ColumnIndex] != _contractDateStatusColumn) return;
         e.CellStyle.ForeColor = contract.PeriodState switch
         {
             ContractPeriodState.Expired => Color.FromArgb(185, 28, 28),
+            ContractPeriodState.Terminated => Color.FromArgb(185, 28, 28),
             ContractPeriodState.ExpiringSoon => Color.FromArgb(180, 83, 9),
             ContractPeriodState.InEffect => Color.FromArgb(22, 101, 52),
             _ => Color.FromArgb(80, 96, 115)

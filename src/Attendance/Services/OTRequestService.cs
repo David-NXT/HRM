@@ -68,9 +68,20 @@ public class OTRequestService : IOTRequestService
         await EnsureActiveEmployeeAsync(dto.EmployeeId, cancellationToken);
         decimal plannedHours = dto.PlannedHours;
         if (plannedHours <= 0 && dto.EndTime > dto.StartTime)
+            plannedHours = (decimal)(dto.EndTime - dto.StartTime).TotalHours;
+
+        // OT uses one shared rule; the request date still selects the effective rule.
+        OvertimeRule? otRule = await _context.OvertimeRules
+            .Where(r => r.IsActive && r.EffectiveDate <= dto.Date)
+            .OrderByDescending(r => r.EffectiveDate)
+            .ThenByDescending(r => r.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        decimal multiplier = otRule?.Multiplier ?? 1.0m;
+
+        if (otRule != null && !otRule.ValidateOTLimit(plannedHours))
         {
-            TimeSpan span = dto.EndTime - dto.StartTime;
-            plannedHours = (decimal)span.TotalHours;
+            throw new InvalidOperationException($"Số giờ đăng ký làm thêm ({plannedHours}h) vượt quá định mức tối đa trong ngày ({otRule.MaxHoursPerDay}h).");
         }
 
         OTRequest entity = new OTRequest
@@ -81,8 +92,8 @@ public class OTRequestService : IOTRequestService
             StartTime = dto.StartTime,
             EndTime = dto.EndTime,
             PlannedHours = plannedHours,
-            DayType = dto.DayType,
-            Multiplier = dto.Multiplier > 0 ? dto.Multiplier : 1.5m,
+            DayType = "GENERAL",
+            Multiplier = multiplier,
             IsUnplanned = dto.IsUnplanned,
             Reason = dto.Reason,
             Status = string.IsNullOrWhiteSpace(dto.Status) ? "Pending" : dto.Status,
@@ -90,6 +101,8 @@ public class OTRequestService : IOTRequestService
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
+
+        if (string.IsNullOrWhiteSpace(dto.Status)) entity.Submit();
 
         _context.OTRequests.Add(entity);
         await _context.SaveChangesAsync(cancellationToken);
@@ -138,16 +151,6 @@ public class OTRequestService : IOTRequestService
             entity.ActualHours = dto.ActualHours.Value;
         }
 
-        if (dto.DayType != null)
-        {
-            entity.DayType = dto.DayType;
-        }
-
-        if (dto.Multiplier.HasValue)
-        {
-            entity.Multiplier = dto.Multiplier.Value;
-        }
-
         if (dto.IsUnplanned.HasValue)
         {
             entity.IsUnplanned = dto.IsUnplanned.Value;
@@ -160,7 +163,11 @@ public class OTRequestService : IOTRequestService
 
         if (!string.IsNullOrWhiteSpace(dto.Status))
         {
-            entity.Status = dto.Status;
+            if (dto.Status.Equals("Approved", StringComparison.OrdinalIgnoreCase) && dto.ApprovedBy != null)
+                entity.Approve(dto.ApprovedBy);
+            else if (dto.Status.Equals("Rejected", StringComparison.OrdinalIgnoreCase) && dto.ApprovedBy != null)
+                entity.Reject(dto.RejectionReason ?? string.Empty, dto.ApprovedBy);
+            else entity.Status = dto.Status;
         }
 
         if (dto.ApprovedBy != null)

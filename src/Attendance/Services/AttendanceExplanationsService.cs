@@ -178,9 +178,75 @@ public class AttendanceExplanationsService : IAttendanceExplanationsService
             entity.AttachmentUrl = dto.AttachmentUrl;
         }
 
+        bool wasApproved = entity.Status == "Approved";
+
         if (!string.IsNullOrWhiteSpace(dto.Status))
         {
-            entity.Status = dto.Status;
+            if (dto.Status.Equals("Approved", StringComparison.OrdinalIgnoreCase) && dto.ApprovedBy != null)
+                entity.Approve(dto.ApprovedBy);
+            else if (dto.Status.Equals("Rejected", StringComparison.OrdinalIgnoreCase) && dto.ApprovedBy != null)
+                entity.Reject(dto.RejectionReason ?? string.Empty, dto.ApprovedBy);
+            else entity.Status = dto.Status;
+        }
+
+        bool isNowApproved = entity.Status == "Approved";
+
+        // Khi duyệt giải trình chấm công -> cập nhật giờ vào/ra, xóa cờ trễ/sớm trên bảng chấm công
+        if (!wasApproved && isNowApproved)
+        {
+            AttendanceRecord? record = null;
+            if (entity.AttendanceId.HasValue && entity.AttendanceId.Value != Guid.Empty)
+            {
+                record = await _context.AttendanceRecords
+                    .FirstOrDefaultAsync(r => r.Id == entity.AttendanceId.Value, cancellationToken);
+            }
+            else
+            {
+                record = await _context.AttendanceRecords
+                    .FirstOrDefaultAsync(r => r.EmployeeId == entity.EmployeeId && r.Date == entity.Date, cancellationToken);
+            }
+
+            if (record != null)
+            {
+                if (entity.RequestedTimeIn.HasValue)
+                {
+                    record.TimeIn = entity.RequestedTimeIn.Value;
+                    record.IsLate = false;
+                    record.LateMins = 0;
+                }
+
+                if (entity.RequestedTimeOut.HasValue)
+                {
+                    record.TimeOut = entity.RequestedTimeOut.Value;
+                    record.IsEarlyLeave = false;
+                    record.EarlyLeaveMins = 0;
+                }
+
+                if (entity.ExplanationType.Contains("trễ", StringComparison.OrdinalIgnoreCase) ||
+                    entity.ExplanationType.Contains("quên", StringComparison.OrdinalIgnoreCase))
+                {
+                    record.IsLate = false;
+                    record.LateMins = 0;
+                }
+
+                // Tính lại WorkHour nếu đã có cả TimeIn và TimeOut
+                if (record.TimeIn.HasValue && record.TimeOut.HasValue)
+                {
+                    WorkShift? shift = await _context.WorkShifts
+                        .FirstOrDefaultAsync(s => s.Id == record.ShiftId, cancellationToken);
+
+                    if (shift != null) record.CalculateWorkHours(shift);
+                    else
+                    {
+                        TimeSpan elapsed = record.TimeOut.Value.ToTimeSpan() - record.TimeIn.Value.ToTimeSpan();
+                        if (elapsed.TotalMinutes < 0) elapsed += TimeSpan.FromHours(24);
+                        record.WorkHour = Math.Max(0, Math.Round((decimal)elapsed.TotalMinutes / 60m, 2));
+                    }
+                }
+
+                record.Status = "Present";
+                record.UpdatedAt = DateTime.UtcNow;
+            }
         }
 
         if (dto.ApprovedBy != null)

@@ -30,7 +30,7 @@ public class OTRequest
     /// <summary>
     /// Hệ số làm thêm giờ theo loại ngày (1.5, 2.0, 3.0)
     /// </summary>
-    public decimal Multiplier { get; set; } = 1.5m;
+    public decimal Multiplier { get; set; } = 1.0m;
 
     /// <summary>
     /// Đăng ký bổ sung OT ngoài kế hoạch (khi đã làm ngoài giờ nhưng chưa đăng ký trước)
@@ -53,4 +53,26 @@ public class OTRequest
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime? UpdatedAt { get; set; }
+
+    public void Submit()
+    {
+        if (PlannedHours <= 0 && EndTime > StartTime) PlannedHours = (decimal)(EndTime - StartTime).TotalHours;
+        DayType = "GENERAL";
+        Status = "Pending";
+    }
+
+    public void Approve(string approvedBy)
+    {
+        Status = "Approved"; ApprovedBy = approvedBy; ApprovedAt = DateTime.UtcNow; RejectionReason = null;
+    }
+
+    public void Reject(string reason, string rejectedBy)
+    {
+        Status = "Rejected"; ApprovedBy = rejectedBy; ApprovedAt = DateTime.UtcNow; RejectionReason = reason;
+    }
+
+    public void ReconcileWithRecord(AttendanceRecord record)
+    {
+        ActualHours = Math.Round((decimal)record.ActualOTMins / 60m, 2);
+    }
 }

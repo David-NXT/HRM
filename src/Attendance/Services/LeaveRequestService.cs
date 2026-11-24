@@ -73,6 +73,22 @@ public class LeaveRequestService : ILeaveRequestService
             throw new ArgumentException("Reason is required.", nameof(dto));
         }
 
+        decimal totalDays = dto.TotalDays > 0 ? dto.TotalDays : 1.0m;
+
+        // Kiểm tra số dư phép nếu là nghỉ phép năm
+        if (dto.LeaveType.Contains("phép năm", StringComparison.OrdinalIgnoreCase) ||
+            dto.LeaveType.Contains("annual", StringComparison.OrdinalIgnoreCase))
+        {
+            int year = dto.StartDate.Year;
+            LeaveBalance? balance = await _context.LeaveBalances
+                .FirstOrDefaultAsync(b => b.EmployeeId == dto.EmployeeId && b.Year == year, cancellationToken);
+
+            if (balance != null && balance.RemainingDays < totalDays)
+            {
+                throw new InvalidOperationException($"Số ngày phép năm còn lại không đủ (còn {balance.RemainingDays} ngày, yêu cầu {totalDays} ngày).");
+            }
+        }
+
         LeaveRequest entity = new LeaveRequest
         {
             Id = Guid.NewGuid(),
@@ -80,13 +96,15 @@ public class LeaveRequestService : ILeaveRequestService
             LeaveType = dto.LeaveType.Trim(),
             StartDate = dto.StartDate,
             EndDate = dto.EndDate,
-            TotalDays = dto.TotalDays > 0 ? dto.TotalDays : 1.0m,
+            TotalDays = totalDays,
             Reason = dto.Reason.Trim(),
             Status = string.IsNullOrWhiteSpace(dto.Status) ? "Pending" : dto.Status,
             ApprovedBy = dto.ApprovedBy,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
+
+        if (string.IsNullOrWhiteSpace(dto.Status)) entity.Submit();
 
         _context.LeaveRequests.Add(entity);
         await _context.SaveChangesAsync(cancellationToken);
@@ -135,9 +153,44 @@ public class LeaveRequestService : ILeaveRequestService
             entity.Reason = dto.Reason.Trim();
         }
 
+        bool wasApproved = entity.Status == "Approved";
+
         if (!string.IsNullOrWhiteSpace(dto.Status))
         {
-            entity.Status = dto.Status;
+            if (dto.Status.Equals("Approved", StringComparison.OrdinalIgnoreCase) && dto.ApprovedBy != null)
+                entity.Approve(dto.ApprovedBy);
+            else if (dto.Status.Equals("Rejected", StringComparison.OrdinalIgnoreCase) && dto.ApprovedBy != null)
+                entity.Reject(dto.RejectionReason ?? string.Empty, dto.ApprovedBy);
+            else entity.Status = dto.Status;
+        }
+
+        bool isNowApproved = entity.Status == "Approved";
+
+        // Khấu trừ / hoàn trả số ngày phép trong LeaveBalance khi trạng thái phê duyệt thay đổi
+        if (!wasApproved && isNowApproved)
+        {
+            int year = entity.StartDate.Year;
+            LeaveBalance? balance = await _context.LeaveBalances
+                .FirstOrDefaultAsync(b => b.EmployeeId == entity.EmployeeId && b.Year == year, cancellationToken);
+
+            if (balance != null)
+            {
+                balance.DeductDays(entity.TotalDays);
+                balance.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+        else if (wasApproved && (entity.Status == "Rejected" || entity.Status == "Pending"))
+        {
+            int year = entity.StartDate.Year;
+            LeaveBalance? balance = await _context.LeaveBalances
+                .FirstOrDefaultAsync(b => b.EmployeeId == entity.EmployeeId && b.Year == year, cancellationToken);
+
+            if (balance != null)
+            {
+                balance.UsedDays = Math.Max(0, balance.UsedDays - entity.TotalDays);
+                balance.RecalculateRemaining();
+                balance.UpdatedAt = DateTime.UtcNow;
+            }
         }
 
         if (dto.ApprovedBy != null)
