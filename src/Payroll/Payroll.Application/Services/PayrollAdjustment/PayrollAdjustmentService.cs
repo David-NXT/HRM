@@ -65,7 +65,7 @@ public class PayrollAdjustmentService
                 cancellationToken
             );
 
-        if (allowanceType == null || allowanceType.Status != "active")
+        if (allowanceType == null || !allowanceType.IsActive())
         {
             throw new InvalidOperationException(
                 "Allowance type does not exist or is inactive."
@@ -101,7 +101,7 @@ public class PayrollAdjustmentService
             Amount = request.Amount
         };
 
-        allowance.AllowanceDetails.Add(detail);
+        allowance.AddDetail(detail);
 
         // 8. Save
         await _context.SaveChangesAsync(cancellationToken);
@@ -168,7 +168,7 @@ public class PayrollAdjustmentService
                 cancellationToken
             );
 
-        if (reason == null || reason.Status != "active")
+        if (reason == null || !reason.IsActive())
         {
             throw new InvalidOperationException(
                 "Pay cut reason does not exist or is inactive."
@@ -204,7 +204,7 @@ public class PayrollAdjustmentService
             Amount = request.Amount
         };
 
-        payCut.Details.Add(detail);
+        payCut.AddDetail(detail);
 
         // 8. Save
         await _context.SaveChangesAsync(cancellationToken);

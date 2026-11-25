@@ -27,13 +27,7 @@ public class PayrollApprovalService
         if (payroll == null)
             throw new InvalidOperationException("Payroll does not exist.");
 
-        if (payroll.Status != "calculated")
-            throw new InvalidOperationException(
-                "Only calculated payroll can be approved."
-            );
-
-        payroll.Status = "approved";
-        payroll.ApprovedAt = DateTime.UtcNow;
+        payroll.Approve();
 
         await _context.SaveChangesAsync(cancellationToken);
 
@@ -42,7 +36,8 @@ public class PayrollApprovalService
             PayrollID = payroll.PayrollID,
             EmployeeID = payroll.EmployeeID,
             Status = payroll.Status,
-            ApprovedAt = payroll.ApprovedAt.Value
+            ApprovedAt = payroll.ApprovedAt
+                ?? throw new InvalidOperationException("Approved payroll must have an approval timestamp.")
         };
     }
 }

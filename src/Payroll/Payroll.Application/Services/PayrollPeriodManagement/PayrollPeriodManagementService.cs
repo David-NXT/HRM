@@ -54,7 +54,7 @@ public class PayrollPeriodManagementService
             );
         }
 
-        period.Status = newStatus;
+        period.UpdateStatus(newStatus);
 
         await _context.SaveChangesAsync(cancellationToken);
 
@@ -68,27 +68,4 @@ public class PayrollPeriodManagementService
             UpdatedAt = DateTime.UtcNow
         };
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
 }

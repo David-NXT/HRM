@@ -71,38 +71,17 @@ public class PayrollCalculationService
             payrollPeriod,
             cancellationToken);
 
-        // 3. Calculate total allowance from active groups.
-        decimal totalAllowance = payroll.Allowances
-            .Where(a => a.Status == "active")
-            .SelectMany(a => a.AllowanceDetails)
-            .Sum(ad => ad.Amount);
-
-        // 4. Calculate total pay cut from active groups.
-        decimal totalPayCut = payroll.PayCuts
-            .Where(pc => pc.Status == "active")
-            .SelectMany(pc => pc.Details)
-            .Sum(pd => pd.Amount);
-
-        // 5. Calculate salary.
-        PayrollCalculationResult result = _calculator.Calculate(
-            payroll.EmploymentType ?? string.Empty,
-            payroll.BaseSalary,
-            payroll.HourlyRate,
-            payroll.WorkingDays,
-            payroll.StandardWorkingDay,
-            payroll.TotalWorkingHours,
-            payroll.OTHours.Value,
-            payroll.OTMultiplier.Value,
-            totalAllowance,
-            totalPayCut,
-            payroll.TotalProjectAllowance);
-
-        // 6. Update payroll.
-        payroll.TotalAllowance = result.TotalAllowance;
-        payroll.TotalPayCut = result.TotalPayCut;
-        payroll.OTPay = result.OTPay;
-        payroll.GrossSalary = result.GrossSalary;
-        payroll.NetSalary = result.NetSalary;
+        // 3. Calculate salary through domain behavior.
+        payroll.UpdateTotals();
+        PayrollCalculationResult result = new()
+        {
+            ProratedSalary = payroll.CalculateRegularSalary(),
+            OTPay = payroll.OTPay,
+            TotalAllowance = payroll.TotalAllowance,
+            TotalPayCut = payroll.TotalPayCut,
+            GrossSalary = payroll.GrossSalary,
+            NetSalary = payroll.NetSalary
+        };
 
         payroll.Status = "calculated";
         payroll.CalculatedAt = DateTime.UtcNow;
@@ -217,7 +196,7 @@ public class PayrollCalculationService
                     _context.PayCuts.Add(payCut);
                 }
 
-                payCut.Details.Add(new PayCutDetail
+                payCut.AddDetail(new PayCutDetail
                 {
                     PayCutReasonID = lateReason.PayCutReasonID,
                     Description = $"Tự động khấu trừ đi trễ ({attendance.LateOccurrences} lần)",
@@ -288,7 +267,7 @@ public class PayrollCalculationService
             _context.Allowances.Add(allowance);
         }
 
-        allowance.AllowanceDetails.Add(new AllowanceDetail
+        allowance.AddDetail(new AllowanceDetail
         {
             AllowanceTypeID = seniorityAllowanceType.AllowanceTypeID,
             Description = $"Tự động phụ cấp thâm niên ({completedYears} năm)",
