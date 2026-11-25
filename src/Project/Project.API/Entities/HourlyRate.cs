@@ -13,10 +13,17 @@ public class HourlyRate
 
     // 1. Kiểm tra đơn giá có hiệu lực tại ngày chỉ định
     public bool IsEffectiveAt(DateTime date)
-    {
-        return date >= EffectiveFrom
-            && (EffectiveTo == null || date <= EffectiveTo.Value);
-    }
+{
+    var checkDate = DateOnly.FromDateTime(date);
+    var startDate = DateOnly.FromDateTime(EffectiveFrom);
+
+    DateOnly? endDate = EffectiveTo.HasValue
+        ? DateOnly.FromDateTime(EffectiveTo.Value)
+        : null;
+
+    return checkDate >= startDate &&
+           (!endDate.HasValue || checkDate <= endDate.Value);
+}
 
     // 2. Đóng đơn giá
     public void Close(DateTime effectiveTo)
