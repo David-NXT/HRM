@@ -114,7 +114,8 @@ public class WorkShiftService : IWorkShiftService
 
         if (dto.IsActive.HasValue)
         {
-            entity.IsActive = dto.IsActive.Value;
+            if (dto.IsActive.Value) entity.IsActive = true;
+            else entity.Deactivate();
         }
 
         if (dto.EffectiveDate.HasValue)

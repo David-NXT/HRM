@@ -9,6 +9,9 @@ public sealed class EmploymentContract
     public string ContractType { get; set; } = string.Empty;
     public DateOnly StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
+    // Ngày hết hạn đã ký được giữ ở EndDate; ngày chấm dứt thực tế được lưu riêng.
+    public DateOnly? ActualEndDate { get; set; }
+    public string? TerminationReason { get; set; }
     public string Status { get; set; } = ContractStatuses.Active;
     public string? Notes { get; set; }
     public Guid? RenewalOfContractId { get; set; }

@@ -68,10 +68,7 @@ public class OTRequestService : IOTRequestService
         await EnsureActiveEmployeeAsync(dto.EmployeeId, cancellationToken);
         decimal plannedHours = dto.PlannedHours;
         if (plannedHours <= 0 && dto.EndTime > dto.StartTime)
-        {
-            TimeSpan span = dto.EndTime - dto.StartTime;
-            plannedHours = (decimal)span.TotalHours;
-        }
+            plannedHours = (decimal)(dto.EndTime - dto.StartTime).TotalHours;
 
         // OT uses one shared rule; the request date still selects the effective rule.
         OvertimeRule? otRule = await _context.OvertimeRules
@@ -82,7 +79,7 @@ public class OTRequestService : IOTRequestService
 
         decimal multiplier = otRule?.Multiplier ?? 1.0m;
 
-        if (otRule != null && otRule.MaxHoursPerDay > 0 && plannedHours > otRule.MaxHoursPerDay)
+        if (otRule != null && !otRule.ValidateOTLimit(plannedHours))
         {
             throw new InvalidOperationException($"Số giờ đăng ký làm thêm ({plannedHours}h) vượt quá định mức tối đa trong ngày ({otRule.MaxHoursPerDay}h).");
         }
@@ -104,6 +101,8 @@ public class OTRequestService : IOTRequestService
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
+
+        if (string.IsNullOrWhiteSpace(dto.Status)) entity.Submit();
 
         _context.OTRequests.Add(entity);
         await _context.SaveChangesAsync(cancellationToken);
@@ -164,7 +163,11 @@ public class OTRequestService : IOTRequestService
 
         if (!string.IsNullOrWhiteSpace(dto.Status))
         {
-            entity.Status = dto.Status;
+            if (dto.Status.Equals("Approved", StringComparison.OrdinalIgnoreCase) && dto.ApprovedBy != null)
+                entity.Approve(dto.ApprovedBy);
+            else if (dto.Status.Equals("Rejected", StringComparison.OrdinalIgnoreCase) && dto.ApprovedBy != null)
+                entity.Reject(dto.RejectionReason ?? string.Empty, dto.ApprovedBy);
+            else entity.Status = dto.Status;
         }
 
         if (dto.ApprovedBy != null)

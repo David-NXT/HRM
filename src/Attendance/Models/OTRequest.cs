@@ -53,4 +53,26 @@ public class OTRequest
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime? UpdatedAt { get; set; }
+
+    public void Submit()
+    {
+        if (PlannedHours <= 0 && EndTime > StartTime) PlannedHours = (decimal)(EndTime - StartTime).TotalHours;
+        DayType = "GENERAL";
+        Status = "Pending";
+    }
+
+    public void Approve(string approvedBy)
+    {
+        Status = "Approved"; ApprovedBy = approvedBy; ApprovedAt = DateTime.UtcNow; RejectionReason = null;
+    }
+
+    public void Reject(string reason, string rejectedBy)
+    {
+        Status = "Rejected"; ApprovedBy = rejectedBy; ApprovedAt = DateTime.UtcNow; RejectionReason = reason;
+    }
+
+    public void ReconcileWithRecord(AttendanceRecord record)
+    {
+        ActualHours = Math.Round((decimal)record.ActualOTMins / 60m, 2);
+    }
 }

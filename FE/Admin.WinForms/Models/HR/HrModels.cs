@@ -7,7 +7,7 @@ public sealed record EmployeeRow(Guid EmployeeId, string EmployeeCode, string Fu
     string? Address, string Status, DateTime CreatedAt, DateTime UpdatedAt,
     Guid? DepartmentId, Guid? PositionId, string? DepartmentName, string? PositionName,
     string EmploymentType, decimal? BaseSalary,
-    [property: JsonPropertyName("partTimeSalary")] decimal? PartTimeHourlyRate)
+    [property: JsonPropertyName("partTimeSalary")] decimal? PartTimeHourlyRate, int Version = 1)
 {
     public string EmploymentTypeLabel => EmploymentType == "PART_TIME" ? "Part-time" : "Full-time";
     public string SalaryLabel => EmploymentType == "PART_TIME"
@@ -44,7 +44,8 @@ public sealed record DepartmentInput(string Code, string Name, string? Descripti
 public sealed record PositionInput(string Code, string Name, string? Description, string? SeniorityLevel = null);
 public sealed record ContractRow(Guid ContractId, Guid EmployeeId, string ContractNumber,
     string ContractType, DateOnly StartDate, DateOnly? EndDate, string Status, string? Notes,
-    Guid? RenewalOfContractId, DateTime CreatedAt, DateTime UpdatedAt);
+    Guid? RenewalOfContractId, DateTime CreatedAt, DateTime UpdatedAt,
+    DateOnly? ActualEndDate = null, string? TerminationReason = null);
 public sealed record ContractInput(string ContractNumber, string ContractType, DateOnly StartDate,
     DateOnly? EndDate, string? Notes, Guid? RenewalOfContractId = null);
 public sealed record AssignmentRow(Guid WorkHistoryId, Guid EmployeeId, Guid DepartmentId,
@@ -67,7 +68,8 @@ public sealed record AttachmentRow(Guid ProfileUpdateAttachmentId, string Origin
     string ContentType, long Length, DateTime UploadedAt);
 public sealed record ProfileRequestRow(Guid ProfileUpdateRequestId, Guid EmployeeId,
     PersonalInfo Changes, string Status, string? ReviewReason, DateTime? SubmittedAt,
-    DateTime? ReviewedAt, DateTime CreatedAt, DateTime UpdatedAt, List<AttachmentRow> Attachments);
+    DateTime? ReviewedAt, DateTime CreatedAt, DateTime UpdatedAt, List<AttachmentRow> Attachments,
+    int Version = 1, int? BaseEmployeeVersion = null);
 public sealed record AlertRow(Guid ContractAlertId, Guid ContractId, Guid EmployeeId,
     string EmployeeCode, string EmployeeName, string EmployeeStatus, string ContractNumber,
     string ContractType, string ContractStatus, DateOnly ContractStartDate,

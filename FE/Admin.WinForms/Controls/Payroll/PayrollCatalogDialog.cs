@@ -88,8 +88,8 @@ internal sealed class CatalogListControl : UserControl
         try
         {
             _catalogItems = _isAllowance
-                ? await Program.PayrollApi.GetAllowanceTypesAsync()
-                : await Program.PayrollApi.GetPayCutReasonsAsync();
+                ? await Program.PayrollCatalog.GetAllowanceTypesAsync()
+                : await Program.PayrollCatalog.GetPayCutReasonsAsync();
 
             _items.BeginUpdate();
             _items.Items.Clear();
@@ -129,20 +129,20 @@ internal sealed class CatalogListControl : UserControl
             {
                 if (_isAllowance)
                 {
-                    await Program.PayrollApi.CreateAllowanceTypeAsync(form.Result);
+                    await Program.PayrollCatalog.CreateAllowanceTypeAsync(form.Result);
                 }
                 else
                 {
-                    await Program.PayrollApi.CreatePayCutReasonAsync(form.Result);
+                    await Program.PayrollCatalog.CreatePayCutReasonAsync(form.Result);
                 }
             }
             else if (_isAllowance)
             {
-                await Program.PayrollApi.UpdateAllowanceTypeAsync(selected.ID, form.Result);
+                await Program.PayrollCatalog.UpdateAllowanceTypeAsync(selected.ID, form.Result);
             }
             else
             {
-                await Program.PayrollApi.UpdatePayCutReasonAsync(selected.ID, form.Result);
+                await Program.PayrollCatalog.UpdatePayCutReasonAsync(selected.ID, form.Result);
             }
 
             await ReloadAsync();
@@ -184,20 +184,20 @@ internal sealed class CatalogListControl : UserControl
                 };
                 if (_isAllowance)
                 {
-                    await Program.PayrollApi.UpdateAllowanceTypeAsync(item.ID, request);
+                    await Program.PayrollCatalog.UpdateAllowanceTypeAsync(item.ID, request);
                 }
                 else
                 {
-                    await Program.PayrollApi.UpdatePayCutReasonAsync(item.ID, request);
+                    await Program.PayrollCatalog.UpdatePayCutReasonAsync(item.ID, request);
                 }
             }
             else if (_isAllowance)
             {
-                await Program.PayrollApi.DeactivateAllowanceTypeAsync(item.ID);
+                await Program.PayrollCatalog.DeactivateAllowanceTypeAsync(item.ID);
             }
             else
             {
-                await Program.PayrollApi.DeactivatePayCutReasonAsync(item.ID);
+                await Program.PayrollCatalog.DeactivatePayCutReasonAsync(item.ID);
             }
 
             await ReloadAsync();

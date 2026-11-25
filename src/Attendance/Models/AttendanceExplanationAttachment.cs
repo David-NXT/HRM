@@ -32,4 +32,7 @@ public class AttendanceExplanationAttachment
     public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
 
     public AttendanceExplanation? Explanation { get; set; }
+
+    public bool ValidateFileType(string[] allowedTypes) => FileType != null && allowedTypes.Contains(FileType, StringComparer.OrdinalIgnoreCase);
+    public bool ValidateFileSize(long maxBytes) => FileSize.HasValue && FileSize.Value <= maxBytes;
 }

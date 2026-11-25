@@ -21,6 +21,8 @@ public interface IEmployeeRepository
 
     Task<Employee?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
 
+    // Đọc hồ sơ/phân công hiện tại không tracking để hiển thị mà không làm bẩn entity sắp lưu.
+    Task<Employee?> GetReadOnlyByIdAsync(Guid id, CancellationToken cancellationToken);
     Task<DateOnly?> GetEmploymentStartDateAsync(Guid employeeId, CancellationToken cancellationToken);
 
     Task<bool> HasRelatedRecordsAsync(Guid employeeId, CancellationToken cancellationToken);

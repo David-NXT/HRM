@@ -285,6 +285,10 @@ namespace HR.Infrastructure.Persistence.Migrations
                         .HasColumnName("contract_id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
+                    b.Property<DateOnly?>("ActualEndDate")
+                        .HasColumnType("date")
+                        .HasColumnName("actual_end_date");
+
                     b.Property<string>("ContractNumber")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -327,6 +331,11 @@ namespace HR.Infrastructure.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("status");
+
+                    b.Property<string>("TerminationReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("termination_reason");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -557,6 +566,10 @@ namespace HR.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("profile_update_request_id")
                         .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<int?>("BaseEmployeeVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("base_employee_version");
 
                     b.Property<string>("ChangesJson")
                         .IsRequired()

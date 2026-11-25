@@ -39,7 +39,7 @@ namespace Admin.WinForms.Controls.Payroll
         {
             try
             {
-                _periods = await Program.PayrollApi.GetPeriodsAsync();
+                _periods = await Program.PayrollPeriods.GetPeriodsAsync();
                 comboBox_Periods.Items.Clear();
 
                 foreach (var p in _periods)
@@ -72,7 +72,7 @@ namespace Admin.WinForms.Controls.Payroll
 
             try
             {
-                _payrolls = await Program.PayrollApi.GetPayrollsByPeriodAsync(_selectedPeriod.PayrollPeriodID);
+                _payrolls = await Program.PayrollManagement.GetPayrollsByPeriodAsync(_selectedPeriod.PayrollPeriodID);
 
                 listView_Approvals.BeginUpdate();
                 listView_Approvals.Items.Clear();
@@ -178,7 +178,7 @@ namespace Admin.WinForms.Controls.Payroll
             if (listView_Approvals.SelectedItems[0].Tag is not Guid payrollId) return;
             try
             {
-                await Program.PayrollApi.ApprovePayrollAsync(payrollId);
+                await Program.PayrollManagement.ApprovePayrollAsync(payrollId);
                 MessageBox.Show("Đã phê duyệt bảng lương nhân viên thành công!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 await LoadPayrollsAsync();
             }
@@ -199,7 +199,7 @@ namespace Admin.WinForms.Controls.Payroll
             if (listView_Approvals.SelectedItems[0].Tag is not Guid payrollId) return;
             try
             {
-                await Program.PayrollApi.MarkAsPaidAsync(payrollId);
+                await Program.PayrollManagement.MarkAsPaidAsync(payrollId);
                 MessageBox.Show("Đã xác nhận chi trả lương thành công!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 await LoadPayrollsAsync();
             }
@@ -229,7 +229,7 @@ namespace Admin.WinForms.Controls.Payroll
             {
                 try
                 {
-                    await Program.PayrollApi.ApprovePayrollAsync(p.PayrollID);
+                    await Program.PayrollManagement.ApprovePayrollAsync(p.PayrollID);
                     count++;
                 }
                 catch (Exception ex)
@@ -272,7 +272,7 @@ namespace Admin.WinForms.Controls.Payroll
             {
                 try
                 {
-                    await Program.PayrollApi.MarkAsPaidAsync(p.PayrollID);
+                    await Program.PayrollManagement.MarkAsPaidAsync(p.PayrollID);
                     count++;
                 }
                 catch (Exception ex)
@@ -309,7 +309,7 @@ namespace Admin.WinForms.Controls.Payroll
 
             try
             {
-                var result = await Program.PayrollApi.UpdatePeriodStatusAsync(_selectedPeriod.PayrollPeriodID);
+                var result =                 await Program.PayrollPeriods.UpdatePeriodStatusAsync(_selectedPeriod.PayrollPeriodID);
                 MessageBox.Show($"Đã cập nhật trạng thái kỳ lương thành: {result?.Status ?? "Completed"}!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 await LoadPeriodsAsync();
             }

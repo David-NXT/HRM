@@ -4,6 +4,8 @@ using HR.Application.Services.ContractAlerts;
 using HR.Application.Services.Contracts;
 using HR.Application.Interfaces.Repositories;
 using HR.Domain.Entities;
+using HR.Domain.Constants;
+using HR.Application.Exceptions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
@@ -122,6 +124,172 @@ public sealed class ContractAlertImmediateTests
         Assert.Single(storage.Alerts);
     }
 
+    [Fact]
+    public async Task Create_OverlappingSignedDatesIsRejected_ButTheFollowingDayIsAllowed()
+    {
+        var storage = new Storage();
+        var service = Service(storage);
+        await service.CreateContractAsync(EmployeeId, Request(0), CancellationToken.None);
+
+        var error = await Assert.ThrowsAsync<HrException>(() => service.CreateContractAsync(EmployeeId,
+            new("HD02", "Fixed", Today, Today.AddYears(1), null), CancellationToken.None));
+        Assert.Equal("ContractOverlap", error.Code);
+        Assert.Single(storage.Contracts);
+
+        await service.CreateContractAsync(EmployeeId,
+            new("HD02", "Fixed", Today.AddDays(1), Today.AddYears(1), null), CancellationToken.None);
+        Assert.Equal(2, storage.Contracts.Count);
+    }
+
+    [Fact]
+    public async Task Update_IndependentContractCannotMoveOntoAnotherPeriod()
+    {
+        var storage = new Storage();
+        var service = Service(storage);
+        await service.CreateContractAsync(EmployeeId, Request(0), CancellationToken.None);
+        var next = await service.CreateContractAsync(EmployeeId,
+            new("HD02", "Fixed", Today.AddDays(1), Today.AddYears(1), null), CancellationToken.None);
+
+        var error = await Assert.ThrowsAsync<HrException>(() => service.UpdateContractAsync(next.ContractId,
+            new("HD02", "Fixed", Today, Today.AddYears(1), "Không được ghi"), CancellationToken.None));
+
+        Assert.Equal("ContractOverlap", error.Code);
+        var stored = storage.Contracts.Single(item => item.ContractId == next.ContractId);
+        Assert.Equal(Today.AddDays(1), stored.StartDate);
+        Assert.Null(stored.Notes);
+    }
+
+    [Fact]
+    public async Task RenewedPredecessor_StillProtectsItsOwnSignedPeriodAgainstAnotherContract()
+    {
+        var storage = new Storage();
+        var service = Service(storage);
+        var previous = await service.CreateContractAsync(EmployeeId, Request(0), CancellationToken.None);
+        await service.CreateContractAsync(EmployeeId,
+            new("HD02", "Fixed", Today.AddDays(1), Today.AddYears(1), null, previous.ContractId), CancellationToken.None);
+
+        var error = await Assert.ThrowsAsync<HrException>(() => service.CreateContractAsync(EmployeeId,
+            new("HD03", "Fixed", Today.AddDays(-10), Today, null), CancellationToken.None));
+
+        Assert.Equal("ContractOverlap", error.Code);
+        Assert.Equal(2, storage.Contracts.Count);
+    }
+
+    [Fact]
+    public async Task Update_RenewalMustStayAfterItsPredecessorEndDate()
+    {
+        var storage = new Storage();
+        var service = Service(storage);
+        var previous = await service.CreateContractAsync(EmployeeId, Request(0), CancellationToken.None);
+        var next = await service.CreateContractAsync(EmployeeId,
+            new("HD02", "Fixed", Today.AddDays(1), Today.AddYears(1), null, previous.ContractId), CancellationToken.None);
+        var error = await Assert.ThrowsAsync<HrException>(() => service.UpdateContractAsync(next.ContractId,
+            new("HD02", "Fixed", Today, Today.AddYears(1), null), CancellationToken.None));
+        Assert.Equal("InvalidRenewalDates", error.Code);
+        Assert.Equal(Today.AddDays(1), storage.Contracts.Single(item => item.ContractId == next.ContractId).StartDate);
+    }
+
+    [Fact]
+    public async Task IndefiniteContractCannotBeRenewedByInventingAnEndDate()
+    {
+        var storage = new Storage();
+        var service = Service(storage);
+        var previous = await service.CreateContractAsync(EmployeeId, Request(null), CancellationToken.None);
+        var error = await Assert.ThrowsAsync<HrException>(() => service.CreateContractAsync(EmployeeId,
+            new("HD02", "Fixed", Today.AddDays(1), Today.AddYears(1), null, previous.ContractId), CancellationToken.None));
+        Assert.Equal("IndefiniteContractRenewal", error.Code);
+        Assert.Null(Assert.Single(storage.Contracts).EndDate);
+        Assert.Equal(ContractStatuses.Active, storage.Contracts[0].Status);
+    }
+
+    [Fact]
+    public async Task ResignedEmployeeCannotCreateOrEditAContract()
+    {
+        var storage = new Storage();
+        var service = Service(storage);
+        var contract = await service.CreateContractAsync(EmployeeId, Request(3), CancellationToken.None);
+        storage.EmployeeStatus = EmployeeStatuses.Resigned;
+        var createError = await Assert.ThrowsAsync<HrException>(() => service.CreateContractAsync(EmployeeId,
+            new("HD02", "Fixed", Today.AddDays(4), Today.AddYears(1), null), CancellationToken.None));
+        var updateError = await Assert.ThrowsAsync<HrException>(() => service.UpdateContractAsync(contract.ContractId,
+            new("HD-CHANGED", "Fixed", Today.AddDays(-20), Today.AddDays(3), null), CancellationToken.None));
+        Assert.Equal("EmployeeResigned", createError.Code);
+        Assert.Equal("EmployeeResigned", updateError.Code);
+        Assert.Equal("HD01", Assert.Single(storage.Contracts).ContractNumber);
+    }
+
+    [Fact]
+    public async Task ContractCannotStartOnBirthDateOrBeforeKnownFirstAssignment()
+    {
+        var storage = new Storage { EmployeeBirthDate = Today.AddYears(-20) };
+        var service = Service(storage);
+        var birthError = await Assert.ThrowsAsync<HrException>(() => service.CreateContractAsync(EmployeeId,
+            new("HD01", "Fixed", storage.EmployeeBirthDate, Today, null), CancellationToken.None));
+        Assert.Equal("InvalidContractStart", birthError.Code);
+
+        storage.History.Add(new() { EmployeeId = EmployeeId, StartDate = Today.AddDays(-10) });
+        var historyError = await Assert.ThrowsAsync<HrException>(() => service.CreateContractAsync(EmployeeId,
+            Request(3), CancellationToken.None));
+        Assert.Equal("InvalidContractStart", historyError.Code);
+        Assert.Empty(storage.Contracts);
+    }
+
+    [Fact]
+    public async Task TerminatedContractKeepsItsHistoricalPeriod_AndCancelledContractDoesNotOccupyTime()
+    {
+        var storage = new Storage();
+        storage.Contracts.Add(new() { EmployeeId = EmployeeId, ContractNumber = "OLD", StartDate = Today.AddDays(-20),
+            EndDate = Today.AddDays(100), ActualEndDate = Today, Status = ContractStatuses.Terminated });
+        storage.Contracts.Add(new() { EmployeeId = EmployeeId, ContractNumber = "CANCEL", StartDate = Today.AddDays(1),
+            EndDate = Today.AddYears(1), Status = ContractStatuses.Cancelled });
+        var service = Service(storage);
+        var error = await Assert.ThrowsAsync<HrException>(() => service.CreateContractAsync(EmployeeId,
+            Request(3), CancellationToken.None));
+        Assert.Equal("ContractOverlap", error.Code);
+
+        var created = await service.CreateContractAsync(EmployeeId,
+            new("HD02", "Fixed", Today.AddDays(1), Today.AddYears(1), null), CancellationToken.None);
+        Assert.Equal(Today.AddDays(1), created.StartDate);
+    }
+
+    [Theory]
+    [InlineData(ContractStatuses.Renewed)]
+    [InlineData(ContractStatuses.Terminated)]
+    [InlineData(ContractStatuses.Cancelled)]
+    public async Task Update_RechecksFreshContractStateAfterLoadingEmployeeVersion(string concurrentlySavedStatus)
+    {
+        var storage = new Storage();
+        var service = Service(storage);
+        var created = await service.CreateContractAsync(EmployeeId, Request(3), CancellationToken.None);
+        storage.ReturnContractSnapshot = true;
+        storage.OnEmployeeRead = () => storage.Contracts.Single().Status = concurrentlySavedStatus;
+
+        var error = await Assert.ThrowsAsync<HrException>(() => service.UpdateContractAsync(created.ContractId,
+            new("HD01", "Fixed", Today.AddDays(-20), Today.AddDays(3), "Không được ghi sau thay đổi trạng thái"), CancellationToken.None));
+
+        Assert.Equal("InvalidContractState", error.Code);
+        Assert.Equal(concurrentlySavedStatus, storage.Contracts.Single().Status);
+        Assert.Null(storage.Contracts.Single().Notes);
+        Assert.Equal(1, storage.SaveCount);
+    }
+
+    [Fact]
+    public async Task Update_ContractDeletedBeforeEmployeeVersionRead_IsNotSavedFromTheTrackedSnapshot()
+    {
+        var storage = new Storage();
+        var service = Service(storage);
+        var created = await service.CreateContractAsync(EmployeeId, Request(3), CancellationToken.None);
+        storage.ReturnContractSnapshot = true;
+        storage.OnEmployeeRead = () => storage.Contracts.Clear();
+
+        var error = await Assert.ThrowsAsync<HrException>(() => service.UpdateContractAsync(created.ContractId,
+            new("HD01", "Fixed", Today.AddDays(-20), Today.AddDays(3), null), CancellationToken.None));
+
+        Assert.Equal("ContractNotFound", error.Code);
+        Assert.Empty(storage.Contracts);
+        Assert.Equal(1, storage.SaveCount);
+    }
+
     private static CreateEmploymentContractRequest Request(int? days) =>
         new("HD01", "Fixed", Today.AddDays(-20), days is int remaining ? Today.AddDays(remaining) : null, null, null);
     private static ContractService Service(Storage storage) => new(storage, Generator(storage));
@@ -137,14 +305,35 @@ public sealed class ContractAlertImmediateTests
     {
         public List<EmploymentContract> Contracts { get; } = [];
         public List<ContractAlert> Alerts { get; } = [];
+        public List<WorkHistory> History { get; } = [];
+        public string EmployeeStatus { get; set; } = EmployeeStatuses.Active;
+        public DateOnly EmployeeBirthDate { get; init; }
         public HashSet<Guid> SavedContracts { get; } = [];
         public bool FailSave { get; init; }
         public bool FailAlertInsert { get; set; }
+        public bool ReturnContractSnapshot { get; set; }
+        public Action? OnEmployeeRead { get; set; }
+        public int SaveCount { get; private set; }
         public int FullScans { get; private set; }
-        public Task<Employee?> GetEmployeeAsync(Guid id, CancellationToken token) =>
-            Task.FromResult<Employee?>(new FullTimeEmployee { EmployeeId = id, Status = "ACTIVE" });
-        public Task<EmploymentContract?> GetContractAsync(Guid id, CancellationToken token) =>
-            Task.FromResult(Contracts.FirstOrDefault(contract => contract.ContractId == id));
+        public Task<Employee?> GetEmployeeAsync(Guid id, CancellationToken token)
+        {
+            OnEmployeeRead?.Invoke();
+            return Task.FromResult<Employee?>(new FullTimeEmployee { EmployeeId = id, Status = EmployeeStatus, DateOfBirth = EmployeeBirthDate });
+        }
+        public Task<EmploymentContract?> GetContractAsync(Guid id, CancellationToken token)
+        {
+            var contract = Contracts.FirstOrDefault(item => item.ContractId == id);
+            if (contract is null || !ReturnContractSnapshot) return Task.FromResult(contract);
+            // Mô phỏng entity tracked đã đọc, tách khỏi kết quả query mới sau một lần ghi đồng thời.
+            return Task.FromResult<EmploymentContract?>(new()
+            {
+                ContractId = contract.ContractId, EmployeeId = contract.EmployeeId,
+                ContractNumber = contract.ContractNumber, ContractType = contract.ContractType,
+                StartDate = contract.StartDate, EndDate = contract.EndDate, ActualEndDate = contract.ActualEndDate,
+                Status = contract.Status, Notes = contract.Notes, TerminationReason = contract.TerminationReason,
+                RenewalOfContractId = contract.RenewalOfContractId, CreatedAt = contract.CreatedAt, UpdatedAt = contract.UpdatedAt
+            });
+        }
         public Task<IReadOnlyList<EmploymentContract>> GetContractsAsync(Guid id, CancellationToken token) =>
             Task.FromResult<IReadOnlyList<EmploymentContract>>(Contracts.Where(contract => contract.EmployeeId == id).ToArray());
         public Task<bool> ContractNumberExistsAsync(string number, Guid? except, CancellationToken token) =>
@@ -156,6 +345,7 @@ public sealed class ContractAlertImmediateTests
         public Task SaveChangesAsync(CancellationToken token)
         {
             if (FailSave) throw new InvalidOperationException("Contract save failed");
+            SaveCount++;
             SavedContracts.UnionWith(Contracts.Select(contract => contract.ContractId));
             return Task.CompletedTask;
         }
@@ -175,7 +365,8 @@ public sealed class ContractAlertImmediateTests
             Alerts.Add(alert);
             return Task.FromResult(true);
         }
-        public Task<IReadOnlyList<WorkHistory>> GetWorkHistoryAsync(Guid id, CancellationToken token) => throw new NotSupportedException();
+        public Task<IReadOnlyList<WorkHistory>> GetWorkHistoryAsync(Guid id, CancellationToken token) =>
+            Task.FromResult<IReadOnlyList<WorkHistory>>(History.Where(item => item.EmployeeId == id).ToArray());
         public Task<WorkHistory?> GetOpenWorkHistoryAsync(Guid id, CancellationToken token) => throw new NotSupportedException();
         public Task<Department?> GetActiveDepartmentAsync(Guid id, CancellationToken token) => throw new NotSupportedException();
         public Task<Position?> GetActivePositionAsync(Guid id, CancellationToken token) => throw new NotSupportedException();
