@@ -7,7 +7,9 @@ Tài liệu này giải thích các control trong thư mục `FE/Admin.WinForms/
 ```text
 Control / Dialog
     ↓ gọi
-Program.PayrollApi (PayrollApiService) hoặc AttendanceApi / HrApiClient
+Payroll service theo chức năng hoặc AttendanceApi / HrApiClient
+    ↓ nghiệp vụ
+PayrollApiClient (Data/Payroll)
     ↓ HTTP
 Payroll.API Controller
     ↓ gọi
@@ -20,12 +22,12 @@ Ví dụ khi control tải danh sách payroll:
 
 ```csharp
 // PayrollTableControl
-var payrolls = await Program.PayrollApi.GetPayrollsByPeriodAsync(periodId);
+var payrolls = await Program.PayrollManagement.GetPayrollsByPeriodAsync(periodId);
 ```
 
 ```csharp
-// PayrollApiService
-var payrolls = await GetListAsync<PayrollListDto>(
+// PayrollManagementService gọi PayrollApiClient
+var payrolls = await _apiClient.GetListAsync<PayrollListDto>(
     $"api/payrolls/periods/{periodId}");
 
 // Service còn lấy directory từ HR, ghép theo EmployeeID,
@@ -53,7 +55,7 @@ Controller chuyển tiếp sang Application Service. Control không truy cập D
 | `POST api/payroll-periods` | `CreatePeriodAsync` | `PayrollPeriodController.Create` → `PayrollPeriodService.CreateAsync` | Body `Year`, `Month`; tạo kỳ, trả `201` |
 | `GET api/payrolls/periods/{periodID}` | `GetPayrollsByPeriodAsync` | `PayrollQueryController.GetByPeriod` → `PayrollQueryService.GetByPeriodAsync` | Danh sách payroll trong kỳ |
 | `GET api/payrolls/{payrollID}` | `GetPayrollDetailAsync` | `PayrollQueryController.GetByID` → `PayrollQueryService.GetByIDAsync` | Payroll kèm allowance/paycut detail; `404` khi không có |
-| `GET api/payrolls/employees/{employeeID}` | Có trong `PayrollApiService`, không được các control hiện tại gọi | `PayrollQueryController.GetEmployeeHistory` → `PayrollQueryService.GetEmployeeHistoryAsync` | Lịch sử lương nhân viên |
+| `GET api/payrolls/employees/{employeeID}` | Không được service/control FE hiện tại gọi | `PayrollQueryController.GetEmployeeHistory` → `PayrollQueryService.GetEmployeeHistoryAsync` | Lịch sử lương nhân viên |
 | `POST api/payroll-attendance/periods/{periodID}/sync` | `SyncAttendanceAsync` | `PayrollAttendanceController.SyncAttendance` → `PayrollAttendanceService.SyncAttendanceAsync` | Lấy công/OT từ Attendance; trả số payroll đã sync |
 | `POST api/payroll-salary/periods/{periodID}/sync` | `SyncSalaryAsync` | `PayrollSalarySyncController.SyncSalary` → `PayrollSalarySyncService.SyncSalaryAsync` | Lấy lương từ HR và phụ cấp dự án từ Project |
 | `POST api/payroll-management/periods/{periodID}/payrolls` | `CreatePayrollsAsync` | `PayrollManagementController.CreatePayrolls` → `PayrollManagementService.CreatePayrollsAsync` | Body `EmployeeIDs`; tạo payroll còn thiếu, trả `201` |
@@ -115,7 +117,7 @@ File: [PayrollTableControl.cs](./PayrollTableControl.cs)
 
 - `LoadPeriodsAsync()` → `GET api/payroll-periods`; nạp kỳ vào ComboBox.
 - `LoadPayrollsAsync()` → `GET api/payrolls/periods/{periodID}` qua `GetPayrollsByPeriodAsync`.
-- `PayrollApiService.GetPayrollsByPeriodAsync` sau đó gọi HR lấy directory, ghép theo `EmployeeID` và gán `EmployeeCode`/`EmployeeName`. Nếu không tìm thấy employee trong HR, method ném lỗi thay vì lặng lẽ trả mã khác.
+- `PayrollManagementService.GetPayrollsByPeriodAsync` sau đó gọi HR lấy directory, ghép theo `EmployeeID` và gán `EmployeeCode`/`EmployeeName`. Nếu không tìm thấy employee trong HR, method ném lỗi thay vì lặng lẽ trả mã khác.
 - Control render các cột công, lương, allowance, paycut, gross/net và trạng thái; tính thẻ thống kê từ chính danh sách đã tải.
 - `ResetStats`, `FormatStatus`, `FormatEmploymentType` chỉ xử lý UI, không gọi endpoint.
 
@@ -136,7 +138,7 @@ var employeeIds = attendanceRecords
     .Distinct()
     .ToList();
 
-await Program.PayrollApi.CreatePayrollsAsync(
+await Program.PayrollManagement.CreatePayrollsAsync(
     _selectedPeriod.PayrollPeriodID,
     employeeIds);
 ```
@@ -152,7 +154,7 @@ await Program.PayrollApi.CreatePayrollsAsync(
 HR lỗi thì dialog vẫn có thể hiển thị chi tiết payroll và thông báo lỗi hồ sơ; lỗi Payroll detail được báo ở control.
 
 ```csharp
-var detail = await Program.PayrollApi.GetPayrollDetailAsync(payroll.PayrollID);
+var detail = await Program.PayrollManagement.GetPayrollDetailAsync(payroll.PayrollID);
 using var hr = new HrApiClient();
 var employee = await hr.GetAsync<EmployeeRow>(
     $"employees/{payroll.EmployeeID}",
@@ -173,7 +175,7 @@ dialog.ShowDialog(FindForm());
 File: [PayrollAdjustmentControl.cs](./PayrollAdjustmentControl.cs)
 
 - `LoadPeriodsAsync()` → `GET api/payroll-periods`.
-- `LoadEmployeesInPeriodAsync()` → `GET api/payrolls/periods/{periodID}`; danh sách được bổ sung mã/tên HR trong `PayrollApiService`. Chọn nhân viên đầu tiên rồi nạp detail.
+- `LoadEmployeesInPeriodAsync()` → `GET api/payrolls/periods/{periodID}`; danh sách được bổ sung mã/tên HR trong `PayrollManagementService`. Chọn nhân viên đầu tiên rồi nạp detail.
 - `FilterEmployeesAsync()`:
   - Không có từ khóa: lọc lại từ `_payrolls` trong bộ nhớ.
   - Có từ khóa: gọi `AttendanceApi.SearchEmployeesAsync`, ghép kết quả với payroll bằng `EmployeeID`, tìm tiếp theo code/name/ID và cập nhật ComboBox.
@@ -192,7 +194,7 @@ File: [PayrollAdjustmentControl.cs](./PayrollAdjustmentControl.cs)
 Request phụ cấp minh họa:
 
 ```csharp
-await Program.PayrollApi.AddAllowanceAsync(payroll.PayrollID,
+await Program.PayrollManagement.AddAllowanceAsync(payroll.PayrollID,
     new CreateAllowanceDto
     {
         AllowanceTypeID = selectedItem.ID,
@@ -242,7 +244,7 @@ Chú ý theo code hiện tại: `OnApproveAllAsync()` chọn mọi payroll khôn
 File: [PayslipViewerControl.cs](./PayslipViewerControl.cs)
 
 - `LoadPeriodsAsync()` → `GET api/payroll-periods`.
-- `LoadEmployeesInPeriodAsync()` → `GET api/payrolls/periods/{periodID}`; `PayrollApiService` bổ sung HR code/name rồi control nạp ComboBox.
+- `LoadEmployeesInPeriodAsync()` → `GET api/payrolls/periods/{periodID}`; `PayrollManagementService` bổ sung HR code/name rồi control nạp ComboBox.
 - `LoadPayslipAsync()` → `GET api/payslips/{payrollID}`; response chứa số liệu phiếu và chi tiết allowance/paycut.
   - Payroll chưa `approved` hoặc chưa `paid`: server trả `404`; `GetOptionalAsync` chuyển `404` thành `null`, control hiển thị “Phiếu lương chưa được phát hành”.
   - Phiếu có dữ liệu: cập nhật nhãn và hai ListView.
@@ -254,7 +256,7 @@ File: [PayslipViewerControl.cs](./PayslipViewerControl.cs)
 Ví dụ tải phiếu:
 
 ```csharp
-_currentPayslip = await Program.PayrollApi.GetPayslipAsync(
+_currentPayslip = await Program.Payslips.GetPayslipAsync(
     _selectedPayroll.PayrollID);
 
 if (_currentPayslip == null)
@@ -315,23 +317,17 @@ Body ví dụ cho POST/PUT catalog:
 }
 ```
 
-## 10. Các hàm helper của `PayrollApiService`
+## 10. Các lớp FE của Payroll
 
-File: [PayrollApiService.cs](../../Services/Payroll/PayrollApiService.cs)
+Payroll nằm trong cùng project `Admin.WinForms`, được phân theo ba lớp:
 
-- `GetListAsync<T>(path)` gửi GET, kiểm tra status, deserialize JSON thành `List<T>`.
-- `GetOptionalAsync<T>(path)` trả `null` nếu HTTP 404; status lỗi khác thì ném exception; dùng cho detail/payslip có thể chưa tồn tại.
-- `SaveCatalogItemAsync(path, dto, method)` gửi POST hoặc PUT với JSON, kiểm tra status và deserialize response.
-- `DeactivateCatalogItemAsync(path)` gửi DELETE và kiểm tra status.
-- `EnsureSuccessAsync(response)` đọc nội dung lỗi và ném `HttpRequestException` khi HTTP không thành công.
-- `GetPayrollsByPeriodAsync(periodId, includeEmployeeDetails)` gọi Payroll GET; mặc định còn gọi HR directory để gắn tên/mã theo `EmployeeID`. Tham số `false` được dùng khi chỉ cần ID để tính lương và không muốn việc hiển thị employee phụ thuộc HR.
+| Lớp | Vị trí | Trách nhiệm |
+|---|---|---|
+| Presentation | `Controls/Payroll` và `Controls/Dashboard` | Hiển thị giao diện, nhận thao tác và gọi service phù hợp |
+| Business/Services | `Services/Payroll` | Cache list trong vòng đời ứng dụng, phối hợp nghiệp vụ và làm mới dữ liệu sau thao tác ghi |
+| Data Access | `Data/Payroll/PayrollApiClient.cs` | Gửi HTTP đến Payroll API, đọc DTO và xử lý phản hồi |
 
-```csharp
-using var response = await _httpClient.GetAsync(path);
-await EnsureSuccessAsync(response);
-return await response.Content.ReadFromJsonAsync<List<T>>()
-    ?? throw new InvalidDataException("Payroll API trả về danh sách rỗng hoặc không hợp lệ.");
-```
+Các service nghiệp vụ được chia theo chức năng: `PayrollPeriodService` (kỳ lương), `PayrollManagementService` (bảng lương và thống kê), `PayrollCatalogService` (danh mục), `PayslipService` (phiếu lương). `Program` tạo một `PayrollApiClient` dùng chung và truyền vào các service; các control gọi service tương ứng thay vì gọi HTTP trực tiếp.
 
 ## 11. Những thao tác không gọi endpoint
 
