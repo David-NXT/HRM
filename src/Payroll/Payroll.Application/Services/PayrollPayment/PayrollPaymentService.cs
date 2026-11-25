@@ -27,13 +27,7 @@ public class PayrollPaymentService
         if (payroll == null)
             throw new InvalidOperationException("Payroll does not exist.");
 
-        if (payroll.Status != "approved")
-            throw new InvalidOperationException(
-                "Only approved payroll can be marked as paid."
-            );
-
-        payroll.Status = "paid";
-        payroll.PaidAt = DateTime.UtcNow;
+        payroll.MarkAsPaid();
 
         await _context.SaveChangesAsync(cancellationToken);
 
@@ -43,7 +37,8 @@ public class PayrollPaymentService
             EmployeeID = payroll.EmployeeID,
             NetSalary = payroll.NetSalary,
             Status = payroll.Status,
-            PaidAt = payroll.PaidAt.Value
+            PaidAt = payroll.PaidAt
+                ?? throw new InvalidOperationException("Paid payroll must have a payment timestamp.")
         };
     }
 }
