@@ -7,8 +7,8 @@ public class ProjectMember
     public Guid EmployeeId { get; set; }
     public Guid ProjectRoleId { get; set; }
 
-    public DateOnly JoinDate { get; set; }
-    public DateOnly? LeaveDate { get; set; }
+    public DateTime JoinDate { get; set; }
+    public DateTime? LeaveDate { get; set; }
 
     public string Status { get; set; } = "Active";
 
@@ -25,21 +25,21 @@ public class ProjectMember
     }
 
     // 2. Ghi nhận thành viên rời dự án
-    public void Leave(DateOnly leaveDate)
+    public void Leave(DateTime leaveDate)
     {
         LeaveDate = leaveDate;
         Status = "Inactive";
     }
 
     // 3. Điều chỉnh thời gian tham gia
-    public void AdjustPeriod(DateOnly joinDate, DateOnly leaveDate)
+    public void AdjustPeriod(DateTime joinDate, DateTime leaveDate)
     {
         JoinDate = joinDate;
         LeaveDate = leaveDate;
     }
 
     // 4. Thiết lập đơn giá giờ làm mới
-    public HourlyRate SetHourlyRate(decimal rate, DateOnly effectiveFrom)
+    public HourlyRate SetHourlyRate(decimal rate, DateTime effectiveFrom)
     {
         var hourlyRate = new HourlyRate
         {
@@ -54,13 +54,13 @@ public class ProjectMember
     }
 
     // 5. Lấy đơn giá có hiệu lực tại ngày chỉ định
-    public HourlyRate? GetRateAt(DateOnly date)
+    public HourlyRate? GetRateAt(DateTime date)
     {
         return HourlyRates.FirstOrDefault(x => x.IsEffectiveAt(date));
     }
 
     // 6. Kiểm tra có được khai báo Timesheet không
-    public bool CanLogTimesheet(DateOnly workDate)
+    public bool CanLogTimesheet(DateTime workDate)
     {
         return IsActive()
             && workDate >= JoinDate
@@ -70,7 +70,7 @@ public class ProjectMember
     // 7. Khai báo giờ làm
     public Timesheet LogTimesheet(
         Guid taskId,
-        DateOnly workDate,
+        DateTime workDate,
         decimal hours,
         string? description)
     {
@@ -90,7 +90,7 @@ public class ProjectMember
     }
 
     // 8. Tính tổng số giờ đã duyệt
-    public decimal GetApprovedHours(DateOnly from, DateOnly to)
+    public decimal GetApprovedHours(DateTime from, DateTime to)
     {
         return Timesheets
             .Where(x => x.WorkDate >= from
