@@ -1,4 +1,4 @@
-namespace Project.API.Entities;
+﻿namespace Project.API.Entities;
 
 public class Timesheet
 {
@@ -39,7 +39,7 @@ public DateTime WorkDate { get; set; }
     {
         Status = "APPROVED";
         ApprovedBy = approverId;
-        ApprovedAt = DateTime.Now;
+        ApprovedAt = DateTime.UtcNow;
     }
 
     // 4. Từ chối Timesheet
