@@ -1,3 +1,4 @@
+
 namespace Project.API.Entities;
 
 public class Project
@@ -6,6 +7,7 @@ public class Project
     public string ProjectName { get; set; } = string.Empty;
     public string? Description { get; set; }
 
+    // Project sử dụng DateOnly
     public DateOnly StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
 
@@ -29,10 +31,11 @@ public class Project
     }
 
     // 2. Thêm thành viên
+    // ProjectMember vẫn sử dụng DateTime
     public ProjectMember AddMember(
         Guid employeeId,
         Guid roleId,
-        DateOnly joinDate)
+        DateTime joinDate)
     {
         var member = new ProjectMember
         {
@@ -59,10 +62,11 @@ public class Project
     }
 
     // 4. Thêm công việc
+    // Task vẫn sử dụng DateTime
     public Task AddTask(
         string name,
-        DateOnly startDate,
-        DateOnly? dueDate)
+        DateTime startDate,
+        DateTime? dueDate)
     {
         var task = new Task
         {
@@ -110,7 +114,8 @@ public class Project
     }
 
     // 9. Tính chi phí nhân công
-    public decimal GetLaborCost(DateOnly from, DateOnly to)
+    // Timesheet và HourlyRate vẫn sử dụng DateTime
+    public decimal GetLaborCost(DateTime from, DateTime to)
     {
         decimal total = 0;
 
@@ -134,8 +139,19 @@ public class Project
     }
 
     // 10. Tính chênh lệch ngân sách
-    public decimal GetBudgetVariance(DateOnly from, DateOnly to)
+    public decimal GetBudgetVariance(DateTime from, DateTime to)
     {
         return Budget - GetLaborCost(from, to);
+    }
+
+    // 11. Chuyển ngày của Project sang DateTime khi cần
+    public DateTime GetStartDateTime()
+    {
+        return StartDate.ToDateTime(TimeOnly.MinValue);
+    }
+
+    public DateTime? GetEndDateTime()
+    {
+        return EndDate?.ToDateTime(TimeOnly.MinValue);
     }
 }
